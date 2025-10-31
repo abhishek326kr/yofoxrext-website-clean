@@ -37,7 +37,7 @@ export default function AuthModal({
   onOpenChange,
   action = "continue"
 }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const mode = "login"; // Signup disabled - admins only
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -103,13 +103,12 @@ export default function AuthModal({
     }
   }, [user, open, onOpenChange, toast]);
 
-  // Reset form when modal closes or mode changes
+  // Reset form when modal closes
   useEffect(() => {
     if (!open) {
       setEmail("");
       setPassword("");
       setUsername("");
-      setMode("login");
     }
   }, [open]);
 
@@ -118,7 +117,7 @@ export default function AuthModal({
     setIsLoading(true);
 
     try {
-      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const endpoint = mode === "login" ? "/api/login" : "/api/register";
       const payload = mode === "login" 
         ? { email, password }
         : { email, password, username };
@@ -351,21 +350,6 @@ export default function AuthModal({
               )}
             </Button>
           </form>
-
-          {/* Toggle between login and signup */}
-          <div className="text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              disabled={isLoading}
-              className="text-primary hover:underline disabled:opacity-50"
-              data-testid="button-toggle-mode"
-            >
-              {mode === "login" 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"}
-            </button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
