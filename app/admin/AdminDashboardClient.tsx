@@ -36,7 +36,8 @@ import {
   Activity,
   Folder,
   TestTube,
-  Code
+  Code,
+  AlertCircle
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminAuthCheck } from "./auth-check";
@@ -63,6 +64,7 @@ import ContentStudio from "./sections/ContentStudio";
 import Testing from "./sections/Testing";
 import SchemaValidation from "./sections/SchemaValidation";
 import SitemapManagement from "./sections/SitemapManagement";
+import ErrorMonitoring from "./sections/ErrorMonitoring";
 
 const sections = [
   { id: "overview", icon: BarChart3, label: "Overview", path: "/admin" },
@@ -73,6 +75,7 @@ const sections = [
   { id: "finance", icon: DollarSign, label: "Finance", path: "/admin/finance" },
   { id: "emails", icon: Mail, label: "Emails", path: "/admin/emails" },
   { id: "analytics", icon: TrendingUp, label: "Analytics", path: "/admin/analytics" },
+  { id: "errors", icon: AlertCircle, label: "Error Monitoring", path: "/admin/errors" },
   { id: "ai-automation", icon: Bot, label: "AI & Automation", path: "/admin/ai-automation" },
   { id: "gamification", icon: Trophy, label: "Gamification", path: "/admin/gamification" },
   { id: "seo-marketing", icon: Search, label: "SEO & Marketing", path: "/admin/seo-marketing" },
@@ -141,6 +144,8 @@ export function AdminDashboardClient() {
         return <EmailDashboard />;
       case "/admin/analytics":
         return <Analytics />;
+      case "/admin/errors":
+        return <ErrorMonitoring />;
       case "/admin/ai-automation":
         return <AIAutomation />;
       case "/admin/gamification":
