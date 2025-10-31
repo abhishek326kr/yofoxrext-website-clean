@@ -40,18 +40,18 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
     "app/**/*",
     "lib/**/*",
     "server/**/*",
-    "shared/**/*",
-    ".next/dev/types/**/*.ts"
+    "shared/**/*"
   ],
   "exclude": [
     "node_modules",
     "client",
-    "scripts"
+    "scripts",
+    ".next",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ]
 }
