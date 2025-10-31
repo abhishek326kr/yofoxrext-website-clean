@@ -105,9 +105,27 @@ Communication flows from the Browser to Next.js, then to the Express API, and fi
 - **Purpose:** Enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails.
 - **Database Schema:** Eight new tables including `retentionMetrics`, `vaultCoins`, `loyaltyTiers`, `retentionBadges`, `aiNudges`, `abandonmentEmails`, `earningsSources`, and `activityHeatmap`.
 - **Backend Services:** Services for vault management, loyalty calculations, badge awarding, real-time WebSocket events, AI-driven behavioral nudges, and abandonment email sequences.
-- **API Endpoints:** Eight new endpoints for dashboard overview, earnings, loyalty timeline, activity heatmap, badges, referrals, and vault interactions.
+- **API Endpoints:** 12 endpoints for dashboard overview, earnings, loyalty timeline, activity heatmap, badges, referrals, nudges, vault claims, and preferences.
 - **Frontend Components:** Nine new React components for visualizing earnings, loyalty progress, vault status, referrals, health scores, badges, and activity heatmaps, integrated into the main dashboard.
 - **Real-Time Features:** WebSocket server with user-specific rooms, confetti animations, toast notifications, and hover tooltips for dynamic user feedback.
+
+### Documentation (November 1, 2025)
+
+**4 Essential Documentation Files (4,828 total lines):**
+- **README.md** (163 lines): Quickstart guide, feature overview, credentials, local setup
+- **DEPLOYMENT.md** (723 lines): Production deployment guide for Replit Autoscale and AWS/VPS
+- **API_REFERENCE.md** (3,777 lines): Complete API documentation for all 194 endpoints
+  - Authentication & security (30+ endpoints)
+  - Coin system APIs (7 endpoints)
+  - Publishing system APIs (5 endpoints)
+  - Marketplace APIs (9 endpoints)
+  - Forum APIs (10 endpoints)
+  - Social & badges (6 endpoints)
+  - Activity & stats (7 endpoints)
+  - Retention dashboard (12 endpoints) - **Added Nov 1, 2025**
+  - Admin APIs (50+ endpoints) - **Added Nov 1, 2025**
+  - Email system overview - **Added Nov 1, 2025**
+- **replit.md** (165 lines): Agent memory, architecture, preferences, dependency list
 
 ## External Dependencies
 

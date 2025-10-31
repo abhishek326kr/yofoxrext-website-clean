@@ -13,8 +13,11 @@
 10. [Activity & Stats APIs](#activity--stats-apis)
 11. [Broker Directory APIs](#broker-directory-apis)
 12. [Search APIs](#search-apis)
-13. [Frontend Integration Guide](#frontend-integration-guide)
-14. [Onboarding System APIs](#onboarding-system-apis)
+13. [Retention Dashboard APIs](#retention-dashboard-apis)
+14. [Admin APIs](#admin-apis)
+15. [Email System](#email-system)
+16. [Frontend Integration Guide](#frontend-integration-guide)
+17. [Onboarding System APIs](#onboarding-system-apis)
 
 ---
 
@@ -2296,6 +2299,768 @@ Output (155 chars): "I've been testing a new scalping strategy on XAUUSD. Using 
 
 ---
 
+## Retention Dashboard APIs
+
+### Overview
+
+The retention dashboard ("Your Trading Journey") provides 12 endpoints for tracking user engagement, loyalty progression, vault bonuses, badges, and AI-powered nudges.
+
+**Authentication:** All endpoints require authentication  
+**Base Path:** `/api/dashboard`
+
+---
+
+### GET /api/dashboard/overview
+
+**Purpose:** Main dashboard metrics including vault summary, today's earnings, and referral progress  
+**Authentication:** Required  
+**Returns:** `200 OK` with comprehensive dashboard data
+
+**Response:**
+```json
+{
+  "metrics": {
+    "userId": "uuid",
+    "activeDays": 45,
+    "currentTier": "Gold",
+    "feeRate": 0.03,
+    "lastActive": "2025-11-01T12:00:00Z"
+  },
+  "vault": {
+    "totalLocked": 1500,
+    "availableToClaim": 300,
+    "nextUnlockDate": "2025-11-15T00:00:00Z",
+    "progressPercentage": 67
+  },
+  "todayEarnings": 125,
+  "referralProgress": {
+    "activeReferrals": 3,
+    "requiredForBonus": 5,
+    "progressPercentage": 60,
+    "currentRate": 0.02
+  }
+}
+```
+
+---
+
+### GET /api/dashboard/earnings-sources
+
+**Purpose:** Returns earnings breakdown by source for pie chart visualization  
+**Authentication:** Required
+
+**Response:**
+```json
+[
+  { "source": "Thread Created", "amount": 450, "color": "#3b82f6" },
+  { "source": "Reply Posted", "amount": 320, "color": "#10b981" },
+  { "source": "Content Published", "amount": 500, "color": "#f59e0b" },
+  { "source": "Answer Accepted", "amount": 200, "color": "#8b5cf6" }
+]
+```
+
+---
+
+### GET /api/dashboard/loyalty-timeline
+
+**Purpose:** Returns tier progression timeline with benefits and fee rates  
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "currentTier": "Gold",
+  "currentDays": 45,
+  "tiers": [
+    {
+      "tier": "Bronze",
+      "minActiveDays": 0,
+      "feeRate": 0.07,
+      "benefits": ["Basic forum access", "Coin rewards"],
+      "isCompleted": true
+    },
+    {
+      "tier": "Silver",
+      "minActiveDays": 22,
+      "feeRate": 0.05,
+      "benefits": ["Priority support", "5% fee reduction"],
+      "isCompleted": true
+    },
+    {
+      "tier": "Gold",
+      "minActiveDays": 45,
+      "feeRate": 0.03,
+      "benefits": ["Featured content", "3% fee rate"],
+      "isCompleted": false,
+      "isCurrent": true
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/dashboard/activity-heatmap
+
+**Purpose:** Returns hourly activity patterns for the past 30 days  
+**Authentication:** Required
+
+**Response:**
+```json
+[
+  { "hour": 9, "dayOfWeek": 1, "actionCount": 15 },
+  { "hour": 14, "dayOfWeek": 3, "actionCount": 23 },
+  { "hour": 20, "dayOfWeek": 5, "actionCount": 8 }
+]
+```
+
+**Notes:**
+- `dayOfWeek`: 0 (Sunday) to 6 (Saturday)
+- `hour`: 0 (midnight) to 23 (11 PM)
+
+---
+
+### GET /api/dashboard/badges
+
+**Purpose:** Returns user badges with progress toward unearned badges  
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "earned": [
+    {
+      "badgeType": "first_post",
+      "badgeName": "First Steps",
+      "badgeDescription": "Created your first thread",
+      "coinReward": 50,
+      "unlockedAt": "2025-10-15T10:30:00Z"
+    }
+  ],
+  "available": [
+    {
+      "badgeType": "reply_streak",
+      "badgeName": "Reply Master",
+      "badgeDescription": "Post 50 replies",
+      "coinReward": 200,
+      "progress": {
+        "current": 32,
+        "required": 50,
+        "percentage": 64
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/dashboard/referrals
+
+**Purpose:** Returns detailed referral statistics  
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "totalReferrals": 8,
+  "activeReferrals": 3,
+  "permanentRateUnlocked": false,
+  "currentRate": 0.02,
+  "potentialRate": 0.05,
+  "referralList": [
+    {
+      "username": "trader123",
+      "joinedAt": "2025-10-20T15:00:00Z",
+      "isActive": true,
+      "totalEarnings": 450
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/dashboard/nudges
+
+**Purpose:** Returns active AI-generated engagement nudges  
+**Authentication:** Required
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "nudgeType": "post_in_category",
+    "message": "Post in Expert Advisors - high engagement right now!",
+    "actionUrl": "/category/expert-advisors",
+    "priority": "medium",
+    "createdAt": "2025-11-01T09:00:00Z"
+  }
+]
+```
+
+**Priority Levels:**
+- `low` - Casual suggestion
+- `medium` - Important recommendation
+- `high` - Critical opportunity
+
+---
+
+### POST /api/dashboard/nudges/:nudgeId/dismiss
+
+**Purpose:** Dismisses a specific AI nudge  
+**Authentication:** Required
+
+**Request:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Nudge dismissed successfully"
+}
+```
+
+---
+
+### POST /api/dashboard/vault/claim
+
+**Purpose:** Claims all available unlocked vault coins  
+**Authentication:** Required
+
+**Request:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "amount": 300,
+  "newBalance": 2150,
+  "message": "Successfully claimed 300 coins from vault"
+}
+```
+
+**Status Codes:**
+- `200 OK` - Success
+- `400 Bad Request` - No coins available to claim
+- `401 Unauthorized` - Not authenticated
+
+---
+
+### GET /api/dashboard/vault/summary
+
+**Purpose:** Returns detailed vault statistics  
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "totalLocked": 1500,
+  "availableToClaim": 300,
+  "nextUnlockDate": "2025-11-15T00:00:00Z",
+  "progressPercentage": 67,
+  "recentDeposits": [
+    {
+      "amount": 50,
+      "earnedFrom": "Thread Created",
+      "depositedAt": "2025-11-01T10:00:00Z",
+      "unlockAt": "2025-12-01T10:00:00Z",
+      "status": "locked"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/dashboard/preferences
+
+**Purpose:** Get user's dashboard widget preferences  
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "widgetsOrder": ["earnings", "vault", "loyalty", "badges"],
+  "hiddenWidgets": [],
+  "theme": "light"
+}
+```
+
+---
+
+### POST /api/dashboard/preferences
+
+**Purpose:** Save user's dashboard preferences  
+**Authentication:** Required
+
+**Request:**
+```json
+{
+  "widgetsOrder": ["vault", "earnings", "loyalty", "badges"],
+  "hiddenWidgets": ["heatmap"],
+  "theme": "dark"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Preferences saved"
+}
+```
+
+---
+
+## Admin APIs
+
+### Overview
+
+The admin dashboard provides 50+ endpoints for managing users, content, marketplace, analytics, and system settings.
+
+**Authentication:** All endpoints require authentication + admin role  
+**Base Path:** `/api/admin`  
+**Rate Limit:** 30 requests / 15 minutes (admin operations)
+
+---
+
+### Admin Overview Endpoints
+
+#### GET /api/admin/overview/stats
+
+**Purpose:** Platform-wide statistics  
+**Authentication:** Admin required
+
+**Response:**
+```json
+{
+  "totalUsers": 15420,
+  "activeUsers": 3240,
+  "totalThreads": 8950,
+  "totalContent": 1250,
+  "totalRevenue": 124500,
+  "todaySignups": 45
+}
+```
+
+---
+
+#### GET /api/admin/overview/user-growth
+
+**Purpose:** User growth chart data (30 days)  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  { "date": "2025-10-01", "signups": 12, "active": 245 },
+  { "date": "2025-10-02", "signups": 18, "active": 267 }
+]
+```
+
+---
+
+#### GET /api/admin/overview/content-trend
+
+**Purpose:** Content publication trends  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  { "date": "2025-10-01", "threads": 45, "replies": 234, "content": 8 },
+  { "date": "2025-10-02", "threads": 52, "replies": 289, "content": 12 }
+]
+```
+
+---
+
+#### GET /api/admin/overview/activity-feed
+
+**Purpose:** Recent platform activity  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "type": "user_signup",
+    "username": "trader123",
+    "timestamp": "2025-11-01T10:30:00Z"
+  },
+  {
+    "id": "uuid",
+    "type": "content_published",
+    "username": "expert_dev",
+    "contentTitle": "Gold EA Pro",
+    "timestamp": "2025-11-01T10:25:00Z"
+  }
+]
+```
+
+---
+
+### Admin User Management
+
+#### GET /api/admin/users/stats
+
+**Purpose:** Detailed user statistics  
+**Authentication:** Admin required
+
+**Response:**
+```json
+{
+  "total": 15420,
+  "active": 3240,
+  "verified": 12100,
+  "banned": 45,
+  "byRole": {
+    "user": 15200,
+    "moderator": 15,
+    "admin": 5
+  }
+}
+```
+
+---
+
+#### POST /api/admin/users/:id/reputation
+
+**Purpose:** Adjust user reputation  
+**Authentication:** Admin required
+
+**Request:**
+```json
+{
+  "amount": 50,
+  "reason": "Quality contributions"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "newReputation": 850
+}
+```
+
+---
+
+#### POST /api/admin/users/:id/badge
+
+**Purpose:** Award badge to user  
+**Authentication:** Admin required
+
+**Request:**
+```json
+{
+  "badgeType": "expert_trader",
+  "reason": "Exceptional trading insights"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "badge": {
+    "badgeType": "expert_trader",
+    "awardedAt": "2025-11-01T12:00:00Z"
+  }
+}
+```
+
+---
+
+### Admin Marketplace Management
+
+#### GET /api/admin/marketplace/items/pending
+
+**Purpose:** Get pending content awaiting approval  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Gold Scalper EA",
+    "author": "trader123",
+    "price": 500,
+    "submittedAt": "2025-11-01T09:00:00Z",
+    "status": "pending"
+  }
+]
+```
+
+---
+
+#### POST /api/admin/marketplace/:id/approve
+
+**Purpose:** Approve pending content  
+**Authentication:** Admin required
+
+**Request:**
+```json
+{
+  "featured": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Content approved and published"
+}
+```
+
+---
+
+#### POST /api/admin/marketplace/:id/reject
+
+**Purpose:** Reject content submission  
+**Authentication:** Admin required
+
+**Request:**
+```json
+{
+  "reason": "Does not meet quality standards"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Content rejected"
+}
+```
+
+---
+
+### Admin Support & Moderation
+
+#### GET /api/admin/support/tickets
+
+**Purpose:** List support tickets  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "subject": "Account verification issue",
+    "status": "open",
+    "priority": "high",
+    "createdAt": "2025-11-01T08:00:00Z",
+    "userId": "user-uuid"
+  }
+]
+```
+
+---
+
+#### POST /api/admin/announcements
+
+**Purpose:** Create platform-wide announcement  
+**Authentication:** Admin required
+
+**Request:**
+```json
+{
+  "title": "Platform Maintenance",
+  "message": "Scheduled maintenance on Nov 5",
+  "type": "info",
+  "expiresAt": "2025-11-05T00:00:00Z"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "announcement": {
+    "id": "uuid",
+    "title": "Platform Maintenance",
+    "createdAt": "2025-11-01T12:00:00Z"
+  }
+}
+```
+
+---
+
+### Admin Analytics
+
+#### GET /api/admin/overview/revenue-breakdown
+
+**Purpose:** Revenue breakdown by source  
+**Authentication:** Admin required
+
+**Response:**
+```json
+{
+  "contentSales": 85000,
+  "coinRecharges": 35000,
+  "premiumSubscriptions": 4500,
+  "total": 124500
+}
+```
+
+---
+
+#### GET /api/admin/overview/engagement-metrics
+
+**Purpose:** User engagement metrics  
+**Authentication:** Admin required
+
+**Response:**
+```json
+{
+  "averageSessionDuration": 1250,
+  "dailyActiveUsers": 3240,
+  "monthlyActiveUsers": 8950,
+  "avgThreadsPerUser": 2.4,
+  "avgRepliesPerUser": 15.8
+}
+```
+
+---
+
+### Admin System Settings
+
+#### GET /api/admin/settings
+
+**Purpose:** Get all system settings  
+**Authentication:** Admin required
+
+**Response:**
+```json
+{
+  "maintenanceMode": false,
+  "registrationEnabled": true,
+  "contentApprovalRequired": true,
+  "minCoinPurchase": 100,
+  "maxCoinPurchase": 10000
+}
+```
+
+---
+
+### Admin Email Templates
+
+#### GET /api/admin/email-templates
+
+**Purpose:** List all email templates  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  {
+    "key": "welcome_email",
+    "subject": "Welcome to YoForex!",
+    "lastModified": "2025-10-15T10:00:00Z"
+  }
+]
+```
+
+---
+
+#### POST /api/admin/email-templates
+
+**Purpose:** Update email template  
+**Authentication:** Admin required
+
+**Request:**
+```json
+{
+  "key": "welcome_email",
+  "subject": "Welcome to YoForex Community!",
+  "body": "<h1>Welcome!</h1><p>Thanks for joining...</p>"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Template updated"
+}
+```
+
+---
+
+### Admin Security
+
+#### GET /api/admin/security/events
+
+**Purpose:** Recent security events  
+**Authentication:** Admin required
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "type": "failed_login",
+    "userId": "user-uuid",
+    "ipAddress": "192.168.1.1",
+    "timestamp": "2025-11-01T10:00:00Z"
+  }
+]
+```
+
+---
+
+## Email System
+
+### Overview
+
+YoForex uses an automated email system powered by Hostinger SMTP for 58+ notification types. Emails are sent automatically based on user actions and preferences.
+
+**SMTP Configuration:**
+- Host: smtp.hostinger.com
+- Port: 465 (SSL)
+- Authentication: Required
+
+**Email Types:**
+- Welcome & verification emails
+- Password reset emails
+- Transaction notifications
+- Content purchase confirmations
+- Forum reply notifications
+- Weekly digest emails
+- Abandonment re-engagement emails (day 2, 5, 10)
+
+**Email Preferences:**
+
+Users can manage email preferences via their account settings. All emails include one-click unsubscribe links that respect user privacy.
+
+**Internal Email Service:**
+
+The email system is internal and automatic. There are no user-facing email API endpoints. Emails are triggered by:
+- User registration
+- Coin transactions
+- Content purchases
+- Forum activity
+- Vault unlocks
+- Badge achievements
+- Password resets
+
+---
+
 ## Production Deployment Checklist
 
 - [ ] Set up Stripe webhook endpoint (`/api/stripe/webhook`)
@@ -2311,9 +3076,9 @@ Output (155 chars): "I've been testing a new scalping strategy on XAUUSD. Using 
 
 ---
 
-**Last Updated:** October 26, 2025  
+**Last Updated:** November 1, 2025  
 **API Version:** 1.0.0  
-**Total Endpoints:** 50+
+**Total Endpoints:** 194 (includes 12 retention dashboard, 50+ admin APIs)
 ===============================================================================
                     YOFOREX API QUICK REFERENCE
                         Last Updated: Oct 26, 2025
