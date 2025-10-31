@@ -92,11 +92,15 @@ async function createEmailTemplate(
       unsubscribeToken = emailTrackingService.generateUnsubscribeToken();
       const tokenHash = emailTrackingService.hashToken(unsubscribeToken);
       
-      // Store unsubscribe token in database
+      // Store unsubscribe token in database (expires in 90 days)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 90);
+      
       await db.insert(unsubscribeTokens).values({
         userId: options.userId,
         tokenHash,
-        notificationId: trackingId
+        notificationId: trackingId,
+        expiresAt
       });
 
       // Create email notification record with tracking ID

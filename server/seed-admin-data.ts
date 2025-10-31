@@ -285,95 +285,145 @@ export async function seedAdminData() {
 
     console.log('📧 Seeding email templates...');
     // 9. Email Templates (transactional emails)
-    const emailCategories = ['onboarding', 'transactions', 'finance', 'notifications', 'marketing', 'support'];
     const templates = [
       { 
-        templateKey: 'welcome_email', 
+        key: 'welcome_email',
+        name: 'Welcome Email',
         subject: 'Welcome to YoForex, {{username}}!', 
-        htmlBody: '<h1>Welcome {{username}}!</h1><p>Thank you for joining our trading community. Start exploring EAs and earning coins today!</p>',
-        textBody: 'Welcome {{username}}! Thank you for joining our trading community.',
-        category: 'onboarding', 
-        variables: ['username', 'email'] 
+        htmlTemplate: '<h1>Welcome {{username}}!</h1><p>Thank you for joining our trading community. Start exploring EAs and earning coins today!</p>',
+        textTemplate: 'Welcome {{username}}! Thank you for joining our trading community.',
+        category: 'account' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'email', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'email_verification', 
+        key: 'email_verification',
+        name: 'Email Verification',
         subject: 'Verify your email address', 
-        htmlBody: '<p>Hi {{username}}, please verify your email by clicking: {{verificationLink}}</p>',
-        textBody: 'Please verify your email: {{verificationLink}}',
-        category: 'onboarding', 
-        variables: ['username', 'verificationLink'] 
+        htmlTemplate: '<p>Hi {{username}}, please verify your email by clicking: {{verificationLink}}</p>',
+        textTemplate: 'Please verify your email: {{verificationLink}}',
+        category: 'account' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'verificationLink', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'purchase_confirmation', 
+        key: 'purchase_confirmation',
+        name: 'Purchase Confirmation',
         subject: 'Purchase Confirmed - {{itemName}}', 
-        htmlBody: '<p>Your purchase of {{itemName}} for {{amount}} coins is confirmed.</p><p>Download link: {{downloadLink}}</p>',
-        textBody: 'Purchase confirmed: {{itemName}} for {{amount}} coins. Download: {{downloadLink}}',
-        category: 'transactions', 
-        variables: ['username', 'itemName', 'amount', 'downloadLink'] 
+        htmlTemplate: '<p>Your purchase of {{itemName}} for {{amount}} coins is confirmed.</p><p>Download link: {{downloadLink}}</p>',
+        textTemplate: 'Purchase confirmed: {{itemName}} for {{amount}} coins. Download: {{downloadLink}}',
+        category: 'marketplace' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'itemName', type: 'string', required: true },
+          { name: 'amount', type: 'number', required: true },
+          { name: 'downloadLink', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'withdrawal_approved', 
+        key: 'withdrawal_approved',
+        name: 'Withdrawal Approved',
         subject: 'Withdrawal Request Approved', 
-        htmlBody: '<p>Your withdrawal of {{amount}} coins ({{cryptoAmount}} {{cryptoType}}) has been approved and is being processed.</p>',
-        textBody: 'Withdrawal approved: {{amount}} coins ({{cryptoAmount}} {{cryptoType}})',
-        category: 'finance', 
-        variables: ['username', 'amount', 'cryptoAmount', 'cryptoType'] 
+        htmlTemplate: '<p>Your withdrawal of {{amount}} coins ({{cryptoAmount}} {{cryptoType}}) has been approved and is being processed.</p>',
+        textTemplate: 'Withdrawal approved: {{amount}} coins ({{cryptoAmount}} {{cryptoType}})',
+        category: 'coins' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'amount', type: 'number', required: true },
+          { name: 'cryptoAmount', type: 'number', required: true },
+          { name: 'cryptoType', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'withdrawal_rejected', 
+        key: 'withdrawal_rejected',
+        name: 'Withdrawal Rejected',
         subject: 'Withdrawal Request Rejected', 
-        htmlBody: '<p>Your withdrawal request has been rejected. Reason: {{reason}}</p>',
-        textBody: 'Withdrawal rejected. Reason: {{reason}}',
-        category: 'finance', 
-        variables: ['username', 'amount', 'reason'] 
+        htmlTemplate: '<p>Your withdrawal request has been rejected. Reason: {{reason}}</p>',
+        textTemplate: 'Withdrawal rejected. Reason: {{reason}}',
+        category: 'coins' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'amount', type: 'number', required: true },
+          { name: 'reason', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'password_reset', 
+        key: 'password_reset',
+        name: 'Password Reset',
         subject: 'Reset Your Password', 
-        htmlBody: '<p>Reset your password by clicking: {{resetLink}}</p><p>This link expires in 1 hour.</p>',
-        textBody: 'Reset password: {{resetLink}} (expires in 1 hour)',
-        category: 'support', 
-        variables: ['username', 'resetLink'] 
+        htmlTemplate: '<p>Reset your password by clicking: {{resetLink}}</p><p>This link expires in 1 hour.</p>',
+        textTemplate: 'Reset password: {{resetLink}} (expires in 1 hour)',
+        category: 'account' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'resetLink', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'content_approved', 
+        key: 'content_approved',
+        name: 'Content Approved',
         subject: 'Your content has been approved!', 
-        htmlBody: '<p>Congratulations! Your {{contentType}} "{{contentTitle}}" has been approved and is now live.</p>',
-        textBody: 'Your {{contentType}} "{{contentTitle}}" has been approved!',
-        category: 'notifications', 
-        variables: ['username', 'contentType', 'contentTitle', 'contentUrl'] 
+        htmlTemplate: '<p>Congratulations! Your {{contentType}} "{{contentTitle}}" has been approved and is now live.</p>',
+        textTemplate: 'Your {{contentType}} "{{contentTitle}}" has been approved!',
+        category: 'moderation' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'contentType', type: 'string', required: true },
+          { name: 'contentTitle', type: 'string', required: true },
+          { name: 'contentUrl', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'content_rejected', 
+        key: 'content_rejected',
+        name: 'Content Rejected',
         subject: 'Content Review Update', 
-        htmlBody: '<p>Your {{contentType}} was not approved. Reason: {{reason}}</p>',
-        textBody: 'Content not approved. Reason: {{reason}}',
-        category: 'notifications', 
-        variables: ['username', 'contentType', 'reason'] 
+        htmlTemplate: '<p>Your {{contentType}} was not approved. Reason: {{reason}}</p>',
+        textTemplate: 'Content not approved. Reason: {{reason}}',
+        category: 'moderation' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'contentType', type: 'string', required: true },
+          { name: 'reason', type: 'string', required: true }
+        ]
       },
       { 
-        templateKey: 'monthly_summary', 
+        key: 'monthly_summary',
+        name: 'Monthly Summary',
         subject: 'Your Monthly Activity Summary', 
-        htmlBody: '<h2>Hi {{username}},</h2><p>This month: {{earnings}} coins earned, {{posts}} posts created, {{downloads}} downloads.</p>',
-        textBody: 'Monthly summary: {{earnings}} coins, {{posts}} posts, {{downloads}} downloads',
-        category: 'marketing', 
-        variables: ['username', 'earnings', 'posts', 'downloads'] 
+        htmlTemplate: '<h2>Hi {{username}},</h2><p>This month: {{earnings}} coins earned, {{posts}} posts created, {{downloads}} downloads.</p>',
+        textTemplate: 'Monthly summary: {{earnings}} coins, {{posts}} posts, {{downloads}} downloads',
+        category: 'engagement' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'earnings', type: 'number', required: true },
+          { name: 'posts', type: 'number', required: true },
+          { name: 'downloads', type: 'number', required: true }
+        ]
       },
       { 
-        templateKey: 'support_ticket_reply', 
+        key: 'support_ticket_reply',
+        name: 'Support Ticket Reply',
         subject: 'New reply on ticket {{ticketNumber}}', 
-        htmlBody: '<p>Your support ticket {{ticketNumber}} has a new reply from our team.</p>',
-        textBody: 'New reply on ticket {{ticketNumber}}',
-        category: 'support', 
-        variables: ['username', 'ticketNumber', 'replyText'] 
+        htmlTemplate: '<p>Your support ticket {{ticketNumber}} has a new reply from our team.</p>',
+        textTemplate: 'New reply on ticket {{ticketNumber}}',
+        category: 'account' as const,
+        variables: [
+          { name: 'username', type: 'string', required: true },
+          { name: 'ticketNumber', type: 'string', required: true },
+          { name: 'replyText', type: 'string', required: false }
+        ]
       },
     ];
     
     for (const template of templates) {
       await db.insert(emailTemplates).values({
         ...template,
-        isActive: true,
-        updatedBy: adminIds[0],
+        enabled: true,
+        lastModifiedBy: adminIds[0],
         updatedAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000),
       });
     }

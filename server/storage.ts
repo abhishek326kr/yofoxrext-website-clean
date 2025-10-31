@@ -146,6 +146,8 @@ import {
   ipBans,
   emailTemplates,
   emailPreferences,
+  emailNotifications,
+  unsubscribeTokens,
   adminRoles,
   userSegments,
   automationRules,
@@ -243,6 +245,7 @@ export interface IStorage {
   updateForumThreadActivity(threadId: string): Promise<void>;
   
   createForumReply(reply: InsertForumReply): Promise<ForumReply>;
+  getForumReplyById(replyId: string): Promise<ForumReply | null>;
   listForumReplies(threadId: string): Promise<ForumReply[]>;
   markReplyAsAccepted(replyId: string): Promise<ForumReply | null>;
   markReplyAsHelpful(replyId: string): Promise<ForumReply | null>;
@@ -424,6 +427,13 @@ export interface IStorage {
   getUserEmailPreferences(userId: string): Promise<any>;
   updateUserEmailPreferences(userId: string, preferences: any): Promise<void>;
   trackEmailBounce(recipientEmail: string, bounceType: 'soft' | 'hard'): Promise<void>;
+  getEmailStats(dateRange: number): Promise<any>;
+  getEmailLogs(filters: { status?: string; templateKey?: string; startDate?: Date; endDate?: Date; limit?: number }): Promise<any[]>;
+  toggleEmailTemplate(key: string, enabled: boolean): Promise<void>;
+  getEmailAnalytics(dateRange: number): Promise<any>;
+  retryEmailById(emailId: string): Promise<void>;
+  clearEmailQueue(): Promise<void>;
+  reEnableUserEmail(userId: string): Promise<void>;
   
   // Earnings Summary
   getUserEarningsSummary(userId: string): Promise<{
@@ -1099,6 +1109,17 @@ export interface IStorage {
     details?: any;
     ipAddress?: string;
     userAgent?: string;
+  }): Promise<void>;
+  
+  /**
+   * Create admin action (simplified wrapper)
+   */
+  createAdminAction(action: {
+    adminId: string;
+    actionType: string;
+    targetType: string;
+    targetId: string | null;
+    details?: any;
   }): Promise<void>;
   
   /**
@@ -2041,6 +2062,11 @@ export class MemStorage implements IStorage {
       id: "demo-user-id",
       username: "demo",
       password: "demo",
+      password_hash: null,
+      google_uid: null,
+      auth_provider: "replit",
+      is_email_verified: false,
+      last_login_at: null,
       email: null,
       firstName: null,
       lastName: null,
@@ -2120,6 +2146,12 @@ export class MemStorage implements IStorage {
       // Traditional auth fields (if present)
       username: 'username' in insertUser ? insertUser.username : (isOIDC ? (insertUser as UpsertUser).email || 'user' : 'user'),
       password: 'password' in insertUser ? insertUser.password : null,
+      // New authentication system fields
+      password_hash: null,
+      google_uid: null,
+      auth_provider: "replit",
+      is_email_verified: false,
+      last_login_at: null,
       // YoForex fields with defaults
       totalCoins: 0,
       weeklyEarned: 0,
@@ -3207,6 +3239,10 @@ export class MemStorage implements IStorage {
     return reply;
   }
   
+  async getForumReplyById(replyId: string): Promise<ForumReply | null> {
+    return this.forumRepliesMap.get(replyId) || null;
+  }
+
   async listForumReplies(threadId: string): Promise<ForumReply[]> {
     return Array.from(this.forumRepliesMap.values())
       .filter(r => r.threadId === threadId)
@@ -3854,16 +3890,36 @@ export class MemStorage implements IStorage {
     throw new Error("MemStorage does not support email queue operations");
   }
   
-  async getUserEmailPreferences(userId: string): Promise<any> {
-    throw new Error("MemStorage does not support email queue operations");
-  }
-  
-  async updateUserEmailPreferences(userId: string, preferences: any): Promise<void> {
-    throw new Error("MemStorage does not support email queue operations");
-  }
-  
   async trackEmailBounce(recipientEmail: string, bounceType: 'soft' | 'hard'): Promise<void> {
     throw new Error("MemStorage does not support email queue operations");
+  }
+
+  async getEmailStats(dateRange: number): Promise<any> {
+    throw new Error("MemStorage does not support email stats operations");
+  }
+
+  async getEmailLogs(filters: any): Promise<any[]> {
+    throw new Error("MemStorage does not support email logs operations");
+  }
+
+  async toggleEmailTemplate(key: string, enabled: boolean): Promise<void> {
+    throw new Error("MemStorage does not support email template operations");
+  }
+
+  async getEmailAnalytics(dateRange: number): Promise<any> {
+    throw new Error("MemStorage does not support email analytics operations");
+  }
+
+  async retryEmailById(emailId: string): Promise<void> {
+    throw new Error("MemStorage does not support email retry operations");
+  }
+
+  async clearEmailQueue(): Promise<void> {
+    throw new Error("MemStorage does not support email queue operations");
+  }
+
+  async reEnableUserEmail(userId: string): Promise<void> {
+    throw new Error("MemStorage does not support email re-enable operations");
   }
 
   // Earnings Summary (Stubs - MemStorage does not support earnings summary)
@@ -4432,6 +4488,16 @@ export class MemStorage implements IStorage {
     userAgent?: string;
   }): Promise<void> {
     // No-op in MemStorage
+  }
+
+  async createAdminAction(action: {
+    adminId: string;
+    actionType: string;
+    targetType: string;
+    targetId: string | null;
+    details?: any;
+  }): Promise<void> {
+    // No-op in MemStorage - just a simplified wrapper for logAdminAction
   }
 
   async getAdminActionLogs(filters: any): Promise<{actions: any[]; total: number}> {
@@ -6419,6 +6485,15 @@ export class DrizzleStorage implements IStorage {
     });
   }
   
+  async getForumReplyById(replyId: string): Promise<ForumReply | null> {
+    const [reply] = await db
+      .select()
+      .from(forumReplies)
+      .where(eq(forumReplies.id, replyId))
+      .limit(1);
+    return reply || null;
+  }
+
   async listForumReplies(threadId: string): Promise<ForumReply[]> {
     const results = await db
       .select({
@@ -7743,17 +7818,6 @@ export class DrizzleStorage implements IStorage {
     });
   }
   
-  async getEmailQueue(status?: string, limit = 100): Promise<any[]> {
-    const { emailNotifications } = await import('@shared/schema');
-    const query = db.select().from(emailNotifications);
-    
-    if (status) {
-      query.where(eq(emailNotifications.status, status as any));
-    }
-    
-    return await query.orderBy(desc(emailNotifications.createdAt)).limit(limit);
-  }
-  
   async updateEmailStatus(emailId: string, status: string, error?: string): Promise<void> {
     const { emailNotifications } = await import('@shared/schema');
     await db.update(emailNotifications)
@@ -7763,42 +7827,6 @@ export class DrizzleStorage implements IStorage {
         updatedAt: new Date()
       })
       .where(eq(emailNotifications.id, emailId));
-  }
-  
-  async getUserEmailPreferences(userId: string): Promise<any> {
-    const { emailPreferences } = await import('@shared/schema');
-    const [prefs] = await db.select()
-      .from(emailPreferences)
-      .where(eq(emailPreferences.userId, userId))
-      .limit(1);
-    
-    return prefs || {
-      socialInteractions: true,
-      coinTransactions: true,
-      contentUpdates: true,
-      engagementDigest: true,
-      marketplaceActivities: true,
-      accountSecurity: true,
-      moderationNotices: true,
-      digestFrequency: 'instant'
-    };
-  }
-  
-  async updateUserEmailPreferences(userId: string, preferences: any): Promise<void> {
-    const { emailPreferences } = await import('@shared/schema');
-    await db.insert(emailPreferences)
-      .values({
-        userId,
-        ...preferences,
-        updatedAt: new Date()
-      })
-      .onConflictDoUpdate({
-        target: emailPreferences.userId,
-        set: {
-          ...preferences,
-          updatedAt: new Date()
-        }
-      });
   }
   
   async trackEmailBounce(recipientEmail: string, bounceType: 'soft' | 'hard'): Promise<void> {
@@ -10472,24 +10500,6 @@ export class DrizzleStorage implements IStorage {
     }
   }
 
-  async getEmailTemplates(category?: string): Promise<any[]> {
-    try {
-      if (category) {
-        return await db
-          .select()
-          .from(emailTemplates)
-          .where(eq(emailTemplates.category, category as any));
-      }
-      
-      return await db
-        .select()
-        .from(emailTemplates);
-    } catch (error) {
-      console.error("Error fetching email templates:", error);
-      throw error;
-    }
-  }
-
   async getEmailTemplate(templateKey: string): Promise<any> {
     try {
       const [template] = await db
@@ -10842,6 +10852,29 @@ export class DrizzleStorage implements IStorage {
       });
     } catch (error) {
       console.error("Error logging admin action:", error);
+      throw error;
+    }
+  }
+
+  async createAdminAction(action: {
+    adminId: string;
+    actionType: string;
+    targetType: string;
+    targetId: string | null;
+    details?: any;
+  }): Promise<void> {
+    try {
+      await db.insert(adminActions).values({
+        adminId: action.adminId,
+        actionType: action.actionType,
+        targetType: action.targetType,
+        targetId: action.targetId || '',
+        details: action.details || {},
+        ipAddress: '0.0.0.0',
+        userAgent: 'admin-dashboard',
+      });
+    } catch (error) {
+      console.error("Error creating admin action:", error);
       throw error;
     }
   }
@@ -14047,7 +14080,7 @@ export class DrizzleStorage implements IStorage {
       const conditions = [];
       
       if (filters.status && filters.status !== 'all') {
-        conditions.push(eq(emailNotifications.status, filters.status));
+        conditions.push(eq(emailNotifications.status, filters.status as any));
       }
       
       if (filters.dateRange) {
@@ -14116,13 +14149,13 @@ export class DrizzleStorage implements IStorage {
         })
         .from(users);
 
-      // Get marketing enabled count
+      // Get marketplace activities enabled count (closest to marketing)
       const [marketingStats] = await db
         .select({
           count: sql<number>`COUNT(*)::int`,
         })
         .from(emailPreferences)
-        .where(eq(emailPreferences.marketing, true));
+        .where(eq(emailPreferences.marketplaceActivities, true));
 
       // Get bounced users list
       const bouncedUsers = await db
@@ -14414,6 +14447,7 @@ export class DrizzleStorage implements IStorage {
   async markEmailAsSpam(userId: string, notificationId: string): Promise<void> {
     try {
       // Create an email event for spam marking
+      const { emailEvents } = await import('@shared/schema');
       await db.insert(emailEvents).values({
         notificationId,
         eventType: 'complaint',
