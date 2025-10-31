@@ -246,7 +246,7 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { requireAuth, AuthPrompt } = useAuthPrompt("create a thread");
+  const { requireAuth, AuthPrompt, isAuthenticating } = useAuthPrompt("create a thread");
   
   const [currentStep, setCurrentStep] = useState(1);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
@@ -259,9 +259,13 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
   // Pre-select category from URL param
   const categoryParam = searchParams?.get("category") || "";
   
-  // Get categories for selection
-  const parentCategories = categories.filter(c => !c.parentSlug);
+  // Get all categories (both parent and subcategories) for selection
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || "");
+  
+  // Group categories by parent/subcategory structure
+  const parentCategories = categories.filter(c => !c.parentSlug);
+  const getCategorySubcategories = (parentSlug: string) => 
+    categories.filter(c => c.parentSlug === parentSlug);
   
   // Auto-save draft
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useThreadDraft();
@@ -562,21 +566,42 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
                                 <SelectValue placeholder="Where does this belong?" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
-                              {parentCategories.map((cat) => (
-                                <SelectItem 
-                                  key={cat.slug} 
-                                  value={cat.slug}
-                                  data-testid={`option-category-${cat.slug}`}
-                                >
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{cat.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {cat.description}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
+                            <SelectContent className="max-h-[400px]">
+                              {parentCategories.map((parentCat) => {
+                                const subcats = getCategorySubcategories(parentCat.slug);
+                                
+                                return [
+                                  // Parent category
+                                  <SelectItem 
+                                    key={parentCat.slug} 
+                                    value={parentCat.slug}
+                                    data-testid={`option-category-${parentCat.slug}`}
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{parentCat.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {parentCat.description}
+                                      </span>
+                                    </div>
+                                  </SelectItem>,
+                                  
+                                  // Subcategories (if any)
+                                  ...subcats.map((subcat) => (
+                                    <SelectItem 
+                                      key={subcat.slug} 
+                                      value={subcat.slug}
+                                      data-testid={`option-category-${subcat.slug}`}
+                                    >
+                                      <div className="flex flex-col ml-4">
+                                        <span className="font-medium">↳ {subcat.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {subcat.description}
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))
+                                ];
+                              }).flat()}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -1063,10 +1088,15 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
                       <Button
                         type="submit"
                         size="lg"
-                        disabled={!isFormValid || createThreadMutation.isPending}
+                        disabled={!isFormValid || createThreadMutation.isPending || isAuthenticating}
                         data-testid="button-submit"
                       >
-                        {createThreadMutation.isPending ? (
+                        {isAuthenticating ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                            Authenticating...
+                          </>
+                        ) : createThreadMutation.isPending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                             Posting...

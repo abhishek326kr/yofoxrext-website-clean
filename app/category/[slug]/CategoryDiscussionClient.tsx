@@ -68,9 +68,25 @@ export default function CategoryDiscussionClient({
     queryKey: ['/api/categories'],
   });
 
-  const { data: subcategories } = useQuery<ForumCategory[]>({
+  const { data: subcategories, error: subcategoriesError } = useQuery<ForumCategory[]>({
     queryKey: ['/api/categories', slug, 'subcategories'],
-    enabled: !!slug,
+    queryFn: async () => {
+      const res = await fetch(`/api/categories/${slug}/subcategories`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          // Parent category not found - no need to throw error for subcategories
+          return [];
+        }
+        throw new Error('Failed to fetch subcategories');
+      }
+      return res.json();
+    },
+    enabled: !!slug && !!category, // Only fetch if category exists
+    retry: (failureCount, error: any) => {
+      // Don't retry on 404s
+      if (error?.message?.includes('404')) return false;
+      return failureCount < 2;
+    }
   });
 
   const { data: threads, isLoading: threadsLoading } = useQuery<ForumThread[]>({
@@ -103,12 +119,25 @@ export default function CategoryDiscussionClient({
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container max-w-7xl mx-auto px-4 py-8">
-          <Card className="p-8">
-            <h2 className="text-2xl font-bold mb-2">Category Not Found</h2>
-            <p className="text-muted-foreground mb-4">The category you're looking for doesn't exist.</p>
-            <Link href="/categories">
-              <Button>Browse Categories</Button>
-            </Link>
+          <Card className="p-8 text-center">
+            <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-3">Category Not Found</h2>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              The category "{slug}" doesn't exist or may have been moved. 
+              Please browse our available categories to find what you're looking for.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Link href="/categories">
+                <Button data-testid="button-browse-categories">
+                  Browse All Categories
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline" data-testid="button-go-home">
+                  Go to Home
+                </Button>
+              </Link>
+            </div>
           </Card>
         </main>
         <EnhancedFooter />
@@ -219,40 +248,43 @@ export default function CategoryDiscussionClient({
               {subcategories.map((subcat) => (
                 <Card 
                   key={subcat.slug} 
-                  className="hover-elevate active-elevate-2 cursor-pointer" 
+                  className="hover-elevate active-elevate-2 cursor-pointer group" 
                   data-testid={`card-subcategory-${subcat.slug}`}
+                  onClick={() => router.push(`/category/${subcat.slug}`)}
                 >
-                  <Link href={`/category/${subcat.slug}`}>
-                    <CardHeader>
-                      <CardTitle className="text-base" data-testid={`text-subcat-name-${subcat.slug}`}>
-                        {subcat.name}
-                      </CardTitle>
-                      <CardDescription className="text-sm" data-testid={`text-subcat-desc-${subcat.slug}`}>
-                        {subcat.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground" data-testid={`stat-subcat-threads-${subcat.slug}`}>
-                          {subcat.threadCount} threads
-                        </span>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            requireAuth(() => {
-                              router.push(`/discussions/new?category=${subcat.slug}`);
-                            });
-                          }}
-                          data-testid={`button-new-thread-${subcat.slug}`}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          New
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Link>
+                  <CardHeader>
+                    <CardTitle className="text-base group-hover:text-primary transition-colors" 
+                      data-testid={`text-subcat-name-${subcat.slug}`}>
+                      {subcat.name}
+                    </CardTitle>
+                    <CardDescription className="text-sm" 
+                      data-testid={`text-subcat-desc-${subcat.slug}`}>
+                      {subcat.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-muted-foreground" 
+                        data-testid={`stat-subcat-threads-${subcat.slug}`}>
+                        {subcat.threadCount || 0} threads
+                      </span>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="hover:bg-primary hover:text-primary-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          requireAuth(() => {
+                            router.push(`/discussions/new?category=${subcat.slug}`);
+                          });
+                        }}
+                        data-testid={`button-new-thread-${subcat.slug}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        New
+                      </Button>
+                    </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>

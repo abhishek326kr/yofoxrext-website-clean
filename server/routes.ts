@@ -3696,13 +3696,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get subcategories for a parent category
   app.get("/api/categories/:parentSlug/subcategories", async (req, res) => {
     try {
+      const { parentSlug } = req.params;
+      
+      // First check if parent category exists
+      const parentCategory = await storage.getForumCategoryBySlug(parentSlug);
+      if (!parentCategory) {
+        return res.status(404).json({ 
+          error: "Parent category not found",
+          message: `Category with slug '${parentSlug}' does not exist`
+        });
+      }
+      
+      // Get all categories and filter for subcategories
       const categories = await storage.listForumCategories();
       const subcategories = categories.filter((c: any) => 
-        c.parentSlug === req.params.parentSlug && c.isActive
+        c.parentSlug === parentSlug && c.isActive
       );
-      res.json(subcategories);
+      
+      // Ensure thread counts are properly included
+      const subcategoriesWithStats = await Promise.all(
+        subcategories.map(async (subcat) => {
+          // Update category stats to ensure counts are accurate
+          await storage.updateCategoryStats(subcat.slug);
+          // Re-fetch category with updated stats
+          const updatedCategory = await storage.getForumCategoryBySlug(subcat.slug);
+          return updatedCategory || subcat;
+        })
+      );
+      
+      res.json(subcategoriesWithStats);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch subcategories" });
+      console.error("Error fetching subcategories:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch subcategories",
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
     }
   });
   
