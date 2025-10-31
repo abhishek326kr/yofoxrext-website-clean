@@ -109,12 +109,23 @@ Communication flows from the Browser to Next.js, then to the Express API, and fi
 - **Frontend Components:** Nine new React components for visualizing earnings, loyalty progress, vault status, referrals, health scores, badges, and activity heatmaps, integrated into the main dashboard.
 - **Real-Time Features:** WebSocket server with user-specific rooms, confetti animations, toast notifications, and hover tooltips for dynamic user feedback.
 
+### Bot Economy System (November 1, 2025)
+
+- **Purpose:** Automated bot system that creates natural-feeling engagement while giving admins full economy control. Bots appear as real traders to boost community activity without disrupting user experience.
+- **Database Schema:** Four new tables: `bots` (profile data), `bot_actions` (activity log), `admin_treasury` (coin pool), `bot_economy_settings` (caps/toggles). Added `botId` field to `coin_transactions` for bot tracking.
+- **Backend Services:** TreasuryService (admin coin pool management), BotProfileService (realistic profile generation), BotBehaviorEngine (automated engagement scheduler).
+- **Bot Behavior:** Automated 10-minute scanner for likes/follows/purchases, marketplace purchases (<100 coins, 80% to seller), auto-refund at 3 AM daily, wallet cap enforcement (199 coins).
+- **Admin Controls:** 16 API endpoints for bot CRUD, treasury management (refill/drain), economy settings (aggression level, wallet caps), analytics (bot vs real metrics).
+- **Exclusion Logic:** Bots excluded from vault auto-unlock, loyalty tier calculations, nudge triggers, retention boost capped at +5 points/week/user.
+- **Frontend:** Four admin pages (bot management, creation wizard, economy control panel, analytics dashboard) with full React Query integration.
+- **Automation:** Bot engine runs every 10 minutes (engagement/purchases), auto-refund scheduler runs daily at 3 AM, max 15 bots enforced.
+
 ### Documentation (November 1, 2025)
 
 **4 Essential Documentation Files (4,828 total lines):**
 - **README.md** (163 lines): Quickstart guide, feature overview, credentials, local setup
 - **DEPLOYMENT.md** (723 lines): Production deployment guide for Replit Autoscale and AWS/VPS
-- **API_REFERENCE.md** (3,777 lines): Complete API documentation for all 194 endpoints
+- **API_REFERENCE.md** (3,777 lines): Complete API documentation for all 210 endpoints
   - Authentication & security (30+ endpoints)
   - Coin system APIs (7 endpoints)
   - Publishing system APIs (5 endpoints)
@@ -124,6 +135,7 @@ Communication flows from the Browser to Next.js, then to the Express API, and fi
   - Activity & stats (7 endpoints)
   - Retention dashboard (12 endpoints) - **Added Nov 1, 2025**
   - Admin APIs (50+ endpoints) - **Added Nov 1, 2025**
+  - Bot management APIs (16 endpoints) - **Added Nov 1, 2025**
   - Email system overview - **Added Nov 1, 2025**
 - **replit.md** (165 lines): Agent memory, architecture, preferences, dependency list
 
