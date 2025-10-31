@@ -55,8 +55,9 @@ export default async function DashboardPage() {
   const user = await getUser();
 
   if (!user) {
-    // Redirect to login instead of home page when not authenticated
-    redirect('/api/login');
+    // Redirect to home page when not authenticated
+    // User can login from there using the AuthModal
+    redirect('/');
   }
 
   return <DashboardClient />;

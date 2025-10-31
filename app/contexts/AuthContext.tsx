@@ -9,7 +9,6 @@ interface AuthContextType {
   user: User | null | undefined;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: () => void;
   logout: () => void;
 }
 
@@ -36,10 +35,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refetchOnWindowFocus: true,
     staleTime: 5 * 60 * 1000,
   });
-
-  const login = () => {
-    window.location.href = "/api/login";
-  };
 
   const logout = async () => {
     try {
@@ -72,7 +67,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user,
         isLoading,
         isAuthenticated,
-        login,
         logout,
       }}
     >

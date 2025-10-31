@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, LogIn, AlertTriangle } from "lucide-react";
+import { useAuthPrompt } from "@/hooks/useAuthPrompt";
+import { queryClient } from "@/lib/queryClient";
 
 interface User {
   id: string;
@@ -18,6 +20,7 @@ export function AdminAuthCheck({ children }: { children: React.ReactNode }) {
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [authError, setAuthError] = useState<"not-authenticated" | "not-admin" | null>(null);
+  const { requireAuth, AuthPrompt } = useAuthPrompt("access the admin dashboard");
 
   useEffect(() => {
     async function checkAuth() {
@@ -61,32 +64,44 @@ export function AdminAuthCheck({ children }: { children: React.ReactNode }) {
 
   if (authError === "not-authenticated") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background p-4">
-        <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <LogIn className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>
-              You must be logged in to access the admin dashboard.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Button className="w-full" asChild>
-                <a href="/api/login">Sign In with Replit</a>
-              </Button>
-              <Button className="w-full" variant="outline" onClick={() => router.push("/")}>
-                Go to Home
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              After signing in, contact an administrator to grant you admin access.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="flex items-center justify-center min-h-screen bg-background p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <LogIn className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>
+                You must be logged in to access the admin dashboard.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    requireAuth(async () => {
+                      // After authentication, reload to re-check admin status
+                      await queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+                      window.location.reload();
+                    });
+                  }}
+                >
+                  Sign In to Continue
+                </Button>
+                <Button className="w-full" variant="outline" onClick={() => router.push("/")}>
+                  Go to Home
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground text-center">
+                After signing in, contact an administrator to grant you admin access.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        <AuthPrompt />
+      </>
     );
   }
 

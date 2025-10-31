@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { useAuthPrompt } from '@/hooks/useAuthPrompt';
 
 // FIXED: Use relative URLs for client-side API calls (works with Next.js rewrites)
 // No hardcoded localhost URLs in client components!
@@ -35,6 +36,7 @@ export function ReplySection({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const { requireAuth, AuthPrompt } = useAuthPrompt("participate in discussions");
 
   // Fetch current user on mount
   useState(() => {
@@ -46,8 +48,10 @@ export function ReplySection({
 
   const handleSubmitReply = async () => {
     if (!user) {
-      // Redirect to login
-      window.location.href = '/api/login';
+      requireAuth(async () => {
+        // User is now authenticated, reload to get updated user state
+        window.location.reload();
+      });
       return;
     }
 
@@ -85,7 +89,10 @@ export function ReplySection({
 
   const handleMarkHelpful = async (replyId: string) => {
     if (!user) {
-      window.location.href = '/api/login';
+      requireAuth(async () => {
+        // User is now authenticated, reload to get updated user state
+        window.location.reload();
+      });
       return;
     }
 
@@ -105,7 +112,10 @@ export function ReplySection({
 
   const handleMarkAccepted = async (replyId: string) => {
     if (!user) {
-      window.location.href = '/api/login';
+      requireAuth(async () => {
+        // User is now authenticated, reload to get updated user state
+        window.location.reload();
+      });
       return;
     }
 
@@ -270,9 +280,12 @@ export function ReplySection({
             </Button>
             {!user && (
               <p className="text-sm text-muted-foreground mt-2">
-                <Link href="/api/login" className="text-primary hover:underline">
+                <button
+                  onClick={() => requireAuth(() => window.location.reload())}
+                  className="text-primary hover:underline"
+                >
                   Log in
-                </Link>{' '}
+                </button>{' '}
                 to participate in the discussion
               </p>
             )}
@@ -304,6 +317,7 @@ export function ReplySection({
           rootReplies.map((reply) => renderReply(reply))
         )}
       </div>
+      <AuthPrompt />
     </div>
   );
 }

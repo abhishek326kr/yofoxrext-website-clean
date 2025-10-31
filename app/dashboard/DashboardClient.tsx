@@ -37,8 +37,9 @@ export default function DashboardClient() {
   // Handle authentication check on client side
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      // Redirect to login if not authenticated
-      router.push("/api/login");
+      // Redirect to home page if not authenticated
+      // User can login from there using the AuthModal
+      router.push("/");
     }
   }, [isLoading, isAuthenticated, router]);
 

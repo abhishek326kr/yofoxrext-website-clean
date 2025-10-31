@@ -610,9 +610,12 @@ export default function ContentDetailClient({
                 {!isAuthenticated && (
                   <div className="text-center p-6 border rounded-lg bg-muted/30">
                     <p className="text-muted-foreground">
-                      <Link href="/api/login" className="text-primary hover:underline">
+                      <button
+                        onClick={() => requireAuth(() => window.location.reload())}
+                        className="text-primary hover:underline"
+                      >
                         Log in
-                      </Link>{" "}
+                      </button>{" "}
                       to write a review
                     </p>
                   </div>
@@ -733,9 +736,12 @@ export default function ContentDetailClient({
 
                   {!isAuthenticated && (
                     <p className="text-xs text-muted-foreground">
-                      <Link href="/api/login" className="text-primary hover:underline">
+                      <button
+                        onClick={() => requireAuth(() => window.location.reload())}
+                        className="text-primary hover:underline"
+                      >
                         Log in
-                      </Link> to purchase
+                      </button> to purchase
                     </p>
                   )}
                 </CardContent>

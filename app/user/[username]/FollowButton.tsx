@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Users, UserPlus } from 'lucide-react';
+import { useAuthPrompt } from '@/hooks/useAuthPrompt';
 
 // FIXED: Use relative URLs for client-side API calls (works with Next.js rewrites)
 // No hardcoded localhost URLs in client components!
@@ -16,6 +17,7 @@ export function FollowButton({ userId, username }: FollowButtonProps) {
   const [user, setUser] = useState<any>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { requireAuth, AuthPrompt } = useAuthPrompt("follow users");
 
   useEffect(() => {
     // Fetch current user
@@ -38,7 +40,10 @@ export function FollowButton({ userId, username }: FollowButtonProps) {
 
   const handleFollow = async () => {
     if (!user) {
-      window.location.href = '/api/login';
+      requireAuth(async () => {
+        // User is now authenticated, reload to get updated user state
+        window.location.reload();
+      });
       return;
     }
 
@@ -73,22 +78,25 @@ export function FollowButton({ userId, username }: FollowButtonProps) {
   }
 
   return (
-    <Button
-      variant={isFollowing ? 'outline' : 'default'}
-      onClick={handleFollow}
-      disabled={isLoading}
-    >
-      {isFollowing ? (
-        <>
-          <Users className="mr-2 h-4 w-4" />
-          Following
-        </>
-      ) : (
-        <>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Follow
-        </>
-      )}
-    </Button>
+    <>
+      <Button
+        variant={isFollowing ? 'outline' : 'default'}
+        onClick={handleFollow}
+        disabled={isLoading}
+      >
+        {isFollowing ? (
+          <>
+            <Users className="mr-2 h-4 w-4" />
+            Following
+          </>
+        ) : (
+          <>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Follow
+          </>
+        )}
+      </Button>
+      <AuthPrompt />
+    </>
   );
 }
