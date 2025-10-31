@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -7,6 +8,7 @@ import { storage } from "./storage";
 import { startBackgroundJobs } from "./jobs/backgroundJobs";
 import { setupSecurityHeaders } from "./middleware/securityHeaders";
 import { categoryRedirectMiddleware, trackCategoryViews } from "./middleware/categoryRedirects";
+import { initializeDashboardWebSocket } from "./services/dashboardWebSocket";
 
 const app = express();
 
@@ -132,7 +134,16 @@ app.use((req, res, next) => {
   const { setupAuth } = await import('./flexibleAuth');
   await setupAuth(app);
   
-  const server = await registerRoutes(app);
+  // Setup local authentication (includes password reset endpoints)
+  const { setupLocalAuth } = await import('./localAuth');
+  await setupLocalAuth(app);
+  
+  const expressApp = await registerRoutes(app);
+  
+  // Create HTTP server and initialize WebSocket
+  const httpServer = createServer(expressApp);
+  const io = initializeDashboardWebSocket(httpServer);
+  log("WebSocket server initialized on /ws/dashboard");
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -149,12 +160,8 @@ app.use((req, res, next) => {
   // Express API server runs on port 3001 (internal)
   // Next.js frontend runs on port 5000 (user-facing, required by Replit)
   const port = parseInt(process.env.API_PORT || '3001', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  httpServer.listen(port, "0.0.0.0", () => {
+    log(`serving on port ${port} with WebSocket support`);
     
     // Defer background jobs if needed for health checks
     if (process.env.DEFER_BACKGROUND_JOBS === 'true') {

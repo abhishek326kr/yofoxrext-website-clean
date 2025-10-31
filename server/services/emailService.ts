@@ -2067,5 +2067,38 @@ export const emailService = {
       subject: `🔧 Scheduled Maintenance: ${maintenanceDate} at ${startTime}`,
       html: (await createEmailTemplate(content)).html
     });
+  },
+
+  // 61. ABANDONMENT EMAIL
+  async sendAbandonmentEmail(to: string, subject: string, content: string): Promise<void> {
+    const safeContent = escapeHtml(content);
+    
+    const htmlContent = `
+      <h2 style="color: #111827; margin: 0 0 16px 0; font-size: 24px;">We Miss You!</h2>
+      <p style="color: #374151; font-size: 16px; line-height: 1.5; margin: 0 0 16px 0;">
+        ${safeContent}
+      </p>
+      <div style="background: #f0f9ff; border-left: 4px solid #2563eb; padding: 16px; margin: 16px 0; border-radius: 4px;">
+        <p style="margin: 0; color: #0c4a6e; font-size: 14px;">
+          Come back to see what's new in your trading community!
+        </p>
+      </div>
+      <a href="${process.env.BASE_URL}/dashboard" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 8px;">Return to Dashboard</a>
+    `;
+    
+    const userId = await getUserIdFromEmail(to);
+    const { html } = await createEmailTemplate(htmlContent, {
+      recipientEmail: to,
+      userId: userId || undefined,
+      templateKey: 'abandonment_email',
+      subject
+    });
+    
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'YoForex'}" <${process.env.SMTP_FROM_EMAIL}>`,
+      to,
+      subject,
+      html
+    });
   }
 };

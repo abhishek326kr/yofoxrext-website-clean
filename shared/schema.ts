@@ -1363,24 +1363,6 @@ export const savedSearches = pgTable("saved_searches", {
   categoryIdx: index("idx_saved_searches_category").on(table.category),
 }));
 
-// User Habits - Track daily/weekly engagement patterns
-export const userHabits = pgTable("user_habits", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  habitType: varchar("habit_type").notNull().$type<"daily_login" | "post_thread" | "trading_journal" | "learning_course" | "marketplace_visit">(),
-  currentStreak: integer("current_streak").notNull().default(0),
-  longestStreak: integer("longest_streak").notNull().default(0),
-  lastCompletedAt: timestamp("last_completed_at"),
-  totalCompletions: integer("total_completions").notNull().default(0),
-  streakData: jsonb("streak_data"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => ({
-  userIdIdx: index("idx_user_habits_user_id").on(table.userId),
-  habitTypeIdx: index("idx_user_habits_habit_type").on(table.habitType),
-  currentStreakIdx: index("idx_user_habits_current_streak").on(table.currentStreak),
-}));
-
 // Chat Rooms - Group discussions and channels
 export const chatRooms = pgTable("chat_rooms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2341,18 +2323,6 @@ export const insertSavedSearchSchema = createInsertSchema(savedSearches).omit({
 export type InsertSavedSearch = z.infer<typeof insertSavedSearchSchema>;
 export type SavedSearch = typeof savedSearches.$inferSelect;
 
-// User Habits
-export const insertUserHabitSchema = createInsertSchema(userHabits).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  currentStreak: true,
-  longestStreak: true,
-  totalCompletions: true,
-});
-export type InsertUserHabit = z.infer<typeof insertUserHabitSchema>;
-export type UserHabit = typeof userHabits.$inferSelect;
-
 // Chat Rooms
 export const insertChatRoomSchema = createInsertSchema(chatRooms).omit({
   id: true,
@@ -2502,6 +2472,22 @@ export const unsubscribeTokens = pgTable("unsubscribe_tokens", {
   usedIdx: index("idx_unsubscribe_tokens_used").on(table.used),
 }));
 
+// Password Reset Tokens - Secure tokens for password reset flow
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  tokenHash: varchar("token_hash", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  consumed: boolean("consumed").notNull().default(false),
+  consumedAt: timestamp("consumed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tokenHashIdx: uniqueIndex("idx_password_reset_tokens_hash").on(table.tokenHash),
+  userIdIdx: index("idx_password_reset_tokens_user_id").on(table.userId),
+  expiresAtIdx: index("idx_password_reset_tokens_expires_at").on(table.expiresAt),
+  consumedIdx: index("idx_password_reset_tokens_consumed").on(table.consumed),
+}));
+
 // Email Events - Track email interactions (opens, clicks, bounces)
 export const emailEvents = pgTable("email_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2593,6 +2579,19 @@ export const insertUnsubscribeTokenSchema = createInsertSchema(unsubscribeTokens
 export type InsertUnsubscribeToken = z.infer<typeof insertUnsubscribeTokenSchema>;
 export type UnsubscribeToken = typeof unsubscribeTokens.$inferSelect;
 
+// Password Reset Tokens
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+  consumed: true,
+  consumedAt: true,
+}).extend({
+  tokenHash: z.string().min(1, "Token hash is required"),
+  expiresAt: z.date(),
+});
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
 // Email Events
 export const insertEmailEventSchema = createInsertSchema(emailEvents).omit({
   id: true,
@@ -2605,3 +2604,240 @@ export const insertEmailEventSchema = createInsertSchema(emailEvents).omit({
 });
 export type InsertEmailEvent = z.infer<typeof insertEmailEventSchema>;
 export type EmailEvent = typeof emailEvents.$inferSelect;
+
+// ============================================================================
+// RETENTION DASHBOARD SYSTEM TABLES
+// ============================================================================
+
+// Retention Metrics - Track user retention status and loyalty tier
+export const retentionMetrics = pgTable("retention_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  activeDays: integer("active_days").notNull().default(0),
+  loyaltyTier: varchar("loyalty_tier").$type<"new" | "committed" | "elite">().notNull().default("new"),
+  feeRate: numeric("fee_rate", { precision: 5, scale: 4 }).notNull().default("0.07"),
+  lastActivityAt: timestamp("last_activity_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_retention_metrics_user_id").on(table.userId),
+  tierIdx: index("idx_retention_metrics_tier").on(table.loyaltyTier),
+}));
+
+// Vault Coins - Track 10% vault bonuses with 30-day unlock
+export const vaultCoins = pgTable("vault_coins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  earnedFrom: varchar("earned_from").notNull(),
+  sourceId: varchar("source_id"),
+  unlockAt: timestamp("unlock_at").notNull(),
+  status: varchar("status").$type<"locked" | "unlocked" | "claimed">().notNull().default("locked"),
+  claimedAt: timestamp("claimed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_vault_coins_user_id").on(table.userId),
+  statusIdx: index("idx_vault_coins_status").on(table.status),
+  unlockAtIdx: index("idx_vault_coins_unlock_at").on(table.unlockAt),
+}));
+
+// Loyalty Tiers - Static configuration table for tier benefits
+export const loyaltyTiers = pgTable("loyalty_tiers", {
+  tier: varchar("tier").$type<"new" | "committed" | "elite">().primaryKey(),
+  minActiveDays: integer("min_active_days").notNull(),
+  feeRate: numeric("fee_rate", { precision: 5, scale: 4 }).notNull(),
+  benefits: jsonb("benefits").notNull(),
+  displayName: varchar("display_name").notNull(),
+  displayColor: varchar("display_color").notNull(),
+});
+
+// Retention Badges - User badge achievements
+export const retentionBadges = pgTable("retention_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  badgeType: varchar("badge_type").notNull(),
+  badgeName: varchar("badge_name").notNull(),
+  badgeDescription: text("badge_description"),
+  coinReward: integer("coin_reward").notNull().default(0),
+  unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
+  claimed: boolean("claimed").notNull().default(false),
+  claimedAt: timestamp("claimed_at"),
+}, (table) => ({
+  userIdIdx: index("idx_retention_badges_user_id").on(table.userId),
+  typeIdx: index("idx_retention_badges_type").on(table.badgeType),
+  unlockedAtIdx: index("idx_retention_badges_unlocked_at").on(table.unlockedAt),
+}));
+
+// AI Nudges - AI-generated engagement suggestions
+export const aiNudges = pgTable("ai_nudges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  nudgeType: varchar("nudge_type").notNull(),
+  message: text("message").notNull(),
+  actionUrl: varchar("action_url"),
+  priority: varchar("priority").$type<"low" | "medium" | "high">().notNull().default("low"),
+  dismissed: boolean("dismissed").notNull().default(false),
+  dismissedAt: timestamp("dismissed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_ai_nudges_user_id").on(table.userId),
+  dismissedIdx: index("idx_ai_nudges_dismissed").on(table.dismissed),
+}));
+
+// Abandonment Emails - Scheduled re-engagement emails
+export const abandonmentEmails = pgTable("abandonment_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  emailType: varchar("email_type").notNull(),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  status: varchar("status").$type<"pending" | "sent" | "failed" | "cancelled">().notNull().default("pending"),
+  sentAt: timestamp("sent_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_abandonment_emails_user_id").on(table.userId),
+  statusIdx: index("idx_abandonment_emails_status").on(table.status),
+  scheduledForIdx: index("idx_abandonment_emails_scheduled").on(table.scheduledFor),
+}));
+
+// Earnings Sources - Aggregated earnings data for pie chart
+export const earningsSources = pgTable("earnings_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  source: varchar("source").notNull(),
+  amount: integer("amount").notNull().default(0),
+  transactionCount: integer("transaction_count").notNull().default(0),
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_earnings_sources_user_id").on(table.userId),
+  userSourceIdx: index("idx_earnings_sources_user_source").on(table.userId, table.source),
+}));
+
+// Activity Heatmap - Hourly activity patterns for heatmap visualization
+export const activityHeatmap = pgTable("activity_heatmap", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hour: integer("hour").notNull(),
+  dayOfWeek: integer("day_of_week").notNull(),
+  actionCount: integer("action_count").notNull().default(0),
+  lastActionAt: timestamp("last_action_at"),
+}, (table) => ({
+  userIdIdx: index("idx_activity_heatmap_user_id").on(table.userId),
+  userHourDayIdx: index("idx_activity_heatmap_user_hour_day").on(table.userId, table.hour, table.dayOfWeek),
+}));
+
+// ============================================================================
+// RETENTION DASHBOARD SYSTEM SCHEMAS AND TYPES
+// ============================================================================
+
+// Retention Metrics
+export const insertRetentionMetricsSchema = createInsertSchema(retentionMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  userId: z.string().uuid(),
+  activeDays: z.number().int().min(0),
+  loyaltyTier: z.enum(["new", "committed", "elite"]),
+  feeRate: z.string().regex(/^\d+\.\d{4}$/),
+});
+export type InsertRetentionMetrics = z.infer<typeof insertRetentionMetricsSchema>;
+export type RetentionMetrics = typeof retentionMetrics.$inferSelect;
+
+// Vault Coins
+export const insertVaultCoinsSchema = createInsertSchema(vaultCoins).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  userId: z.string().uuid(),
+  amount: z.number().int().positive(),
+  earnedFrom: z.string().min(1),
+  sourceId: z.string().optional(),
+  unlockAt: z.date(),
+  status: z.enum(["locked", "unlocked", "claimed"]).optional(),
+});
+export type InsertVaultCoins = z.infer<typeof insertVaultCoinsSchema>;
+export type VaultCoins = typeof vaultCoins.$inferSelect;
+
+// Loyalty Tiers
+export const insertLoyaltyTiersSchema = createInsertSchema(loyaltyTiers).extend({
+  tier: z.enum(["new", "committed", "elite"]),
+  minActiveDays: z.number().int().min(0),
+  feeRate: z.string().regex(/^\d+\.\d{4}$/),
+  displayName: z.string().min(1),
+  displayColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+});
+export type InsertLoyaltyTiers = z.infer<typeof insertLoyaltyTiersSchema>;
+export type LoyaltyTiers = typeof loyaltyTiers.$inferSelect;
+
+// Retention Badges
+export const insertRetentionBadgesSchema = createInsertSchema(retentionBadges).omit({
+  id: true,
+  unlockedAt: true,
+  claimed: true,
+  claimedAt: true,
+}).extend({
+  userId: z.string().uuid(),
+  badgeType: z.string().min(1),
+  badgeName: z.string().min(1),
+  badgeDescription: z.string().optional(),
+  coinReward: z.number().int().min(0),
+});
+export type InsertRetentionBadges = z.infer<typeof insertRetentionBadgesSchema>;
+export type RetentionBadges = typeof retentionBadges.$inferSelect;
+
+// AI Nudges
+export const insertAiNudgesSchema = createInsertSchema(aiNudges).omit({
+  id: true,
+  createdAt: true,
+  dismissed: true,
+  dismissedAt: true,
+}).extend({
+  userId: z.string().uuid(),
+  nudgeType: z.string().min(1),
+  message: z.string().min(1),
+  actionUrl: z.string().url().optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+});
+export type InsertAiNudges = z.infer<typeof insertAiNudgesSchema>;
+export type AiNudges = typeof aiNudges.$inferSelect;
+
+// Abandonment Emails
+export const insertAbandonmentEmailsSchema = createInsertSchema(abandonmentEmails).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  errorMessage: true,
+}).extend({
+  userId: z.string().uuid(),
+  emailType: z.string().min(1),
+  scheduledFor: z.date(),
+  status: z.enum(["pending", "sent", "failed", "cancelled"]).optional(),
+});
+export type InsertAbandonmentEmails = z.infer<typeof insertAbandonmentEmailsSchema>;
+export type AbandonmentEmails = typeof abandonmentEmails.$inferSelect;
+
+// Earnings Sources
+export const insertEarningsSourcesSchema = createInsertSchema(earningsSources).omit({
+  id: true,
+  lastUpdated: true,
+}).extend({
+  userId: z.string().uuid(),
+  source: z.string().min(1),
+  amount: z.number().int().min(0).optional(),
+  transactionCount: z.number().int().min(0).optional(),
+});
+export type InsertEarningsSources = z.infer<typeof insertEarningsSourcesSchema>;
+export type EarningsSources = typeof earningsSources.$inferSelect;
+
+// Activity Heatmap
+export const insertActivityHeatmapSchema = createInsertSchema(activityHeatmap).omit({
+  id: true,
+}).extend({
+  userId: z.string().uuid(),
+  hour: z.number().int().min(0).max(23),
+  dayOfWeek: z.number().int().min(0).max(6),
+  actionCount: z.number().int().min(0).optional(),
+});
+export type InsertActivityHeatmap = z.infer<typeof insertActivityHeatmapSchema>;
+export type ActivityHeatmap = typeof activityHeatmap.$inferSelect;

@@ -16,9 +16,11 @@ import {
   Bell,
   UserCog,
   Megaphone,
+  TrendingUp,
 } from "lucide-react";
 
 // Import all tab components
+import { RetentionDashboard } from "./RetentionDashboard";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { SalesTab } from "./components/tabs/SalesTab";
 import { ReferralsTab } from "./components/tabs/ReferralsTab";
@@ -30,7 +32,7 @@ import { CRMTab } from "./components/tabs/CRMTab";
 import { MarketingTab } from "./components/tabs/MarketingTab";
 
 export default function DashboardClient() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("journey");
   const router = useRouter();
   const { user, isLoading, isAuthenticated } = useAuth();
 
@@ -74,6 +76,15 @@ export default function DashboardClient() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex flex-wrap gap-2 h-auto bg-muted/50 p-2" data-testid="tabs-dashboard-navigation">
+            <TabsTrigger 
+              value="journey" 
+              className="flex items-center gap-2"
+              data-testid="tab-journey"
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">Journey</span>
+            </TabsTrigger>
+            
             <TabsTrigger 
               value="overview" 
               className="flex items-center gap-2"
@@ -155,6 +166,10 @@ export default function DashboardClient() {
               <span className="hidden sm:inline">Marketing</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="journey" data-testid="content-journey">
+            <RetentionDashboard />
+          </TabsContent>
 
           <TabsContent value="overview" data-testid="content-overview">
             <OverviewTab />

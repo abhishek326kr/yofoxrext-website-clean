@@ -88,8 +88,8 @@ export default function EarnCoinsClient() {
     },
     {
       title: "Daily Activity Bonus",
-      description: `Check in daily to earn ${EARNING_REWARDS.DAILY_CHECKIN} coin. Maintain streaks for bonus rewards!`,
-      coinsRange: `${EARNING_REWARDS.DAILY_CHECKIN} coin/day + ${EARNING_REWARDS.WEEKLY_STREAK} at 7 days + ${EARNING_REWARDS.MONTHLY_PERFECT} at 30 days`,
+      description: `Check in daily to earn ${EARNING_REWARDS.DAILY_CHECKIN} coin. Stay active and contribute to the community!`,
+      coinsRange: `${EARNING_REWARDS.DAILY_CHECKIN} coin/day`,
       icon: Award,
       color: "bg-primary",
       action: "Daily Check-in",

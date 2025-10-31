@@ -21,7 +21,6 @@ interface LeaderboardUser {
 interface LeaderboardProps {
   topContributors?: LeaderboardUser[];
   topUploaders?: LeaderboardUser[];
-  weeklyStreaks?: LeaderboardUser[];
 }
 
 const defaultContributors: LeaderboardUser[] = [
@@ -40,18 +39,9 @@ const defaultUploaders: LeaderboardUser[] = [
   { rank: 5, name: "BacktestKing", username: "backtestking", coins: 2400, metric: 22, trend: "down" }
 ];
 
-const defaultStreaks: LeaderboardUser[] = [
-  { rank: 1, name: "DailyTrader", username: "dailytrader", coins: 890, metric: 7, trend: "up" },
-  { rank: 2, name: "ConsistentOne", username: "consistentone", coins: 780, metric: 7, trend: "same" },
-  { rank: 3, name: "ActiveMember", username: "activemember", coins: 650, metric: 6, trend: "up" },
-  { rank: 4, name: "RegularJoe", username: "regularjoe", coins: 540, metric: 5, trend: "up" },
-  { rank: 5, name: "ForumFan", username: "forumfan", coins: 430, metric: 5, trend: "same" }
-];
-
 export default function Leaderboard({ 
   topContributors = defaultContributors, 
-  topUploaders = defaultUploaders, 
-  weeklyStreaks = defaultStreaks 
+  topUploaders = defaultUploaders
 }: LeaderboardProps) {
   const getRankIcon = (rank: number) => {
     const badges = [
@@ -126,15 +116,12 @@ export default function Leaderboard({
       </CardHeader>
       <CardContent className="px-3">
         <Tabs defaultValue="contributors" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-7 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-2 h-7 bg-muted/50">
             <TabsTrigger value="contributors" className="text-[11px] data-[state=active]:bg-background" data-testid="tab-contributors">
               Helpful
             </TabsTrigger>
             <TabsTrigger value="uploaders" className="text-[11px] data-[state=active]:bg-background" data-testid="tab-uploaders">
               Uploads
-            </TabsTrigger>
-            <TabsTrigger value="streaks" className="text-[11px] data-[state=active]:bg-background" data-testid="tab-streaks">
-              Streaks
             </TabsTrigger>
           </TabsList>
           <TabsContent value="contributors" className="mt-2">
@@ -142,9 +129,6 @@ export default function Leaderboard({
           </TabsContent>
           <TabsContent value="uploaders" className="mt-2">
             {renderLeaderboardList(topUploaders, "uploads")}
-          </TabsContent>
-          <TabsContent value="streaks" className="mt-2">
-            {renderLeaderboardList(weeklyStreaks, "day streak")}
           </TabsContent>
         </Tabs>
       </CardContent>

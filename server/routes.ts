@@ -35,7 +35,13 @@ import {
   adminActions,
   forumThreads,
   campaigns,
-  sitemapLogs
+  sitemapLogs,
+  retentionMetrics,
+  vaultCoins,
+  retentionBadges,
+  earningsSources,
+  activityHeatmap,
+  referrals
 } from "../shared/schema.js";
 import { z } from "zod";
 import { db } from "./db.js";
@@ -81,6 +87,9 @@ import {
 } from '../shared/threadUtils.js';
 import { SitemapGenerator } from './services/sitemap-generator.js';
 import { SitemapSubmissionService } from './services/sitemap-submission.js';
+import { createVaultBonus, getVaultSummary, claimVaultCoins } from './services/vaultService.js';
+import { getRetentionMetrics, getAllTiers, getDaysUntilNextTier } from './services/loyaltyService.js';
+import { getUserBadges, getBadgeProgress, checkAndAwardBadges } from './services/badgeService.js';
 
 // Helper function to get authenticated user ID from session
 function getAuthenticatedUserId(req: any): string {
@@ -1113,6 +1122,270 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // RETENTION DASHBOARD API ENDPOINTS
+  // ============================================================================
+
+  // GET /api/dashboard/overview - Main retention dashboard data
+  app.get("/api/dashboard/overview", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      // Get retention metrics
+      const metrics = await getRetentionMetrics(userId);
+      
+      // Get locked vault total
+      const vaultData = await db.select({
+        total: sql<number>`COALESCE(SUM(${vaultCoins.amount}), 0)`,
+        count: sql<number>`COUNT(*)`
+      }).from(vaultCoins).where(
+        and(
+          eq(vaultCoins.userId, userId),
+          eq(vaultCoins.status, "locked")
+        )
+      );
+      
+      // Get today's earnings
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const todayEarnings = await db.select({
+        total: sql<number>`COALESCE(SUM(${coinTransactions.amount}), 0)`
+      }).from(coinTransactions).where(
+        and(
+          eq(coinTransactions.userId, userId),
+          eq(coinTransactions.type, "earn"),
+          gte(coinTransactions.createdAt, todayStart)
+        )
+      );
+      
+      // Get referral progress
+      const referralCount = await db.select({
+        count: sql<number>`COUNT(*)`
+      }).from(referrals).where(
+        eq(referrals.referrerId, userId)
+      );
+      
+      // Get days until next tier
+      const tierProgress = await getDaysUntilNextTier(userId);
+      
+      res.json({
+        metrics: {
+          loyaltyTier: metrics.loyaltyTier,
+          activeDays: metrics.activeDays,
+          feeRate: metrics.feeRate,
+          lastActivityAt: metrics.lastActivityAt
+        },
+        vault: {
+          total: vaultData[0]?.total || 0,
+          count: vaultData[0]?.count || 0
+        },
+        todayEarnings: todayEarnings[0]?.total || 0,
+        referrals: {
+          active: referralCount[0]?.count || 0,
+          target: 5
+        },
+        tierProgress
+      });
+    } catch (error: any) {
+      console.error("Error fetching dashboard overview:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/earnings-sources - Earnings breakdown by source
+  app.get("/api/dashboard/earnings-sources", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const sources = await db.select().from(earningsSources)
+        .where(eq(earningsSources.userId, userId));
+      
+      res.json(sources);
+    } catch (error: any) {
+      console.error("Error fetching earnings sources:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/loyalty-timeline - Loyalty tier progression timeline
+  app.get("/api/dashboard/loyalty-timeline", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      // Get current metrics
+      const metrics = await getRetentionMetrics(userId);
+      const activeDays = metrics.activeDays;
+      
+      // Get all tier configurations
+      const tiers = await getAllTiers();
+      
+      // Build timeline with user's progress
+      const timeline = tiers.map(tier => ({
+        tier: tier.tier,
+        displayName: tier.displayName,
+        displayColor: tier.displayColor,
+        minActiveDays: tier.minActiveDays,
+        feeRate: parseFloat(tier.feeRate),
+        benefits: tier.benefits,
+        reached: activeDays >= tier.minActiveDays
+      }));
+      
+      res.json({ 
+        timeline, 
+        currentDays: activeDays,
+        currentTier: metrics.loyaltyTier
+      });
+    } catch (error: any) {
+      console.error("Error fetching loyalty timeline:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/activity-heatmap - Hourly activity patterns
+  app.get("/api/dashboard/activity-heatmap", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const heatmap = await db.select().from(activityHeatmap)
+        .where(eq(activityHeatmap.userId, userId));
+      
+      res.json(heatmap);
+    } catch (error: any) {
+      console.error("Error fetching activity heatmap:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/badges - User badges and achievements
+  app.get("/api/dashboard/badges", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const badges = await getUserBadges(userId);
+      const progress = await getBadgeProgress(userId);
+      
+      res.json({ 
+        badges,
+        progress
+      });
+    } catch (error: any) {
+      console.error("Error fetching badges:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/referrals - Referral dashboard
+  app.get("/api/dashboard/referrals", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const userReferrals = await db.select().from(referrals)
+        .where(eq(referrals.referrerId, userId))
+        .orderBy(desc(referrals.createdAt));
+      
+      // Calculate total earnings from referrals
+      const referralEarnings = await db.select({
+        total: sql<number>`COALESCE(SUM(${coinTransactions.amount}), 0)`
+      }).from(coinTransactions).where(
+        and(
+          eq(coinTransactions.userId, userId),
+          eq(coinTransactions.type, "earn"),
+          sql`${coinTransactions.description} LIKE '%referral%'`
+        )
+      );
+      
+      res.json({
+        referrals: userReferrals,
+        totalEarnings: referralEarnings[0]?.total || 0,
+        totalReferrals: userReferrals.length
+      });
+    } catch (error: any) {
+      console.error("Error fetching referrals:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/nudges - Get AI nudges for user
+  app.get("/api/dashboard/nudges", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const nudges = await db.select()
+        .from(aiNudges)
+        .where(
+          and(
+            eq(aiNudges.userId, userId),
+            eq(aiNudges.dismissed, false)
+          )
+        )
+        .orderBy(desc(aiNudges.createdAt))
+        .limit(3);
+      
+      res.json(nudges);
+    } catch (error: any) {
+      console.error("Error fetching nudges:", error);
+      res.status(500).json({ error: "Failed to fetch nudges" });
+    }
+  });
+
+  // POST /api/dashboard/nudges/:nudgeId/dismiss - Dismiss a nudge
+  app.post("/api/dashboard/nudges/:nudgeId/dismiss", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    const { nudgeId } = req.params;
+    
+    try {
+      await db.update(aiNudges)
+        .set({ dismissed: true, dismissedAt: new Date() })
+        .where(
+          and(
+            eq(aiNudges.id, nudgeId),
+            eq(aiNudges.userId, userId)
+          )
+        );
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error dismissing nudge:", error);
+      res.status(500).json({ error: "Failed to dismiss nudge" });
+    }
+  });
+
+  // POST /api/dashboard/vault/claim - Claim unlocked vault coins
+  app.post("/api/dashboard/vault/claim", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const { vaultId } = req.body;
+      
+      const result = await claimVaultCoins(userId, vaultId);
+      
+      res.json({
+        success: true,
+        claimed: result.claimed,
+        totalAmount: result.totalAmount,
+        message: `Successfully claimed ${result.totalAmount} coins from ${result.claimed} vault${result.claimed !== 1 ? 's' : ''}`
+      });
+    } catch (error: any) {
+      console.error("Error claiming vault coins:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/dashboard/vault/summary - Get vault summary
+  app.get("/api/dashboard/vault/summary", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      const summary = await getVaultSummary(userId);
+      
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Error fetching vault summary:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Notification System Endpoints
   // GET /api/notifications - Get user's notifications
   app.get("/api/notifications", isAuthenticated, async (req, res) => {
@@ -1439,81 +1712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== COIN EARNING ENDPOINTS =====
-
-  // Daily check-in - COMMENTED OUT: getDailyActivityLimit and upsertDailyActivityLimit methods don't exist in storage
-  /* app.post("/api/coins/daily-checkin", isAuthenticated, async (req, res) => {
-    try {
-      const userId = getAuthenticatedUserId(req);
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Check if already checked in today
-      const existingLimit = await storage.getDailyActivityLimit(userId, today);
-      if (existingLimit && existingLimit.checkinCount > 0) {
-        return res.status(400).json({ error: "Already checked in today" });
-      }
-      
-      // Get yesterday's date to check streak
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const yesterdayLimit = await storage.getDailyActivityLimit(userId, yesterday);
-      
-      let consecutiveDays = 1;
-      if (yesterdayLimit && yesterdayLimit.consecutiveDays > 0) {
-        consecutiveDays = yesterdayLimit.consecutiveDays + 1;
-      }
-      
-      // Award daily check-in coin
-      let coinsAwarded = EARNING_REWARDS.DAILY_CHECKIN;
-      let bonusDescription = '';
-      
-      // Check for streak bonuses
-      if (consecutiveDays === 7) {
-        coinsAwarded += EARNING_REWARDS.WEEKLY_STREAK;
-        bonusDescription = ' + 10 bonus (7-day streak!)';
-      } else if (consecutiveDays === 30) {
-        coinsAwarded += EARNING_REWARDS.MONTHLY_PERFECT;
-        bonusDescription = ' + 50 bonus (30-day perfect streak!)';
-      }
-      
-      // Update daily activity limit
-      await storage.upsertDailyActivityLimit(userId, today, {
-        checkinCount: 1,
-        consecutiveDays,
-      });
-      
-      // Award coins via ledger transaction
-      await storage.beginLedgerTransaction(
-        'earn',
-        userId,
-        [
-          {
-            userId,
-            direction: 'credit',
-            amount: coinsAwarded,
-            memo: `Daily check-in (day ${consecutiveDays})${bonusDescription}`,
-          },
-          {
-            userId: 'system',
-            direction: 'debit',
-            amount: coinsAwarded,
-            memo: 'Platform reward for daily check-in',
-          },
-        ],
-        { activityType: 'daily-checkin', consecutiveDays }
-      );
-      
-      res.json({
-        success: true,
-        coinsAwarded,
-        consecutiveDays,
-        message: `+${coinsAwarded} coins! Day ${consecutiveDays} streak${bonusDescription}`,
-      });
-    } catch (error: any) {
-      if (error.message === "No authenticated user") {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-      res.status(500).json({ error: error.message });
-    }
-  }); */
+  // Note: Daily check-in endpoint removed - replaced by new retention dashboard system
 
   // ===== REFERRAL ENDPOINTS =====
 

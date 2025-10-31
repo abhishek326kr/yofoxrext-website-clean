@@ -114,8 +114,6 @@ export const EARNING_REWARDS = {
   // Daily Activity
   DAILY_LOGIN: 2,
   DAILY_CHECKIN: 1,
-  WEEKLY_STREAK: 10, // every 7 days
-  MONTHLY_PERFECT: 50, // all 30 days
   
   // Referral Rewards
   REFERRAL_SIGNUP: 10,
@@ -279,8 +277,6 @@ export function calculateMonthlyPotential(activityLevel: 'passive' | 'moderate' 
       // Daily login only
       breakdown['Daily Login'] = 60; // 2 × 30
       breakdown['Check-in'] = 30; // 1 × 30
-      breakdown['Weekly Streaks'] = 40; // 10 × 4
-      breakdown['Monthly Bonus'] = 50;
       break;
     
     case 'moderate':
@@ -288,8 +284,6 @@ export function calculateMonthlyPotential(activityLevel: 'passive' | 'moderate' 
       breakdown['Daily Login'] = 60;
       breakdown['Check-in'] = 30;
       breakdown['Replies'] = 300; // 10 × 30
-      breakdown['Weekly Streaks'] = 40;
-      breakdown['Monthly Bonus'] = 50;
       break;
     
     case 'active':
@@ -299,8 +293,6 @@ export function calculateMonthlyPotential(activityLevel: 'passive' | 'moderate' 
       breakdown['Replies'] = 600; // 20 × 30
       breakdown['Best Answers'] = 100; // ~3-4 per month
       breakdown['Reports'] = 150; // ~5 per month
-      breakdown['Weekly Streaks'] = 40;
-      breakdown['Monthly Bonus'] = 50;
       break;
     
     case 'creator':
@@ -308,8 +300,6 @@ export function calculateMonthlyPotential(activityLevel: 'passive' | 'moderate' 
       breakdown['Daily Login'] = 60;
       breakdown['Check-in'] = 30;
       breakdown['Content Sales'] = 1000; // Varies widely
-      breakdown['Weekly Streaks'] = 40;
-      breakdown['Monthly Bonus'] = 50;
       break;
   }
   

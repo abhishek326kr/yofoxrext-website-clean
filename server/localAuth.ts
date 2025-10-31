@@ -5,8 +5,9 @@ import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "./db";
-import { users } from "../shared/schema";
-import { eq } from "drizzle-orm";
+import { users, passwordResetTokens } from "../shared/schema";
+import { eq, and, gt } from "drizzle-orm";
+import crypto from "crypto";
 
 // Validation schemas
 const loginSchema = z.object({
@@ -25,6 +26,17 @@ const registerSchema = z.object({
   email: z.string().email("Invalid email address").optional(),
   firstName: z.string().min(1).max(50).optional(),
   lastName: z.string().min(1).max(50).optional(),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  newPassword: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(100, "Password is too long"),
 });
 
 // Hash password with bcrypt
@@ -304,16 +316,150 @@ export async function setupLocalAuth(app: Express) {
     });
   });
   
-  // Password reset endpoint (optional)
-  if (process.env.ENABLE_PASSWORD_RESET === "true") {
-    app.post("/api/reset-password", async (req, res) => {
-      // TODO: Implement password reset with email verification
-      res.status(501).json({ 
-        error: "Password reset not yet implemented",
-        message: "Please contact support for password reset" 
+  // Forgot Password - Send reset token via email
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      // Validate input
+      const validation = forgotPasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid input",
+          details: validation.error.errors 
+        });
+      }
+      
+      const { email } = validation.data;
+      
+      // Find user by email
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      
+      // Always return success to prevent email enumeration attacks
+      // Don't reveal whether the email exists or not
+      if (!user) {
+        console.log(`[FORGOT PASSWORD] Email not found: ${email}`);
+        return res.json({ 
+          success: true, 
+          message: "If the email exists, a password reset link has been sent." 
+        });
+      }
+      
+      // Generate secure random token (32 bytes = 64 hex characters)
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      
+      // Hash the token before storing
+      const tokenHash = await hashPassword(resetToken);
+      
+      // Calculate expiration time (1 hour from now)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 1);
+      
+      // Store token in database
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+        consumed: false,
       });
-    });
-  }
+      
+      // Send password reset email
+      try {
+        const { emailService } = await import('./services/emailService');
+        await emailService.sendPasswordReset(email, resetToken, '1 hour');
+        console.log(`[FORGOT PASSWORD] Reset email sent to: ${email}`);
+      } catch (emailError: any) {
+        console.error('[FORGOT PASSWORD] Failed to send email:', emailError);
+        // Continue anyway - we don't want to reveal email sending failures
+      }
+      
+      res.json({ 
+        success: true, 
+        message: "If the email exists, a password reset link has been sent." 
+      });
+    } catch (error: any) {
+      console.error("[FORGOT PASSWORD] Error:", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+  
+  // Reset Password - Validate token and update password
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      // Validate input
+      const validation = resetPasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid input",
+          details: validation.error.errors 
+        });
+      }
+      
+      const { token, newPassword } = validation.data;
+      
+      // Find all non-consumed, non-expired tokens
+      const now = new Date();
+      const allTokens = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.consumed, false),
+            gt(passwordResetTokens.expiresAt, now)
+          )
+        );
+      
+      // Find matching token by comparing hashes
+      let matchingToken = null;
+      for (const dbToken of allTokens) {
+        const isMatch = await verifyPassword(token, dbToken.tokenHash);
+        if (isMatch) {
+          matchingToken = dbToken;
+          break;
+        }
+      }
+      
+      if (!matchingToken) {
+        return res.status(400).json({ 
+          error: "Invalid or expired reset token",
+          message: "The reset link is invalid or has expired. Please request a new one." 
+        });
+      }
+      
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update user password
+      await db
+        .update(users)
+        .set({ 
+          password: hashedPassword,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, matchingToken.userId));
+      
+      // Mark token as consumed
+      await db
+        .update(passwordResetTokens)
+        .set({ 
+          consumed: true,
+          consumedAt: new Date(),
+        })
+        .where(eq(passwordResetTokens.id, matchingToken.id));
+      
+      console.log(`[RESET PASSWORD] Password reset successful for user: ${matchingToken.userId}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Password reset successfully. You can now login with your new password." 
+      });
+    } catch (error: any) {
+      console.error("[RESET PASSWORD] Error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
   
   // Change password endpoint (for authenticated users)
   app.post("/api/change-password", async (req, res) => {
@@ -374,7 +520,5 @@ export async function setupLocalAuth(app: Express) {
   if (process.env.ALLOW_REGISTRATION !== "false") {
     console.log("📝 User registration is ENABLED at /api/register");
   }
-  if (process.env.ENABLE_PASSWORD_RESET === "true") {
-    console.log("🔑 Password reset is ENABLED at /api/reset-password");
-  }
+  console.log("🔑 Password reset is ENABLED at /api/auth/forgot-password and /api/auth/reset-password");
 }

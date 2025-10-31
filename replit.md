@@ -2,41 +2,7 @@
 
 ## Overview
 
-YoForex is a comprehensive trading community platform that combines forum discussions, an Expert Advisor (EA) marketplace, broker reviews, and a virtual coin economy. Built with Next.js 16 and Express.js, it serves as a hub for forex traders to share strategies, publish trading tools, and engage with the community.
-
-The platform features 60+ hierarchical categories, SEO-optimized URLs, automated email notifications (58+ types), a trust level progression system, and comprehensive analytics. It supports both free and premium content distribution with a gold coin economy that rewards user contributions.
-
-## Recent Changes
-
-### October 31, 2025 - Authentication & Database Fixes
-
-**Authentication System Fixed:**
-- Fixed cookie configuration for Next.js + Express hybrid setup
-  - Changed from `secure:true, sameSite:none` to `secure:false, sameSite:lax` in development
-  - File: `server/flexibleAuth.ts` (lines 23-35)
-  - Reason: Next.js rewrites proxy to Express over HTTP, not HTTPS
-- Fixed `/api/me` endpoint to work with email/password authentication
-  - Changed from Replit OIDC format (`claims.sub`) to standard user format (`user.id`)
-  - File: `server/routes.ts` (lines 615-632)
-  - Now properly uses `getAuthenticatedUserId()` helper
-
-**Database Schema Updates:**
-- Fixed JSON array columns to avoid parsing errors
-  - `support_tickets.replies`: Changed from `jsonb[]` to `jsonb` with default `'[]'::jsonb`
-  - `ab_tests.variants`: Changed from `jsonb[]` to `jsonb` with default `'[]'::jsonb`
-  - File: `shared/schema.ts`
-- Added unique constraint to `users.google_uid` for Google OAuth
-
-**Admin Account Created:**
-- Email: Admin@yoforex.net
-- Role: admin
-- Full administrative privileges across platform
-
-**Dependencies Added:**
-- `@uiw/react-md-editor` - Markdown editor for thread creation
-- `react-dropzone` - File upload functionality
-
-**Status:** ✅ All systems operational - authentication, database, and admin access working
+YoForex is a comprehensive trading community platform designed for forex traders. It integrates forum discussions, an Expert Advisor (EA) marketplace, broker reviews, and a virtual coin economy. The platform aims to be a central hub for traders to share strategies, publish trading tools, and engage with a global community. Key features include extensive category management, SEO-optimized URLs, automated email notifications, a trust level progression system, and a gold coin economy that rewards user contributions and facilitates content distribution.
 
 ## User Preferences
 
@@ -92,200 +58,109 @@ The platform features 60+ hierarchical categories, SEO-optimized URLs, automated
 
 ## System Architecture
 
+YoForex utilizes a hybrid frontend architecture and a robust backend designed for scalability and performance.
+
 ### Hybrid Frontend Architecture
 
-The application uses a **dual frontend approach** with distinct purposes:
+- **Next.js (Port 3000):** Primary user-facing application using App Router with Server Components for SEO and dynamic routing. Employs ISR with 60-second revalidation for efficient content delivery.
+- **Express API (Port 3001):** Backend API server providing 194 RESTful endpoints. Features include Replit OIDC authentication, rate limiting, input validation with DOMPurify, and health check endpoints.
 
-1. **Next.js SSR (Port 3000)** - Primary user-facing application
-   - App Router with Server Components for SEO optimization
-   - Dynamic catch-all routes for hierarchical URLs (`/category/[...path]`)
-   - ISR (Incremental Static Regeneration) with 60-second revalidation
-   - 28 fully migrated pages with 100% design parity
-   - Server-side data fetching for initial page loads
-
-2. **Express API (Port 3001)** - Backend API server
-   - 194 RESTful endpoints for all platform functionality
-   - Authentication via Replit OIDC with PostgreSQL sessions
-   - Rate limiting per endpoint category (general: 100/15min, writes: 30/15min, coins: 10/15min)
-   - Input validation and XSS protection with DOMPurify
-   - Health check endpoints for monitoring (`/api/health`, `/api/health/live`, `/api/health/ready`)
-
-**Communication Flow:**
-```
-Browser → Next.js (3000) → Express API (3001) → PostgreSQL
-            ↓
-    React Query Cache & State Management
-```
+Communication flows from the Browser to Next.js, then to the Express API, and finally to PostgreSQL. React Query handles client-side state and caching.
 
 ### Database Design
 
-**PostgreSQL with Drizzle ORM** featuring:
-- 25+ tables with comprehensive foreign key relationships
-- 25 critical indexes optimized for category filtering, date sorting, and user lookups
-- Connection pooling (min: 2, max: 20 connections)
-- SSL/TLS support for production with configurable certificates
-- Automatic retry logic (5 attempts with exponential backoff)
-- 90-day data retention for GDPR compliance
-
-**Key Tables:**
-- `users` - User profiles with reputation scores, coin balances, trust levels
-- `forum_threads` - Discussion threads with hierarchical category support
-- `forum_replies` - Nested thread replies with SEO slugs
-- `content` - Marketplace items (EAs, indicators, articles)
-- `forum_categories` - 60 hierarchical categories with parent-child relationships
-- `seo_categories` - SEO-optimized category structure with metadata
-- `category_redirects` - 301/302 redirect mapping for URL migrations
-- `transactions` - Gold coin economy tracking
-- `email_tracking` - Email open/click analytics with privacy controls
+- **PostgreSQL with Drizzle ORM:** Features 25+ tables with foreign key relationships, 25 critical indexes, connection pooling, SSL/TLS support, and automatic retry logic. Data retention is 90 days for GDPR compliance. Key tables include `users`, `forum_threads`, `content`, `forum_categories`, `transactions`, and `email_tracking`.
 
 ### SEO-Optimized URL Structure
 
-**Hierarchical URLs** replace flat slugs for better search rankings:
-
-```
-Old: /thread/oscillator-indicators-rsi-vs-stochastic
-New: /category/indicators-templates/oscillators-momentum/oscillator-indicators-rsi-vs-stochastic
-
-Old: /content/gold-scalper-pro-ea
-New: /category/ea-library/scalping-eas/gold-scalper-pro-ea
-```
-
-**Implementation:**
-- `lib/category-path.ts` - Core path resolution with 5-minute caching
-- Dynamic catch-all route: `app/category/[...path]/page.tsx`
-- Automatic redirect system for legacy URLs
-- Support for unlimited category nesting depth
-- Infinite loop protection in path resolution
+- **Hierarchical URLs:** Replaces flat slugs for improved SEO, supporting unlimited category nesting depth. Implemented via `lib/category-path.ts` and a dynamic catch-all route in Next.js. Automatic redirects handle legacy URLs.
 
 ### State Management
 
-**React Query (TanStack Query v5)** handles all server state:
-- Centralized API client in `app/lib/queryClient.ts`
-- Custom `apiRequest` helper with authentication and error handling
-- Per-query cache configuration (staleTime, refetchInterval)
-- Automatic retries and background refetching
-- SSR support with dehydrated query state
-
-**Key Implementation Detail:**
-The QueryClient uses relative URLs (no baseUrl) to work with Next.js rewrites, avoiding client-side baseUrl baking during SSR.
+- **React Query (TanStack Query v5):** Manages all server state with a centralized API client, custom `apiRequest` helper, per-query cache configuration, and SSR support.
 
 ### Authentication System
 
-**Email/Password + Google OAuth with PostgreSQL Sessions:**
-- Custom email/password authentication using bcryptjs
-- Google OAuth integration via Firebase Admin SDK
-- Session storage in PostgreSQL with configurable expiry (default: 7 days)
-- `isAuthenticated` middleware protects sensitive endpoints
-- Session cleanup on SIGTERM/SIGINT for graceful shutdown
-
-**Cookie Configuration (CRITICAL):**
-- **Development**: `secure: false`, `sameSite: "lax"` (works with Next.js HTTP proxy)
-- **Production**: `secure: true`, `sameSite: "lax"` (or "none" if CROSS_ORIGIN_COOKIES=true)
-- **Key Fix (Oct 2025)**: Changed dev cookies from `secure:true, sameSite:none` to `secure:false, sameSite:lax` to fix login issues with Next.js rewrites proxying to Express over HTTP
+- **Email/Password + Google OAuth:** Custom email/password authentication using bcryptjs, Google OAuth via Firebase Admin SDK, and PostgreSQL session storage. `isAuthenticated` middleware protects sensitive endpoints. Cookie configuration is adjusted for development (`secure: false`, `sameSite: "lax"`) and production (`secure: true`, `sameSite: "lax"`).
 
 ### Email System
 
-**Hostinger SMTP with 58+ notification types:**
-- Transactional emails (welcome, verification, password reset)
-- Activity notifications (replies, mentions, follows)
-- Marketplace alerts (purchases, sales, reviews)
-- Moderation notifications (reports, warnings, bans)
-- Email tracking with open/click analytics
-- Privacy-respecting unsubscribe system
-- Category-based preference management
+- **Hostinger SMTP:** Handles 58+ types of transactional and notification emails. Includes email tracking, privacy-respecting unsubscribe, and category-based preference management.
 
 ### Coin Economy
 
-**Virtual currency system rewarding contributions:**
-- Earn coins: Thread creation (+10), replies (+5), accepted answers (+50), quality content (+100)
-- Spend coins: Premium EA downloads, content purchases, profile boosts
-- Transaction history with detailed tracking
-- Fraud prevention with amount validation
-- Leaderboards tracking top earners
+- **Virtual Currency:** Rewards user contributions (e.g., thread creation, replies, accepted answers) and allows spending on premium content or profile boosts. Features detailed transaction history and fraud prevention.
 
 ### Production Deployment
 
-**Supports two deployment targets:**
-
-1. **Replit ($20/month)** - One-command deployment with auto-scaling
-2. **AWS EC2/VPS** - Full control with comprehensive automation:
-   - `master-deploy.sh` - One-command deployment script
-   - Docker & Docker Compose for containerization
-   - PM2 cluster mode with 2 instances for Next.js
-   - Nginx reverse proxy with automatic SSL via Let's Encrypt
-   - Automated S3 backups and restore
-   - Health check endpoints for monitoring
-   - 28+ automated production tests
-
-**Environment Variables:**
-- `DATABASE_URL` - PostgreSQL connection string (required)
-- `EXPRESS_URL` - Internal API URL (default: http://127.0.0.1:3001)
-- `NEXT_PUBLIC_SITE_URL` - Public site URL (required in production)
-- `SESSION_SECRET` - Session encryption key (minimum 32 characters)
-- Pool configuration: `DB_POOL_MAX`, `DB_POOL_MIN`, `DB_IDLE_TIMEOUT`, `DB_CONNECTION_TIMEOUT`
+- **Deployment Targets:** Supports one-command deployment to Replit or full control via AWS EC2/VPS using Docker, PM2, Nginx, and Let's Encrypt for automation.
+- **Environment Variables:** Critical variables include `DATABASE_URL`, `EXPRESS_URL`, `NEXT_PUBLIC_SITE_URL`, and `SESSION_SECRET`.
 
 ### Zero-Touch Migration System
 
-**Automated GitHub import process:**
-1. User imports repository to new Replit
-2. `postinstall` hook triggers `scripts/auto-setup.js`
-3. Auto-setup detects fresh import and runs:
-   - Database table creation
-   - Data import from `database-export.sql` (or seed data)
-   - Verification checks
-4. Application starts fully configured
+- **Automated GitHub Import:** A `postinstall` hook triggers `scripts/auto-setup.js` to automatically set up the database (table creation, data import) upon a fresh Replit import.
 
-**Export before push:** `npm run db:export` creates portable SQL dump
+### Retention Dashboard System
+
+- **Purpose:** Enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails.
+- **Database Schema:** Eight new tables including `retentionMetrics`, `vaultCoins`, `loyaltyTiers`, `retentionBadges`, `aiNudges`, `abandonmentEmails`, `earningsSources`, and `activityHeatmap`.
+- **Backend Services:** Services for vault management, loyalty calculations, badge awarding, real-time WebSocket events, AI-driven behavioral nudges, and abandonment email sequences.
+- **API Endpoints:** Eight new endpoints for dashboard overview, earnings, loyalty timeline, activity heatmap, badges, referrals, and vault interactions.
+- **Frontend Components:** Nine new React components for visualizing earnings, loyalty progress, vault status, referrals, health scores, badges, and activity heatmaps, integrated into the main dashboard.
+- **Real-Time Features:** WebSocket server with user-specific rooms, confetti animations, toast notifications, and hover tooltips for dynamic user feedback.
 
 ## External Dependencies
 
 ### Core Infrastructure
 
-- **Neon PostgreSQL** - Serverless database with connection pooling
-- **Replit Object Storage** - Persistent file storage for EA uploads (backed by Google Cloud Storage)
-- **Replit OIDC** - OAuth authentication provider
+- **Neon PostgreSQL:** Serverless database with connection pooling.
+- **Replit Object Storage:** Persistent file storage, backed by Google Cloud Storage.
+- **Replit OIDC:** OAuth authentication provider.
 
 ### Email Services
 
-- **Hostinger SMTP** - Transactional email delivery
-- **Brevo (SendinBlue)** - Alternative email provider with API client
+- **Hostinger SMTP:** Transactional email delivery.
+- **Brevo (SendinBlue):** Alternative email provider.
 
 ### Analytics & SEO
 
-- **Google Tag Manager** - Tag management and analytics (`NEXT_PUBLIC_GTM_ID`)
-- **Google Analytics 4** - User tracking (`NEXT_PUBLIC_GA_MEASUREMENT_ID`)
-- **Google Search Console** - SEO monitoring and indexing
-- **Bing Webmaster Tools** - Bing/Yahoo search indexing
-- **Yandex Webmaster** - Yandex search engine optimization
+- **Google Tag Manager:** Tag management.
+- **Google Analytics 4:** User tracking.
+- **Google Search Console, Bing Webmaster Tools, Yandex Webmaster:** SEO monitoring and indexing.
 
 ### Payment Processing
 
-- **Stripe** - USD payment processing for coin recharges (planned integration)
+- **Stripe:** Planned USD payment processing for coin recharges.
 
 ### CDN & Storage
 
-- **Google Cloud Storage** - Object storage backend for Replit
-- **CloudFront/Cloudflare** - CDN for static assets (optional)
+- **Google Cloud Storage:** Object storage backend for Replit.
+- **CloudFront/Cloudflare:** Optional CDN for static assets.
 
 ### Monitoring & Security
 
-- **PM2** - Process management with clustering and auto-restart
-- **Nginx** - Reverse proxy with SSL termination
-- **Let's Encrypt** - Automatic SSL certificate management
-- **AWS S3** - Backup storage for database exports
+- **PM2:** Process management.
+- **Nginx:** Reverse proxy with SSL termination.
+- **Let's Encrypt:** Automatic SSL certificates.
+- **AWS S3:** Backup storage.
 
 ### Development Tools
 
-- **Drizzle Kit** - Database migrations and schema management
-- **TypeScript** - Type safety across the entire stack
-- **shadcn/ui** - Component library built on Radix UI primitives
-- **TailwindCSS** - Utility-first CSS framework
-- **Zod** - Runtime schema validation
+- **Drizzle Kit:** Database migrations.
+- **TypeScript:** Type safety.
+- **shadcn/ui:** Component library.
+- **TailwindCSS:** Utility-first CSS framework.
+- **Zod:** Runtime schema validation.
+- **Vitest:** Testing framework.
+- **Supertest:** API integration testing.
+- **socket.io & socket.io-client:** WebSocket communication.
+- **canvas-confetti:** Celebration animations.
+- **d3:** Heatmap visualizations.
 
 ### Build & Deployment
 
-- **Next.js 16** - React framework with App Router
-- **Vite** - Build tool for React SPA (legacy)
-- **esbuild** - Express API bundling
-- **Docker** - Containerization for development and production
-- **PM2 Ecosystem** - Multi-process orchestration
+- **Next.js 16:** React framework.
+- **Vite:** Build tool (legacy).
+- **esbuild:** Express API bundling.
+- **Docker:** Containerization.
+- **PM2 Ecosystem:** Multi-process orchestration.
