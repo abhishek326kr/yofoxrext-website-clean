@@ -1,303 +1,163 @@
-# YoForex - Expert Advisor Forum & Marketplace
+# YoForex - Forex Trading Community Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)](https://www.postgresql.org/)
+Complete trading community platform built with Next.js 16 + Express.js, featuring forum discussions, EA marketplace, broker reviews, and a coin-based economy.
 
-**YoForex** is a comprehensive EA (Expert Advisor) forum and marketplace platform for algorithmic trading on MT4/MT5. It combines traditional forum features with a marketplace, gold coin economy, broker directory, and social features.
+## Features
 
----
+- **Forum System** - 60+ hierarchical categories, SEO-optimized URLs, voting, best answers
+- **Content Marketplace** - Expert Advisors, indicators, strategies with coin-based monetization
+- **Broker Reviews** - User reviews, ratings, comparison tools
+- **Coin Economy** - Earn coins for contributions, spend on premium content
+- **Retention Dashboard** - "Your Trading Journey" with vault bonuses, loyalty tiers, badges
+- **Real-Time Features** - WebSocket notifications, live updates, confetti animations
+- **Authentication** - Email/password + Google OAuth via Firebase
+- **Email System** - 58+ notification types via Hostinger SMTP
+- **Analytics** - Google Tag Manager, GA4, activity tracking
 
-## 🎯 **NEW: Zero-Touch GitHub Migration**
+## Tech Stack
 
-**Importing from GitHub to a new Replit?** Everything works automatically! 🚀
+- **Frontend:** Next.js 16 (App Router, Server Components, ISR)
+- **Backend:** Express.js (194 REST endpoints)
+- **Database:** Neon PostgreSQL with Drizzle ORM
+- **Real-Time:** Socket.IO WebSocket server
+- **Styling:** TailwindCSS + shadcn/ui components
+- **Testing:** Vitest (15 unit tests, 100% pass rate)
 
-When you import this project from GitHub:
-- ✅ Database is created automatically
-- ✅ Data is imported automatically  
-- ✅ Setup completes automatically
-- ✅ **NO manual commands needed!**
-
-Just click "Import from GitHub" → Wait 30 seconds → Everything works!
-
-📖 **See:** [Migration Guide](./docs/MIGRATION_GUIDE.md) for details
-
-**Before you export:** Run `npm run db:export` to include your data in the migration.
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ installed
-- PostgreSQL database
-- Google Service Account (for Google OAuth, optional)
+## Quick Start
 
 ### Development Setup
 
-```bash
-# Install dependencies
-npm install
+1. **Clone and Install**
+   ```bash
+   git clone <your-repo>
+   cd yoforex
+   npm install
+   ```
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your database credentials
+2. **Environment Variables**
+   Create `.env` file with:
+   ```env
+   DATABASE_URL=your_neon_postgres_url
+   SESSION_SECRET=random_string_here
+   SMTP_HOST=smtp.hostinger.com
+   SMTP_PORT=465
+   SMTP_USER=your_email
+   SMTP_PASSWORD=your_password
+   SMTP_FROM_EMAIL=noreply@yourdomain.com
+   NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+   ```
 
-# Run database migrations
-npm run db:push
+3. **Database Setup**
+   ```bash
+   npm run db:push
+   ```
 
-# Start development server (hybrid mode)
-npm run dev:hybrid
-```
+4. **Start Development**
+   ```bash
+   npm run dev
+   ```
+   
+   Access at http://localhost:5000
 
-**Two servers will start:**
-- **Express Backend**: http://localhost:5000 (API, Auth, React SPA)
-- **Next.js SSR**: http://localhost:3000 (SEO-optimized pages)
+### Admin Account
 
----
+**Email:** Admin@yoforex.net  
+**Password:** Arijit@101
 
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| **[Platform Guide](docs/PLATFORM_GUIDE.md)** | Complete feature documentation (5,700+ lines) |
-| **[Architecture](docs/ARCHITECTURE.md)** | Frontend/backend architecture & patterns |
-| **[API Reference](docs/API_REFERENCE.md)** | 60+ API endpoints with examples |
-| **[Deployment](docs/DEPLOYMENT.md)** | Replit & VPS deployment guide |
-| **[Migration Guide](docs/MIGRATION_GUIDE.md)** | Zero-touch GitHub migration |
-| **[Client Handover](CLIENT_HANDOVER_GUIDE.md)** | Complete client documentation |
-
----
-
-## 🎯 Key Features
-
-### Core Systems
-- ✅ **Forum System** - 16 categories, nested replies, @mentions
-- ✅ **Marketplace** - Buy/sell EAs, Indicators, Articles, Source Code
-- ✅ **Gold Coin Economy** - Earn coins for contributions, spend on content
-- ✅ **Broker Directory** - Community reviews, scam reporting
-- ✅ **Social Features** - Follow users, private messaging, badges
-- ✅ **Real-time Updates** - Auto-refreshing widgets (10-60s intervals)
-- ✅ **SEO Engine** - Automated metadata, slugs, structured data
-- ✅ **Onboarding System** - Interactive checklist with coin rewards
-
-### Technical Highlights
-- **Hybrid Architecture**: Next.js 16 SSR + Express API
-- **Authentication**: Email/password and Google OAuth with PostgreSQL sessions
-- **State Management**: TanStack Query v5 with real-time polling
-- **UI Components**: shadcn/ui + Tailwind CSS
-- **Database**: Drizzle ORM with 25+ performance indexes
-- **Security**: Rate limiting, XSS protection, input validation
-
----
-
-## 🏗️ Architecture Overview
-
-```
-YoForex Platform
-│
-├── Express Backend (Port 5000)
-│   ├── Authentication (Email/Password + Google OAuth)
-│   ├── REST API (60+ endpoints)
-│   ├── Background Jobs (node-cron)
-│   ├── React SPA (Vite)
-│   └── Database (Drizzle ORM)
-│
-└── Next.js Frontend (Port 3000)
-    ├── Server Components (SSR)
-    ├── Client Components (Interactivity)
-    ├── 28 SEO-Optimized Pages
-    └── API Client (fetches from Express)
-```
-
-**28 Pages Migrated (100% Complete)**:
-- **SEO-Critical (7)**: Homepage, Thread Detail, Content Detail, User Profile, Category, Broker, Marketplace
-- **High-Traffic (5)**: Discussions, Categories, Brokers, Members, Leaderboard
-- **Authenticated (9)**: Dashboard, Settings, Recharge, Transactions, Publish, Messages, Notifications, Withdrawals
-- **Additional (7)**: Earn Coins, Submit Review, Feedback, Support, API Docs, Dashboard Settings
-
----
-
-## 📊 Project Structure
+## Project Structure
 
 ```
 yoforex/
-├── app/                          # Next.js 16 App Router (SSR)
-│   ├── page.tsx                  # Homepage (/)
-│   ├── thread/[slug]/            # Thread detail pages
-│   ├── content/[slug]/           # Marketplace content
-│   ├── dashboard/                # User dashboard
-│   ├── components/               # Next.js-specific components
-│   └── lib/                      # Utilities, API client
-│
-├── client/src/                   # React SPA (Original)
-│   ├── pages/                    # Page components
-│   ├── components/               # Reusable components
-│   │   ├── ui/                   # shadcn/ui primitives
-│   │   └── dashboard/            # Dashboard widgets
-│   └── lib/                      # Utilities, hooks
-│
-├── server/                       # Express Backend
-│   ├── routes.ts                 # API endpoints
-│   ├── storage.ts                # Database layer
-│   ├── replitAuth.ts             # Authentication
-│   ├── emailService.ts           # Email notifications
-│   └── jobs/                     # Background tasks
-│
-├── shared/                       # Shared types & schemas
-│   └── schema.ts                 # Drizzle schema + Zod types
-│
-└── docs/                         # Documentation
-    ├── PLATFORM_GUIDE.md         # Complete feature guide
-    ├── ARCHITECTURE.md           # Technical architecture
-    ├── API_REFERENCE.md          # API documentation
-    └── DEPLOYMENT.md             # Deployment guide
+├── app/                    # Next.js 16 App Router
+│   ├── dashboard/          # User dashboard & retention system
+│   ├── forum/              # Forum pages
+│   ├── content/            # Content marketplace
+│   └── api/                # Next.js API routes (proxied to Express)
+├── server/                 # Express.js backend
+│   ├── routes.ts           # 194 API endpoints
+│   ├── services/           # Business logic (vault, loyalty, badges, etc)
+│   └── jobs/               # Cron jobs
+├── shared/                 # Shared code
+│   └── schema.ts           # Drizzle database schema
+├── docs/                   # Documentation
+└── scripts/                # Utility scripts
 ```
 
----
+## Key Features
 
-## 🔧 Common Commands
+### Retention Dashboard ("Your Trading Journey")
+
+8 interactive widgets:
+- **Earnings Counter** - Live earnings + 7-day sparkline
+- **Growth Vault** - 10% auto-bonus with 30-day unlock
+- **Loyalty Shield** - 5-tier progression (7% → 0% fees)
+- **Badge Wall** - 6 badge types with auto-rewards
+- **Referral Meter** - 5+ active = 5% permanent bonus
+- **Health Score** - AI-powered engagement tips
+- **Activity Heatmap** - 24h × 7-day D3.js visualization
+- **Earnings Pie Chart** - Source breakdown (Recharts)
+
+### Coin Economy
+
+**Earning Opportunities:**
+- Thread created: 25 ₡
+- Reply posted: 10 ₡
+- Answer accepted: 50 ₡ (author)
+- Content published: 100-500 ₡
+- Referral signup: 100 ₡
+
+**Vault Bonus:** 10% of all earnings locked for 30 days (encourages retention)
+
+**Loyalty Tiers:**
+- Bronze (0-21 days): 7% withdrawal fee
+- Silver (22-44 days): 5% fee
+- Gold (45-66 days): 3% fee
+- Platinum (67-89 days): 1% fee
+- Diamond (90+ days): 0% fee
+
+### Real-Time Features
+
+- **WebSocket Server** - `/ws/dashboard` for live updates
+- **Confetti Animations** - Vault unlocks, badge achievements
+- **Toast Notifications** - Earnings, levels, milestones
+- **AI Nudges** - Behavioral engagement suggestions
+- **Abandonment Emails** - 3-tier sequence (day 2, 5, 10)
+
+## Testing
 
 ```bash
-# Development
-npm run dev              # Express + React SPA only
-npm run dev:hybrid       # Express + Next.js SSR (recommended)
-npm run dev:next         # Next.js only
+# Run unit tests (15 tests)
+npm test
 
-# Database
-npm run db:push          # Push schema changes to database
-npm run db:studio        # Open Drizzle Studio (database GUI)
+# Performance audit
+npm run audit:performance
 
-# Build
-npm run build            # Build React SPA
-npm run build:next       # Build Next.js SSR
-
-# Production
-npm run start            # Start production server
+# Build for production
+npm run build
 ```
 
----
+## Deployment
 
-## 🌐 Environment Variables
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions:
+- Replit Autoscale Deployments (one-click)
+- AWS EC2/VPS with Docker + PM2 + Nginx
+- Environment variable setup
+- SSL certificate configuration
 
-Required variables for full functionality:
+## Documentation
 
-```bash
-# Database (Required)
-DATABASE_URL=postgresql://user:pass@host:5432/database
+- **README.md** - This file (project overview)
+- **DEPLOYMENT.md** - Deployment guides
+- **API_REFERENCE.md** - Complete API documentation
+- **replit.md** - Agent memory and architecture
 
-# Authentication (Required)
-REPLIT_CLIENT_ID=your_client_id
-REPLIT_CLIENT_SECRET=your_client_secret
-SESSION_SECRET=random_secure_string
+## Support
 
-# URLs
-BASE_URL=https://yourdomain.com
-NEXT_PUBLIC_BASE_URL=https://yourdomain.com
-EXPRESS_URL=http://localhost:5000
-NEXT_PUBLIC_EXPRESS_URL=http://localhost:5000
+For issues or questions, contact the development team.
 
-# Email (Optional)
-SMTP_HOST=smtp.hostinger.com
-SMTP_PORT=465
-SMTP_USER=noreply@yourdomain.com
-SMTP_PASSWORD=your_smtp_password
-SMTP_FROM_EMAIL=noreply@yourdomain.com
-SMTP_FROM_NAME=YourSiteName
-```
-
----
-
-## 📈 Performance & Security
-
-### Database Performance
-- **25+ indexes** on critical queries (10-100x speedup)
-- **Optimized joins** for forum threads, marketplace, brokers
-- **Connection pooling** with pg library
-
-### Security Features
-- **Rate Limiting**: Multiple tiers (API, writes, coins, content)
-- **XSS Protection**: DOMPurify sanitization on all inputs
-- **Input Validation**: Zod schemas + server-side checks
-- **Session Security**: HTTP-only cookies, 7-day TTL
-- **Coin System Security**: Prevents negative amounts, overdrafts
-
-### Real-time Updates
-- **Auto-refresh widgets** with configurable intervals
-- **Visual indicators** ("Updated X ago")
-- **Background polling** without page reload
-- **Error handling** with automatic retries
-
----
-
-## 🎨 UI Components
-
-Built with **shadcn/ui** + **Tailwind CSS**:
-- Forms (React Hook Form + Zod validation)
-- Cards, Badges, Buttons
-- Dialogs, Dropdowns, Tooltips
-- Data Tables with sorting/filtering
-- Real-time activity feeds
-- Interactive charts (Recharts)
-
----
-
-## 🚢 Deployment
-
-### Replit (Recommended)
-```bash
-# Automatically handles:
-# - Database setup (PostgreSQL)
-# - Environment variables
-# - HTTPS with custom domain
-# - Zero-config deployment
-
-# Just click "Deploy" in Replit!
-```
-
-### Manual Deployment
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for:
-- Vercel deployment (Next.js)
-- Heroku/Railway deployment (Express)
-- Docker containerization
-- Environment setup
-- Database migrations
-
----
-
-## 📖 Learn More
-
-- **[Complete Platform Guide](docs/PLATFORM_GUIDE.md)** - Every feature explained
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - How it's built
-- **[API Reference](docs/API_REFERENCE.md)** - All endpoints documented
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production setup
-
----
-
-## 🤝 Contributing
-
-YoForex is built with modern best practices:
-1. **TypeScript** for type safety
-2. **Drizzle ORM** for database queries
-3. **TanStack Query** for server state
-4. **shadcn/ui** for consistent components
-5. **Zod** for validation
-
----
-
-## 📄 License
+## License
 
 Proprietary - All rights reserved
-
----
-
-## 🆘 Support
-
-- **Documentation**: See `/docs` folder
-- **Issues**: Report bugs or request features
-- **Community**: Join our Telegram channel
-
----
-
-**Built with ❤️ for the algorithmic trading community**
