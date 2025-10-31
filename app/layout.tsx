@@ -16,6 +16,17 @@ export const metadata: Metadata = {
   description: 'Join 10,000+ forex traders. Download free EAs, share strategies, and earn coins. #1 MT4/MT5 EA community.',
   keywords: ['forex forum', 'EA marketplace', 'Expert Advisor', 'MT4', 'MT5', 'forex trading', 'algorithmic trading'],
   authors: [{ name: 'YoForex' }],
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/apple-touch-icon.svg',
+    other: {
+      rel: 'mask-icon',
+      url: '/favicon.svg',
+      color: '#1e40af',
+    },
+  },
+  manifest: '/site.webmanifest',
+  themeColor: '#1e40af',
   openGraph: {
     type: 'website',
     locale: 'en_US',

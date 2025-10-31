@@ -1,0 +1,21 @@
+{
+  "name": "YoForex - Expert Advisor Forum & EA Marketplace",
+  "short_name": "YoForex",
+  "description": "Join 10,000+ forex traders. Download free EAs, share strategies, and earn coins.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1e40af",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml"
+    }
+  ]
+}
