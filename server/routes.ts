@@ -3008,6 +3008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const objectStorageService = new ObjectStorageService();
       const uploadedUrls: string[] = [];
+      const fs = await import('fs/promises');
 
       // Upload each file to object storage
       for (const file of req.files) {
@@ -3018,10 +3019,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const ext = path.extname(file.originalname);
           const objectName = `thread-images/${authenticatedUserId}/${timestamp}-${randomId}${ext}`;
           
+          // Read file data (multer saves files to disk with diskStorage)
+          let fileData: Buffer;
+          if ('buffer' in file && file.buffer) {
+            // Memory storage (not used in current config, but handle just in case)
+            fileData = file.buffer;
+          } else if ('path' in file && file.path) {
+            // Disk storage (current configuration)
+            fileData = await fs.readFile(file.path);
+          } else {
+            console.error(`File has no buffer or path: ${file.originalname}`);
+            continue;
+          }
+          
           // Upload to object storage
           const url = await objectStorageService.uploadObject(
             objectName,
-            file.buffer || require('fs').readFileSync(file.path),
+            fileData,
             file.mimetype,
             {
               uploadedBy: authenticatedUserId,
@@ -3033,11 +3047,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           uploadedUrls.push(url);
           
           // Clean up temp file if using disk storage
-          if (file.path) {
-            require('fs').unlinkSync(file.path);
+          if ('path' in file && file.path) {
+            try {
+              await fs.unlink(file.path);
+            } catch (unlinkError) {
+              console.warn(`Failed to delete temp file ${file.path}:`, unlinkError);
+            }
           }
         } catch (error: any) {
           console.error(`Failed to upload file ${file.originalname}:`, error);
+          // Clean up temp file even if upload failed
+          if ('path' in file && file.path) {
+            try {
+              await fs.unlink(file.path);
+            } catch (unlinkError) {
+              console.warn(`Failed to delete temp file ${file.path}:`, unlinkError);
+            }
+          }
           // Continue with other files even if one fails
         }
       }

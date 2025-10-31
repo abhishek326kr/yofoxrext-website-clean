@@ -236,6 +236,57 @@ export class ObjectStorageService {
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
+
+  // Upload an object to storage (server-side upload)
+  async uploadObject(
+    objectPath: string,
+    data: Buffer | Uint8Array,
+    contentType?: string,
+    metadata?: Record<string, string>
+  ): Promise<string> {
+    try {
+      const privateObjectDir = this.getPrivateObjectDir();
+      
+      // Ensure the objectPath doesn't start with a slash for joining
+      const cleanObjectPath = objectPath.startsWith('/') ? objectPath.slice(1) : objectPath;
+      
+      // Construct the full path
+      const fullPath = `${privateObjectDir}/${cleanObjectPath}`;
+      
+      // Parse the path to get bucket name and object name
+      const { bucketName, objectName } = parseObjectPath(fullPath);
+      
+      // Get the bucket reference
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      // Upload the file
+      await file.save(data, {
+        contentType: contentType || 'application/octet-stream',
+        metadata: metadata || {},
+        resumable: false,
+      });
+      
+      console.log(`[OBJECT STORAGE] Uploaded object: ${fullPath}`);
+      
+      // Return the normalized object path that can be used to access the file
+      // This will be in the format /objects/uploads/...
+      const normalizedPath = `/objects/${cleanObjectPath}`;
+      
+      // Set the file as public by default for thread images
+      if (objectPath.includes('thread-images/')) {
+        await setObjectAclPolicy(file, {
+          owner: (metadata && metadata.uploadedBy) || 'system',
+          visibility: 'public'
+        });
+      }
+      
+      return normalizedPath;
+    } catch (error: any) {
+      console.error('[OBJECT STORAGE] Upload error:', error);
+      throw new Error(`Failed to upload object: ${error.message}`);
+    }
+  }
 }
 
 function parseObjectPath(path: string): {

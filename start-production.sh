@@ -5,33 +5,43 @@
 
 echo "🚀 Starting YoForex in Production Mode..."
 
+# Fail fast if builds don't exist
+echo "🔍 Verifying production builds..."
+
+if [ ! -f "dist/index.js" ]; then
+  echo "❌ ERROR: Express build missing (dist/index.js not found)"
+  echo "   The build phase should have created this file"
+  echo "   Please check build logs for errors"
+  exit 1
+fi
+
+if [ ! -d ".next" ]; then
+  echo "❌ ERROR: Next.js build missing (.next directory not found)"
+  echo "   The build phase should have created this directory"
+  echo "   Please check build logs for errors"
+  exit 1
+fi
+
+# Additional verification for Next.js build integrity
+if [ ! -f ".next/BUILD_ID" ]; then
+  echo "❌ ERROR: Next.js build appears incomplete (BUILD_ID missing)"
+  echo "   The .next directory exists but seems corrupted"
+  echo "   Please rebuild the application"
+  exit 1
+fi
+
+echo "✅ Production builds verified"
+
 # Set environment variables
 export EXPRESS_URL=${EXPRESS_URL:-http://127.0.0.1:3001}
 export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://$REPL_SLUG.$REPL_OWNER.repl.co}
 export NODE_ENV=production
 
-# Build Express if dist doesn't exist
-if [ ! -f "dist/index.js" ]; then
-  echo "📦 Building Express API (first run)..."
-  npm run build:express
-fi
-
-# Build Next.js if .next doesn't exist
-if [ ! -d ".next" ]; then
-  echo "📦 Building Next.js (first run)..."
-  npm run build:next
-fi
-
-# Verify builds exist
-if [ ! -f "dist/index.js" ]; then
-  echo "❌ Express build missing - running build..."
-  npm run build:express || exit 1
-fi
-
-if [ ! -d ".next" ]; then
-  echo "❌ Next.js build missing - running build..."
-  npm run build:next || exit 1
-fi
+# Log environment for debugging
+echo "📋 Environment Configuration:"
+echo "   EXPRESS_URL=$EXPRESS_URL"
+echo "   NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL"
+echo "   NODE_ENV=$NODE_ENV"
 
 # Start Express API server on port 3001 in background
 echo "📦 Starting Express API server (port 3001)..."
@@ -62,7 +72,38 @@ echo "   Binding to 0.0.0.0:5000 for external access"
 npx next start -p 5000 -H 0.0.0.0 &
 NEXTJS_PID=$!
 
-echo "✅ Production servers started:"
+# Wait for Next.js to be ready
+echo "⏳ Waiting for Next.js to be ready..."
+sleep 8
+
+# Check if Next.js is running
+if ! kill -0 $NEXTJS_PID 2>/dev/null; then
+  echo "❌ Next.js failed to start"
+  kill $EXPRESS_PID
+  exit 1
+fi
+
+# Verify Next.js health (check root endpoint)
+MAX_RETRIES=5
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if curl -f -s http://127.0.0.1:5000/ > /dev/null 2>&1; then
+    echo "✅ Next.js is healthy and responding"
+    break
+  else
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+      echo "❌ Next.js health check failed after $MAX_RETRIES attempts"
+      echo "   The application may not be responding correctly"
+      kill $EXPRESS_PID $NEXTJS_PID
+      exit 1
+    fi
+    echo "   Retry $RETRY_COUNT/$MAX_RETRIES - waiting 3 seconds..."
+    sleep 3
+  fi
+done
+
+echo "✅ Production servers started and healthy:"
 echo "   - Express API: http://localhost:3001/api/* (internal)"
 echo "   - Next.js App: http://localhost:5000 (user-facing)"
 echo ""

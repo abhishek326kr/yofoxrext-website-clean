@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useDropzone } from "react-dropzone";
+import ReactMarkdown from "react-markdown";
 import AutoSEOPanel, { type SEOData } from "@/components/AutoSEOPanel";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -221,12 +222,19 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
     acceptedFiles.forEach(file => formData.append("files", file));
 
     try {
-      const response = await apiRequest("/api/upload/images", {
+      // For file uploads, use fetch directly since apiRequest expects JSON
+      const response = await fetch("/api/upload/images", {
         method: "POST",
-        body: formData
+        body: formData,
+        credentials: "include"
       });
-
-      const newImageUrls = response.urls || [];
+      
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+      
+      const data = await response.json();
+      const newImageUrls = data.urls || [];
       const allImages = [...uploadedImages, ...newImageUrls];
       setUploadedImages(allImages);
       setValue("imageUrls", allImages);
@@ -285,10 +293,8 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
   // Create thread mutation
   const createThreadMutation = useMutation({
     mutationFn: async (data: ThreadFormData) => {
-      return apiRequest("/api/threads", {
-        method: "POST",
-        body: JSON.stringify(data)
-      });
+      const response = await apiRequest("POST", "/api/threads", data);
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
@@ -783,7 +789,7 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
                       )}
                       
                       <div className="prose prose-sm max-w-none">
-                        <MDEditor.Markdown source={watchedFields.body} />
+                        <ReactMarkdown>{watchedFields.body || ''}</ReactMarkdown>
                       </div>
                       
                       {watchedFields.riskNote && (
