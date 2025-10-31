@@ -41,6 +41,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthPrompt } from "@/hooks/useAuthPrompt";
 import { coinsToUSD } from "../../shared/coinUtils";
 
 // Category data for Release EA dropdown
@@ -67,7 +68,8 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { user, isLoading: isAuthLoading, isAuthenticated, login, logout } = useAuth();
+  const { user, isLoading: isAuthLoading, isAuthenticated, logout } = useAuth();
+  const { requireAuth, AuthPrompt } = useAuthPrompt();
   
   const { data: coinsData } = useQuery<{ totalCoins: number; weeklyEarned: number; rank: number | null }>({
     queryKey: ["/api/user", user?.id, "coins"],
@@ -303,7 +305,7 @@ export default function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={login} data-testid="button-login">
+            <Button onClick={() => requireAuth(() => {})} data-testid="button-login">
               <LogIn className="mr-2 h-4 w-4" />
               Login
             </Button>
@@ -436,7 +438,7 @@ export default function Header() {
                 {!isAuthenticated && !isAuthLoading && (
                   <>
                     <Separator />
-                    <Button onClick={() => { login(); setMobileMenuOpen(false); }} data-testid="mobile-button-login">
+                    <Button onClick={() => requireAuth(() => { setMobileMenuOpen(false); })} data-testid="mobile-button-login">
                       <LogIn className="mr-2 h-4 w-4" />
                       Login
                     </Button>
@@ -447,6 +449,7 @@ export default function Header() {
           </Sheet>
         </div>
       </div>
+      <AuthPrompt />
     </header>
   );
 }
