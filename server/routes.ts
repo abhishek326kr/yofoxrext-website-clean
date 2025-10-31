@@ -2994,6 +2994,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     */
   });
 
+  // ===== IMAGE UPLOAD ENDPOINT =====
+  
+  // Upload images for thread creation
+  app.post("/api/upload/images", isAuthenticated, upload.array('files', 10), async (req, res) => {
+    try {
+      const authenticatedUserId = getAuthenticatedUserId(req);
+      
+      if (!req.files || !Array.isArray(req.files)) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const uploadedUrls: string[] = [];
+
+      // Upload each file to object storage
+      for (const file of req.files) {
+        try {
+          // Generate unique filename
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).substring(2, 8);
+          const ext = path.extname(file.originalname);
+          const objectName = `thread-images/${authenticatedUserId}/${timestamp}-${randomId}${ext}`;
+          
+          // Upload to object storage
+          const url = await objectStorageService.uploadObject(
+            objectName,
+            file.buffer || require('fs').readFileSync(file.path),
+            file.mimetype,
+            {
+              uploadedBy: authenticatedUserId,
+              uploadType: 'thread_image',
+              originalName: file.originalname,
+            }
+          );
+          
+          uploadedUrls.push(url);
+          
+          // Clean up temp file if using disk storage
+          if (file.path) {
+            require('fs').unlinkSync(file.path);
+          }
+        } catch (error: any) {
+          console.error(`Failed to upload file ${file.originalname}:`, error);
+          // Continue with other files even if one fails
+        }
+      }
+
+      if (uploadedUrls.length === 0) {
+        return res.status(500).json({ error: "Failed to upload any images" });
+      }
+
+      res.json({ urls: uploadedUrls });
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      res.status(500).json({ error: error.message || "Failed to upload images" });
+    }
+  });
+
   // ===== FORUM THREADS ENDPOINTS =====
   
   // Create forum thread

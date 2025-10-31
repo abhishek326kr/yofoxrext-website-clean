@@ -1,0 +1,1068 @@
+"use client";
+
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useDropzone } from "react-dropzone";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { 
+  ChevronRight, 
+  ChevronLeft, 
+  Upload, 
+  X, 
+  Check, 
+  AlertCircle, 
+  Eye, 
+  Edit, 
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  Search,
+  Hash,
+  Info,
+  Image,
+  Youtube,
+  Link as LinkIcon,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Code,
+  Coins
+} from "lucide-react";
+
+// Dynamic import for markdown editor to avoid SSR issues
+const MDEditor = dynamic(
+  () => import("@uiw/react-md-editor").then((mod) => mod.default),
+  { ssr: false }
+);
+
+// Validation schema for the form
+const threadSchema = z.object({
+  title: z.string().min(15, "Title must be at least 15 characters").max(90, "Title must be at most 90 characters"),
+  body: z.string().min(500, "Body must be at least 500 characters").max(5000, "Body must be at most 5000 characters"),
+  
+  // Media
+  imageUrls: z.array(z.string()).max(10, "Maximum 10 images allowed").default([]),
+  videoEmbedUrl: z.string().url().optional().or(z.literal("")),
+  
+  // Thread Details
+  threadType: z.enum(["question", "discussion", "review", "journal", "guide", "program_sharing"]).default("discussion"),
+  instruments: z.array(z.string()).default([]),
+  timeframes: z.array(z.string()).default([]),
+  strategies: z.array(z.string()).default([]),
+  platform: z.string().optional(),
+  broker: z.string().optional(),
+  riskNote: z.string().max(500).optional(),
+  
+  // SEO Fields
+  primaryKeyword: z.string().min(1).max(50, "Primary keyword should be 1-6 words"),
+  seoExcerpt: z.string().min(120, "SEO excerpt must be at least 120 characters").max(160, "SEO excerpt must be at most 160 characters"),
+  hashtags: z.array(z.string()).max(10, "Maximum 10 hashtags allowed").default([]),
+  slug: z.string().min(1, "Slug is required"),
+  
+  categorySlug: z.string().min(1, "Category is required")
+});
+
+type ThreadFormData = z.infer<typeof threadSchema>;
+
+// Available options for multi-select fields
+const INSTRUMENTS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "BTCUSD", "ETHUSD", "US30", "NAS100", "SPX500"];
+const TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN"];
+const STRATEGIES = ["Scalping", "Day Trading", "Swing Trading", "Position Trading", "Grid Trading", "Martingale", "Hedging", "News Trading", "Trend Following", "Mean Reversion"];
+const PLATFORMS = ["MT4", "MT5", "cTrader", "TradingView", "NinjaTrader", "Other"];
+const POPULAR_HASHTAGS = ["#forex", "#trading", "#xauusd", "#gold", "#eurusd", "#daytrading", "#technicalanalysis", "#forextrader", "#scalping", "#mt4"];
+
+const THREAD_TYPE_LABELS = {
+  question: { label: "Question", icon: "❓", description: "Ask the community for help" },
+  discussion: { label: "Discussion", icon: "💬", description: "Start a conversation" },
+  review: { label: "Review", icon: "⭐", description: "Share your experience" },
+  journal: { label: "Journal", icon: "📓", description: "Document your trades" },
+  guide: { label: "Guide", icon: "📚", description: "Teach others" },
+  program_sharing: { label: "Program Sharing", icon: "🤖", description: "Share EAs or indicators" }
+};
+
+interface ThreadCreationWizardProps {
+  categorySlug?: string;
+}
+
+export default function ThreadCreationWizard({ categorySlug = "general" }: ThreadCreationWizardProps) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [seoExpanded, setSeoExpanded] = useState(true);
+  const [hashtagInput, setHashtagInput] = useState("");
+  
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const form = useForm<ThreadFormData>({
+    resolver: zodResolver(threadSchema),
+    defaultValues: {
+      title: "",
+      body: "",
+      imageUrls: [],
+      videoEmbedUrl: "",
+      threadType: "discussion",
+      instruments: [],
+      timeframes: [],
+      strategies: [],
+      platform: "",
+      broker: "",
+      riskNote: "",
+      primaryKeyword: "",
+      seoExcerpt: "",
+      hashtags: [],
+      slug: "",
+      categorySlug
+    },
+    mode: "onChange"
+  });
+
+  const { watch, setValue, formState: { errors } } = form;
+  const watchedFields = watch();
+
+  // Generate slug from title
+  useEffect(() => {
+    if (watchedFields.title) {
+      const slug = watchedFields.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .substring(0, 60);
+      setValue("slug", slug);
+      
+      // Auto-fill primary keyword from title if empty
+      if (!watchedFields.primaryKeyword) {
+        const keyword = watchedFields.title
+          .toLowerCase()
+          .split(" ")
+          .slice(0, 6)
+          .join(" ");
+        setValue("primaryKeyword", keyword);
+      }
+    }
+  }, [watchedFields.title, watchedFields.primaryKeyword, setValue]);
+
+  // Calculate keyword density
+  const keywordDensity = useMemo(() => {
+    if (!watchedFields.primaryKeyword || !watchedFields.body) return 0;
+    const keyword = watchedFields.primaryKeyword.toLowerCase();
+    const body = watchedFields.body.toLowerCase();
+    const wordCount = body.split(/\s+/).length;
+    const keywordCount = (body.match(new RegExp(keyword, "g")) || []).length;
+    return wordCount > 0 ? (keywordCount / wordCount) * 100 : 0;
+  }, [watchedFields.primaryKeyword, watchedFields.body]);
+
+  // Image upload with dropzone
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (uploadedImages.length + acceptedFiles.length > 10) {
+      toast({
+        title: "Too many images",
+        description: "You can upload a maximum of 10 images",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingImages(true);
+    const formData = new FormData();
+    acceptedFiles.forEach(file => formData.append("files", file));
+
+    try {
+      const response = await apiRequest("/api/upload/images", {
+        method: "POST",
+        body: formData
+      });
+
+      const newImageUrls = response.urls || [];
+      const allImages = [...uploadedImages, ...newImageUrls];
+      setUploadedImages(allImages);
+      setValue("imageUrls", allImages);
+      
+      toast({
+        title: "Images uploaded",
+        description: `${acceptedFiles.length} image(s) uploaded successfully`
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload images. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImages(false);
+    }
+  }, [uploadedImages, setValue, toast]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"]
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+    disabled: uploadingImages || uploadedImages.length >= 10
+  });
+
+  // Remove uploaded image
+  const removeImage = (index: number) => {
+    const newImages = uploadedImages.filter((_, i) => i !== index);
+    setUploadedImages(newImages);
+    setValue("imageUrls", newImages);
+  };
+
+  // Add hashtag
+  const addHashtag = () => {
+    if (hashtagInput && watchedFields.hashtags.length < 10) {
+      const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`;
+      setValue("hashtags", [...watchedFields.hashtags, tag]);
+      setHashtagInput("");
+    }
+  };
+
+  // Remove hashtag
+  const removeHashtag = (index: number) => {
+    setValue("hashtags", watchedFields.hashtags.filter((_, i) => i !== index));
+  };
+
+  // Generate video embed preview
+  const getVideoEmbedPreview = (url: string) => {
+    if (!url) return null;
+    
+    // YouTube
+    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    if (youtubeMatch) {
+      return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    }
+    
+    // Vimeo
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+    
+    return null;
+  };
+
+  // Create thread mutation
+  const createThreadMutation = useMutation({
+    mutationFn: async (data: ThreadFormData) => {
+      return apiRequest("/api/threads", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
+      
+      toast({
+        title: "Thread created! 🎉",
+        description: (
+          <div className="flex items-center gap-2">
+            <Coins className="h-4 w-4 text-yellow-500" />
+            <span>You earned 10 coins for creating a thread!</span>
+          </div>
+        )
+      });
+      
+      // Redirect to the new thread
+      router.push(`/thread/${data.slug}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create thread",
+        description: error.message || "Please try again later",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const onSubmit = (data: ThreadFormData) => {
+    createThreadMutation.mutate(data);
+  };
+
+  // Step navigation
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case 1:
+        return !errors.title && !errors.body && watchedFields.title && watchedFields.body.length >= 500;
+      case 2:
+        return true; // Optional step
+      case 3:
+        return !errors.primaryKeyword && !errors.seoExcerpt && watchedFields.seoExcerpt;
+      case 4:
+        return true; // Final preview
+      default:
+        return false;
+    }
+  };
+
+  const renderSEOTips = () => {
+    const tips = [];
+    
+    // Title length
+    if (watchedFields.title.length < 15) {
+      tips.push({ type: "warning", text: "Title is too short (minimum 15 characters)" });
+    } else if (watchedFields.title.length > 90) {
+      tips.push({ type: "error", text: "Title is too long (maximum 90 characters)" });
+    } else {
+      tips.push({ type: "success", text: "Title length is perfect" });
+    }
+    
+    // Keyword density
+    if (keywordDensity < 0.5) {
+      tips.push({ type: "warning", text: "Keyword density is too low (aim for 0.5-3%)" });
+    } else if (keywordDensity > 3) {
+      tips.push({ type: "warning", text: "Keyword density is too high (aim for 0.5-3%)" });
+    } else {
+      tips.push({ type: "success", text: `Keyword density is optimal (${keywordDensity.toFixed(1)}%)` });
+    }
+    
+    // Images
+    if (uploadedImages.length === 0) {
+      tips.push({ type: "info", text: "Consider adding images to improve engagement" });
+    } else {
+      tips.push({ type: "info", text: "Remember to add alt-text to images for better SEO" });
+    }
+    
+    // Internal links
+    if (watchedFields.body && !watchedFields.body.includes("[") && !watchedFields.body.includes("](")) {
+      tips.push({ type: "info", text: "Add internal links to related content for better SEO" });
+    }
+    
+    return tips;
+  };
+
+  return (
+    <Card className="w-full max-w-5xl mx-auto">
+      <CardHeader>
+        <div className="flex items-center justify-between mb-4">
+          <CardTitle className="text-2xl">Create New Thread</CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Step {currentStep} of 4</span>
+            <Progress value={currentStep * 25} className="w-32" />
+          </div>
+        </div>
+        <CardDescription>
+          Share your knowledge, ask questions, or start a discussion with the community
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Step 1: Core Content */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Thread Title *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            placeholder="Enter a descriptive title for your thread..."
+                            className={errors.title ? "border-red-500" : ""}
+                            data-testid="input-thread-title"
+                          />
+                          <span className={`absolute right-2 top-2.5 text-xs ${
+                            field.value.length < 15 || field.value.length > 90 ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {field.value.length}/90
+                          </span>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="body"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Thread Content *</FormLabel>
+                      <FormDescription>
+                        Use markdown to format your content (minimum 500 characters)
+                      </FormDescription>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <MDEditor
+                            value={field.value}
+                            onChange={(value) => field.onChange(value || "")}
+                            preview="edit"
+                            height={400}
+                            data-color-mode="light"
+                          />
+                          <div className="flex justify-between text-xs">
+                            <span className={field.value.length < 500 ? "text-red-500" : "text-muted-foreground"}>
+                              {field.value.length}/5000 characters
+                            </span>
+                            {field.value.length >= 500 && (
+                              <span className="text-green-500 flex items-center gap-1">
+                                <Check className="h-3 w-3" /> Minimum length met
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-4">
+                  <Label>Media Upload</Label>
+                  
+                  {/* Image Upload */}
+                  <div
+                    {...getRootProps()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                      isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary"
+                    } ${uploadingImages ? "opacity-50 cursor-not-allowed" : ""}`}
+                    data-testid="dropzone-images"
+                  >
+                    <input {...getInputProps()} />
+                    <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
+                    {isDragActive ? (
+                      <p>Drop the images here...</p>
+                    ) : (
+                      <div>
+                        <p className="mb-2">Drag & drop images here, or click to select</p>
+                        <p className="text-sm text-muted-foreground">
+                          Max 10 images, 10MB each (PNG, JPG, GIF, WebP)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Image Previews */}
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {uploadedImages.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                            data-testid={`image-preview-${index}`}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="destructive"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeImage(index)}
+                            data-testid={`button-remove-image-${index}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Video Embed */}
+                  <FormField
+                    control={form.control}
+                    name="videoEmbedUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          <Youtube className="inline h-4 w-4 mr-1" />
+                          Video Embed (YouTube/Vimeo)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="url"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            data-testid="input-video-url"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        
+                        {/* Video Preview */}
+                        {field.value && getVideoEmbedPreview(field.value) && (
+                          <div className="mt-4">
+                            <iframe
+                              src={getVideoEmbedPreview(field.value) || ""}
+                              className="w-full h-64 rounded-lg"
+                              allowFullScreen
+                              data-testid="video-preview"
+                            />
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Thread Details */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="threadType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Thread Type</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="grid grid-cols-2 md:grid-cols-3 gap-4"
+                        >
+                          {Object.entries(THREAD_TYPE_LABELS).map(([value, info]) => (
+                            <Label
+                              key={value}
+                              htmlFor={value}
+                              className={`border rounded-lg p-4 cursor-pointer transition-colors hover:bg-accent ${
+                                field.value === value ? "border-primary bg-primary/5" : ""
+                              }`}
+                            >
+                              <RadioGroupItem value={value} id={value} className="sr-only" />
+                              <div className="flex items-start gap-3">
+                                <span className="text-2xl">{info.icon}</span>
+                                <div className="flex-1">
+                                  <div className="font-medium">{info.label}</div>
+                                  <div className="text-sm text-muted-foreground">{info.description}</div>
+                                </div>
+                              </div>
+                            </Label>
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="instruments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Trading Instruments</FormLabel>
+                      <FormDescription>Select the instruments relevant to your thread</FormDescription>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2">
+                          {INSTRUMENTS.map((instrument) => (
+                            <Badge
+                              key={instrument}
+                              variant={field.value.includes(instrument) ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const updated = field.value.includes(instrument)
+                                  ? field.value.filter(i => i !== instrument)
+                                  : [...field.value, instrument];
+                                field.onChange(updated);
+                              }}
+                              data-testid={`chip-instrument-${instrument}`}
+                            >
+                              {instrument}
+                            </Badge>
+                          ))}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="timeframes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Timeframes</FormLabel>
+                      <FormDescription>Select applicable timeframes</FormDescription>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2">
+                          {TIMEFRAMES.map((timeframe) => (
+                            <Badge
+                              key={timeframe}
+                              variant={field.value.includes(timeframe) ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const updated = field.value.includes(timeframe)
+                                  ? field.value.filter(t => t !== timeframe)
+                                  : [...field.value, timeframe];
+                                field.onChange(updated);
+                              }}
+                              data-testid={`chip-timeframe-${timeframe}`}
+                            >
+                              {timeframe}
+                            </Badge>
+                          ))}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="strategies"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Trading Strategies</FormLabel>
+                      <FormDescription>Select relevant trading strategies</FormDescription>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2">
+                          {STRATEGIES.map((strategy) => (
+                            <Badge
+                              key={strategy}
+                              variant={field.value.includes(strategy) ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const updated = field.value.includes(strategy)
+                                  ? field.value.filter(s => s !== strategy)
+                                  : [...field.value, strategy];
+                                field.onChange(updated);
+                              }}
+                              data-testid={`chip-strategy-${strategy}`}
+                            >
+                              {strategy}
+                            </Badge>
+                          ))}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="platform"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Trading Platform</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-platform">
+                              <SelectValue placeholder="Select a platform" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PLATFORMS.map((platform) => (
+                              <SelectItem key={platform} value={platform}>
+                                {platform}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="broker"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Broker (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Enter broker name"
+                            data-testid="input-broker"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="riskNote"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Risk Management Note (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Share any risk management advice or warnings..."
+                          className="resize-none"
+                          rows={3}
+                          data-testid="textarea-risk-note"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Add any important risk warnings or management tips
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Step 3: SEO Optimization */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <Collapsible open={seoExpanded} onOpenChange={setSeoExpanded}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      <span className="text-lg font-semibold">Advanced SEO Panel</span>
+                    </div>
+                    {seoExpanded ? <ChevronUp /> : <ChevronDown />}
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent className="space-y-6 mt-4">
+                    <FormField
+                      control={form.control}
+                      name="primaryKeyword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Primary Keyword</FormLabel>
+                          <FormDescription>1-6 words that best describe your content</FormDescription>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g., forex trading strategy"
+                              data-testid="input-primary-keyword"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="seoExcerpt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SEO Excerpt *</FormLabel>
+                          <FormDescription>
+                            This appears in search results (120-160 characters)
+                          </FormDescription>
+                          <FormControl>
+                            <div className="relative">
+                              <Textarea
+                                {...field}
+                                placeholder="Write a compelling description that will appear in search results..."
+                                className="resize-none"
+                                rows={3}
+                                data-testid="textarea-seo-excerpt"
+                              />
+                              <span className={`absolute right-2 bottom-2 text-xs ${
+                                field.value.length >= 120 && field.value.length <= 160
+                                  ? "text-green-500"
+                                  : "text-red-500"
+                              }`}>
+                                {field.value.length}/160
+                                {field.value.length >= 120 && field.value.length <= 160 && (
+                                  <Check className="inline h-3 w-3 ml-1" />
+                                )}
+                              </span>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="slug"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL Slug</FormLabel>
+                          <FormDescription>
+                            The URL path for your thread (auto-generated from title)
+                          </FormDescription>
+                          <FormControl>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">/thread/</span>
+                              <Input
+                                {...field}
+                                placeholder="your-thread-slug"
+                                data-testid="input-slug"
+                              />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div>
+                      <Label>Hashtags</Label>
+                      <div className="mt-2 space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            value={hashtagInput}
+                            onChange={(e) => setHashtagInput(e.target.value)}
+                            onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
+                            placeholder="Enter hashtag..."
+                            disabled={watchedFields.hashtags.length >= 10}
+                            data-testid="input-hashtag"
+                          />
+                          <Button
+                            type="button"
+                            onClick={addHashtag}
+                            disabled={!hashtagInput || watchedFields.hashtags.length >= 10}
+                            data-testid="button-add-hashtag"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                        
+                        {/* Current hashtags */}
+                        {watchedFields.hashtags.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {watchedFields.hashtags.map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="pr-1">
+                                {tag}
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-4 w-4 ml-1"
+                                  onClick={() => removeHashtag(index)}
+                                  data-testid={`button-remove-hashtag-${index}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Popular hashtags */}
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Popular hashtags:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {POPULAR_HASHTAGS.filter(tag => !watchedFields.hashtags.includes(tag)).map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="outline"
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  if (watchedFields.hashtags.length < 10) {
+                                    setValue("hashtags", [...watchedFields.hashtags, tag]);
+                                  }
+                                }}
+                                data-testid={`badge-popular-hashtag-${tag}`}
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live SERP Preview */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Live SERP Preview
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">
+                            yoforex.net › thread › {watchedFields.slug || "your-thread-slug"}
+                          </div>
+                          <div className="text-lg font-medium text-blue-600 hover:underline cursor-pointer">
+                            {watchedFields.title || "Your Thread Title"}
+                          </div>
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {watchedFields.seoExcerpt || "Your SEO description will appear here..."}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center gap-4">
+                          <Badge variant={
+                            keywordDensity >= 0.5 && keywordDensity <= 3 ? "default" : "destructive"
+                          }>
+                            Keyword Density: {keywordDensity.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* SEO Tips */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Info className="h-4 w-4" />
+                          Optimization Tips
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {renderSEOTips().map((tip, index) => (
+                            <Alert key={index} variant={
+                              tip.type === "error" ? "destructive" : 
+                              tip.type === "warning" ? "default" : 
+                              "default"
+                            }>
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription>{tip.text}</AlertDescription>
+                            </Alert>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+
+            {/* Step 4: Preview & Submit */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Thread Preview</CardTitle>
+                    <CardDescription>
+                      This is how your thread will appear to other users
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <article className="space-y-4">
+                      <h1 className="text-2xl font-bold">{watchedFields.title}</h1>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Badge>{THREAD_TYPE_LABELS[watchedFields.threadType].label}</Badge>
+                        {watchedFields.instruments.map(instrument => (
+                          <Badge key={instrument} variant="outline">{instrument}</Badge>
+                        ))}
+                        {watchedFields.timeframes.map(timeframe => (
+                          <Badge key={timeframe} variant="outline">{timeframe}</Badge>
+                        ))}
+                      </div>
+                      
+                      {uploadedImages.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {uploadedImages.map((url, index) => (
+                            <img
+                              key={index}
+                              src={url}
+                              alt={`Image ${index + 1}`}
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {watchedFields.videoEmbedUrl && getVideoEmbedPreview(watchedFields.videoEmbedUrl) && (
+                        <iframe
+                          src={getVideoEmbedPreview(watchedFields.videoEmbedUrl) || ""}
+                          className="w-full h-96 rounded-lg"
+                          allowFullScreen
+                        />
+                      )}
+                      
+                      <div className="prose prose-sm max-w-none">
+                        <MDEditor.Markdown source={watchedFields.body} />
+                      </div>
+                      
+                      {watchedFields.riskNote && (
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{watchedFields.riskNote}</AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {watchedFields.hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {watchedFields.hashtags.map((tag, index) => (
+                            <Badge key={index} variant="secondary">{tag}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  </CardContent>
+                </Card>
+                
+                <div className="flex justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCurrentStep(1)}
+                    data-testid="button-edit-thread"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Thread
+                  </Button>
+                  
+                  <Button
+                    type="submit"
+                    disabled={!form.formState.isValid || createThreadMutation.isPending}
+                    data-testid="button-post-thread"
+                  >
+                    {createThreadMutation.isPending ? (
+                      <>Creating...</>
+                    ) : (
+                      <>
+                        <Coins className="h-4 w-4 mr-2" />
+                        Post Thread (+10 coins)
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            {currentStep < 4 && (
+              <div className="flex justify-between pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                  disabled={currentStep === 1}
+                  data-testid="button-previous-step"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Previous
+                </Button>
+                
+                <Button
+                  type="button"
+                  onClick={() => setCurrentStep(Math.min(4, currentStep + 1))}
+                  disabled={!canProceedToNextStep()}
+                  data-testid="button-next-step"
+                >
+                  {currentStep === 3 ? "Preview" : "Next"}
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            )}
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
