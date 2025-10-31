@@ -13,38 +13,46 @@ YoForex is a comprehensive trading community platform designed for forex traders
 
 ### Task Execution Workflow (CRITICAL - ALWAYS FOLLOW)
 
+**When starting ANY new work session:**
+
+1. **Error Dashboard Check (MANDATORY FIRST STEP)**
+   - Check error monitoring dashboard for any captured errors
+   - Fix all critical and high-severity errors before proceeding
+   - Document fixes in the task list
+   - This ensures system stability before adding new features
+
 **When receiving a new task:**
 
-1. **Deep Analysis Phase**
+2. **Deep Analysis Phase**
    - Think thoroughly about the task before starting
    - Consider all edge cases and implications
    - Identify potential challenges upfront
 
-2. **Planning Phase (MANDATORY)**
+3. **Planning Phase (MANDATORY)**
    - Call `architect` tool with `responsibility: "plan"` to get strategic guidance
    - Break down complex tasks into clear, logical subtasks
    - Create comprehensive plan with dependencies identified
    - Document the approach before implementation
 
-3. **Delegation Phase**
+4. **Delegation Phase**
    - Use `start_subagent` for complex, multi-step subtasks
    - Provide clear context and success criteria to subagents
    - Ensure subagents have all necessary file paths and context
 
-4. **Autonomous Execution**
+5. **Autonomous Execution**
    - **DO NOT ask user for confirmation mid-task**
    - Work through entire task list to completion
    - Handle errors and obstacles independently
    - Only return to user when task is 100% complete or genuinely blocked
 
-5. **Documentation Phase (MANDATORY)**
+6. **Documentation Phase (MANDATORY)**
    - Update replit.md regularly during work
    - Document what was changed and why
    - Keep documentation clean, organized, and current
    - Remove outdated information
    - Add completion dates to major changes
 
-6. **Review Phase (BEFORE COMPLETION)**
+7. **Review Phase (BEFORE COMPLETION)**
    - Call `architect` with `responsibility: "evaluate_task"` to review all work
    - Fix any issues architect identifies
    - Only mark tasks complete after architect approval
@@ -57,6 +65,13 @@ YoForex is a comprehensive trading community platform designed for forex traders
 - **Section Organization:** Recent Changes should list newest first with dates
 
 ## Recent Changes
+
+### Error System Fixes & Workflow Updates (November 1, 2025)
+
+- **Fixed SSR Compatibility:** Made ErrorTracker safe for server-side rendering by adding window checks
+- **Fixed Bot Engine:** Added user entry validation before bot follow operations to prevent foreign key violations
+- **Updated Workflow:** Added mandatory error dashboard check as first step of any new work session
+- **Test Page Fix:** Fixed /test-errors page to properly handle client-side ErrorTracker initialization
 
 ### Error Tracking & Monitoring System (October 31, 2025)
 
