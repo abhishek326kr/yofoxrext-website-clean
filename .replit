@@ -6,9 +6,9 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 channel = "stable-25_05"
 
 [deployment]
-deploymentTarget = "vm"
+deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["bash", "start-production.sh"]
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 3000
@@ -23,10 +23,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 33485
-externalPort = 4200
-
-[[ports]]
 localPort = 41287
 externalPort = 3002
 
@@ -37,6 +33,10 @@ externalPort = 3000
 [[ports]]
 localPort = 43663
 externalPort = 3001
+
+[[ports]]
+localPort = 44187
+externalPort = 4200
 
 [env]
 PORT = "5000"
@@ -51,15 +51,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Production Mode"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "Production Mode"
+name = "Start application"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash start-production.sh"
+args = "bash start-hybrid.sh"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
