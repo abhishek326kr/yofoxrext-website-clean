@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     description: 'Join 10,000+ forex traders. Download free EAs, share strategies, and earn coins.',
     images: [
       {
-        url: '/og-image.png',
+        url: '/og-image.svg',
         width: 1200,
         height: 630,
         alt: 'YoForex',
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'YoForex - Expert Advisor Forum & EA Marketplace',
     description: 'Join 10,000+ forex traders. Download free EAs, share strategies, and earn coins.',
-    images: ['/og-image.png'],
+    images: ['/og-image.svg'],
   },
   robots: {
     index: true,
