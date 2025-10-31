@@ -205,15 +205,13 @@ export default function Header() {
         <div className="flex items-center gap-2">
           {isAuthenticated && (
             <>
-              {/* Show "New Thread" button only on category pages */}
-              {showNewThread && (
-                <Link href="/discussions/new">
-                  <Button size="sm" className="hidden sm:flex" data-testid="button-new-thread">
-                    <Plus className="h-4 w-4 mr-1" />
-                    New Thread
-                  </Button>
-                </Link>
-              )}
+              {/* Show "Create Thread" button for authenticated users */}
+              <Link href="/threads/create">
+                <Button size="sm" className="hidden sm:flex bg-primary hover:bg-primary/90" data-testid="button-create-thread">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Create Thread
+                </Button>
+              </Link>
               
               <div className="hidden md:flex items-center gap-1">
                 <Link href="/recharge">
@@ -354,6 +352,19 @@ export default function Header() {
 
                 {/* Navigation Links */}
                 <nav className="flex flex-col gap-2">
+                  {/* Create Thread Button for Mobile */}
+                  {isAuthenticated && (
+                    <Link href="/threads/create" onClick={() => setMobileMenuOpen(false)}>
+                      <Button 
+                        className="w-full bg-primary hover:bg-primary/90 mb-2"
+                        data-testid="mobile-button-create-thread"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Thread
+                      </Button>
+                    </Link>
+                  )}
+                  
                   <Link href="/categories" onClick={() => setMobileMenuOpen(false)}>
                     <Button 
                       variant={pathname === "/categories" ? "default" : "ghost"} 

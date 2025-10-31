@@ -37,45 +37,58 @@ app.use(express.urlencoded({ extended: false }));
 // CORS must come AFTER body parsing but can be before or after sessions
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (e.g., mobile apps, Postman)
+    // Allow requests with no origin (e.g., mobile apps, Postman, same-origin)
     if (!origin) return callback(null, true);
     
-    // In development, allow localhost on different ports
+    // In development, be more permissive with origins
     if (process.env.NODE_ENV !== "production") {
-      const allowedOrigins = [
-        "http://localhost:3000",
-        "http://localhost:5000", 
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5000",
-        /^https?:\/\/[^.]+\.replit\.dev$/,  // Allow Replit domains
-        /^https?:\/\/[^.]+\.repl\.co$/,      // Allow Replit domains
+      const allowedPatterns = [
+        /^https?:\/\/localhost:\d+$/,        // Any localhost port
+        /^https?:\/\/127\.0\.0\.1:\d+$/,     // Any 127.0.0.1 port
+        /^https?:\/\/0\.0\.0\.0:\d+$/,       // Any 0.0.0.0 port
+        /^https?:\/\/[^.]+\.replit\.dev$/,   // Any Replit dev domain
+        /^https?:\/\/[^.]+\.repl\.co$/,      // Any Replit co domain
+        /^https?:\/\/[^.]+\.replit\.app$/,   // Any Replit app domain
+        /^https?:\/\/[^.]+\.repl\.run$/,     // Any Replit run domain
       ];
       
-      const isAllowed = allowedOrigins.some(allowed => {
-        if (allowed instanceof RegExp) {
-          return allowed.test(origin);
-        }
-        return allowed === origin;
-      });
+      // Check if origin matches any pattern
+      const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
       
       if (isAllowed) {
         return callback(null, true);
       }
+      
+      // Log for debugging CORS issues
+      console.log('CORS: Origin not allowed in development:', origin);
     }
     
-    // In production, use environment variable or default to the same origin
-    const allowedProductionOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+    // In production, use environment variable or allow common domains
+    const allowedProductionOrigins = [
+      'https://yoforex.net',
+      'https://www.yoforex.net',
+      ...(process.env.ALLOWED_ORIGINS?.split(',') || [])
+    ];
+    
     if (allowedProductionOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    // Default: deny
+    // For production Replit domains
+    if (/^https?:\/\/[^.]+\.replit\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+    
+    // Log and deny
+    console.log('CORS: Origin not allowed:', origin);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true, // Allow cookies to be sent
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
   exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400, // Cache preflight requests for 24 hours
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
 
 app.use(cors(corsOptions));
