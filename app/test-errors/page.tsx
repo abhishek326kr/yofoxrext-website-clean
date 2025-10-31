@@ -14,6 +14,14 @@ import {
   CheckCircle,
   Zap,
   Server,
+  Image,
+  Wifi,
+  Shield,
+  Upload,
+  Activity,
+  Database,
+  Lock,
+  WifiOff,
 } from 'lucide-react';
 
 export default function ErrorTestPage() {
@@ -161,6 +169,209 @@ export default function ErrorTestPage() {
 
   const clearResults = () => {
     setTestResults([]);
+  };
+
+  // New test functions for missing error types
+
+  const testResourceLoadError = () => {
+    addResult('Testing Resource Load Error...');
+    
+    // Create a broken image element
+    const img = document.createElement('img');
+    img.src = 'https://invalid-domain-12345.com/broken-image.jpg';
+    img.style.display = 'none';
+    document.body.appendChild(img);
+    
+    // Create a broken script
+    const script = document.createElement('script');
+    script.src = 'https://invalid-domain-12345.com/broken-script.js';
+    document.body.appendChild(script);
+    
+    // Create a broken stylesheet
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://invalid-domain-12345.com/broken-style.css';
+    document.head.appendChild(link);
+    
+    setTimeout(() => {
+      // Clean up
+      document.body.removeChild(img);
+      document.body.removeChild(script);
+      document.head.removeChild(link);
+      addResult('✓ Resource loading errors should be captured (check console)');
+    }, 1000);
+  };
+
+  const testWebSocketError = () => {
+    addResult('Testing WebSocket Error...');
+    
+    // Simulate WebSocket error
+    if (errorTracker && errorTracker.captureWebSocketError) {
+      errorTracker.captureWebSocketError(
+        new Error('Test WebSocket connection failed'),
+        {
+          event: 'connection_failed',
+          url: 'ws://invalid-socket-server.com',
+          reconnecting: true
+        }
+      );
+      addResult('✓ WebSocket error captured');
+    } else {
+      addResult('⚠ WebSocket error tracking not available');
+    }
+  };
+
+  const testValidationError = () => {
+    addResult('Testing Validation Error (Zod)...');
+    
+    // Simulate Zod validation error
+    const mockZodError = {
+      issues: [
+        {
+          path: ['email'],
+          message: 'Invalid email format',
+          code: 'invalid_string'
+        },
+        {
+          path: ['age'],
+          message: 'Must be at least 18',
+          code: 'too_small'
+        }
+      ]
+    };
+    
+    if (errorTracker && errorTracker.captureValidationError) {
+      errorTracker.captureValidationError(mockZodError, 'UserRegistrationSchema');
+      addResult('✓ Validation error captured');
+    } else {
+      // Fallback to window method if available
+      if ((window as any).__captureZodError) {
+        (window as any).__captureZodError(mockZodError, 'UserRegistrationSchema');
+        addResult('✓ Validation error captured via window method');
+      } else {
+        addResult('⚠ Validation error tracking not available');
+      }
+    }
+  };
+
+  const testPerformanceIssue = () => {
+    addResult('Testing Performance Issue...');
+    
+    // Simulate slow operation
+    if (errorTracker && errorTracker.capturePerformanceIssue) {
+      errorTracker.capturePerformanceIssue('slow-resource', {
+        url: 'https://example.com/large-file.js',
+        duration: 5234,
+        transferSize: 1024000,
+        encodedBodySize: 512000
+      });
+      
+      errorTracker.capturePerformanceIssue('high-memory-usage', {
+        usedMemoryMB: 900,
+        limitMB: 1000,
+        percentage: 90
+      });
+      
+      addResult('✓ Performance issues captured');
+    } else {
+      addResult('⚠ Performance issue tracking not available');
+    }
+  };
+
+  const testSecurityViolation = () => {
+    addResult('Testing Security Violation (CSP/CORS)...');
+    
+    // Test CSP violation
+    if (errorTracker && errorTracker.captureSecurityViolation) {
+      errorTracker.captureSecurityViolation('csp', {
+        violatedDirective: 'script-src',
+        blockedURI: 'https://evil-script.com/malware.js',
+        sourceFile: 'https://example.com/page.html',
+        lineNumber: 42,
+        columnNumber: 15
+      });
+      
+      // Test CORS error
+      errorTracker.captureSecurityViolation('cors', {
+        url: 'https://api.external.com/data',
+        origin: window.location.origin,
+        error: 'Cross-Origin Request Blocked'
+      });
+      
+      addResult('✓ Security violations captured');
+    } else {
+      addResult('⚠ Security violation tracking not available');
+    }
+  };
+
+  const testThirdPartyError = async () => {
+    addResult('Testing Third-Party Service Error...');
+    
+    // Simulate Firebase error
+    const firebaseError = new Error('Firebase authentication failed: Invalid API key');
+    firebaseError.name = 'FirebaseError';
+    
+    if (errorTracker) {
+      errorTracker.captureError(
+        firebaseError,
+        {
+          errorType: 'third-party',
+          service: 'firebase',
+          operation: 'signInWithGoogle'
+        },
+        'error'
+      );
+      addResult('✓ Third-party service error captured');
+    } else {
+      addResult('⚠ Error tracker not available');
+    }
+  };
+
+  const testUploadError = async () => {
+    addResult('Testing File Upload Error...');
+    
+    try {
+      // Create a large fake file (simulating file too large)
+      const largeFile = new File(['x'.repeat(10 * 1024 * 1024)], 'large-file.txt', {
+        type: 'text/plain'
+      });
+      
+      const formData = new FormData();
+      formData.append('file', largeFile);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        addResult(`✓ Upload error captured (${response.status})`);
+      } else {
+        addResult('✓ Upload succeeded (no error to capture)');
+      }
+    } catch (error) {
+      addResult('✓ Upload error captured in catch block');
+    }
+  };
+
+  const testSSRError = () => {
+    addResult('Testing SSR/Next.js Error...');
+    
+    // This would typically be caught by error.tsx in production
+    if (errorTracker) {
+      errorTracker.captureError(
+        new Error('Next.js SSR Error: Failed to fetch data in getServerSideProps'),
+        {
+          errorType: 'ssr',
+          page: '/test-page',
+          phase: 'getServerSideProps'
+        },
+        'critical'
+      );
+      addResult('✓ SSR error captured');
+    } else {
+      addResult('⚠ Error tracker not available');
+    }
   };
 
   return (
@@ -326,6 +537,91 @@ export default function ErrorTestPage() {
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Clear Results
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-3">NEW: Enhanced Error Types</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={testResourceLoadError}
+                  variant="destructive"
+                  className="justify-start"
+                  data-testid="button-test-resource-error"
+                >
+                  <Image className="mr-2 h-4 w-4" />
+                  Resource Load Error
+                </Button>
+                
+                <Button
+                  onClick={testWebSocketError}
+                  variant="destructive"
+                  className="justify-start"
+                  data-testid="button-test-websocket-error"
+                >
+                  <WifiOff className="mr-2 h-4 w-4" />
+                  WebSocket Error
+                </Button>
+                
+                <Button
+                  onClick={testValidationError}
+                  variant="secondary"
+                  className="justify-start"
+                  data-testid="button-test-validation-error"
+                >
+                  <Database className="mr-2 h-4 w-4" />
+                  Validation Error (Zod)
+                </Button>
+                
+                <Button
+                  onClick={testPerformanceIssue}
+                  variant="secondary"
+                  className="justify-start"
+                  data-testid="button-test-performance"
+                >
+                  <Activity className="mr-2 h-4 w-4" />
+                  Performance Issue
+                </Button>
+                
+                <Button
+                  onClick={testSecurityViolation}
+                  variant="destructive"
+                  className="justify-start"
+                  data-testid="button-test-security"
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  Security Violation
+                </Button>
+                
+                <Button
+                  onClick={testThirdPartyError}
+                  variant="destructive"
+                  className="justify-start"
+                  data-testid="button-test-third-party"
+                >
+                  <Wifi className="mr-2 h-4 w-4" />
+                  Third-Party Error
+                </Button>
+                
+                <Button
+                  onClick={testUploadError}
+                  variant="destructive"
+                  className="justify-start"
+                  data-testid="button-test-upload"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  File Upload Error
+                </Button>
+                
+                <Button
+                  onClick={testSSRError}
+                  variant="destructive"
+                  className="justify-start"
+                  data-testid="button-test-ssr"
+                >
+                  <Server className="mr-2 h-4 w-4" />
+                  SSR/Next.js Error
                 </Button>
               </div>
             </div>

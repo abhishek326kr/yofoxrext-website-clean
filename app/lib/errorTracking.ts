@@ -7,6 +7,10 @@ export interface ErrorContext {
   component?: string;
   props?: any;
   userDescription?: string;
+  errorType?: 'resource' | 'websocket' | 'validation' | 'ssr' | 'third-party' | 'performance' | 'cors' | 'csp' | 'upload';
+  resourceUrl?: string;
+  performanceMetrics?: any;
+  validationDetails?: any;
 }
 
 export interface BrowserInfo {
@@ -55,6 +59,10 @@ export class ErrorTracker {
   private sessionId: string;
   private enabled = true;
   private interceptors: Set<() => void> = new Set();
+  private performanceObserver: PerformanceObserver | null = null;
+  private resourceErrorHandler: ((e: Event) => void) | null = null;
+  private securityPolicyHandler: ((e: SecurityPolicyViolationEvent) => void) | null = null;
+  private socketErrorHandlers: Map<any, () => void> = new Map();
 
   private constructor() {
     // Check if we're in a browser environment
@@ -63,6 +71,10 @@ export class ErrorTracker {
       this.loadUnsentErrors();
       this.setupErrorHandlers();
       this.setupConsoleInterception();
+      this.setupResourceErrorHandlers();
+      this.setupPerformanceObserver();
+      this.setupSecurityHandlers();
+      this.setupZodErrorHandling();
     } else {
       // Server-side: create minimal instance
       this.sessionId = 'ssr-' + Date.now();
@@ -493,6 +505,27 @@ export class ErrorTracker {
     this.interceptors.forEach(cleanup => cleanup());
     this.interceptors.clear();
     
+    // Clean up performance observer
+    if (this.performanceObserver) {
+      this.performanceObserver.disconnect();
+      this.performanceObserver = null;
+    }
+    
+    // Clean up resource error handler
+    if (this.resourceErrorHandler) {
+      window.removeEventListener('error', this.resourceErrorHandler, true);
+      this.resourceErrorHandler = null;
+    }
+    
+    // Clean up security policy handler
+    if (this.securityPolicyHandler) {
+      window.removeEventListener('securitypolicyviolation', this.securityPolicyHandler);
+      this.securityPolicyHandler = null;
+    }
+    
+    // Clear socket error handlers
+    this.socketErrorHandlers.clear();
+    
     // Clear timers
     if (this.batchTimer) {
       clearTimeout(this.batchTimer);
@@ -546,6 +579,279 @@ export class ErrorTracker {
         throw error;
       }
     };
+  }
+
+  // New method: Setup Resource Error Handlers
+  private setupResourceErrorHandlers(): void {
+    this.resourceErrorHandler = (event: Event) => {
+      const target = event.target as HTMLElement;
+      if (target instanceof HTMLImageElement || 
+          target instanceof HTMLScriptElement || 
+          target instanceof HTMLLinkElement) {
+        
+        const resourceUrl = 
+          (target as HTMLImageElement).src || 
+          (target as HTMLScriptElement).src || 
+          (target as HTMLLinkElement).href;
+        
+        const resourceType = target.tagName.toLowerCase();
+        
+        this.captureResourceError(resourceUrl, resourceType, {
+          element: target.tagName,
+          id: target.id,
+          className: target.className,
+        });
+      }
+    };
+    
+    // Capture resource loading errors (images, scripts, stylesheets)
+    window.addEventListener('error', this.resourceErrorHandler, true);
+  }
+
+  // New method: Setup Performance Observer
+  private setupPerformanceObserver(): void {
+    if (!('PerformanceObserver' in window)) return;
+    
+    try {
+      // Observe long tasks (>50ms)
+      this.performanceObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.entryType === 'longtask' && entry.duration > 100) {
+            this.capturePerformanceIssue('long-task', {
+              duration: entry.duration,
+              name: entry.name,
+              startTime: entry.startTime,
+            });
+          }
+          
+          // Resource timing
+          if (entry.entryType === 'resource') {
+            const resourceEntry = entry as PerformanceResourceTiming;
+            if (resourceEntry.duration > 3000) { // Resources taking > 3 seconds
+              this.capturePerformanceIssue('slow-resource', {
+                url: resourceEntry.name,
+                duration: resourceEntry.duration,
+                transferSize: resourceEntry.transferSize,
+                encodedBodySize: resourceEntry.encodedBodySize,
+              });
+            }
+          }
+          
+          // Navigation timing for slow page loads
+          if (entry.entryType === 'navigation') {
+            const navEntry = entry as PerformanceNavigationTiming;
+            if (navEntry.loadEventEnd - navEntry.fetchStart > 5000) { // Page load > 5 seconds
+              this.capturePerformanceIssue('slow-page-load', {
+                loadTime: navEntry.loadEventEnd - navEntry.fetchStart,
+                domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.fetchStart,
+                domInteractive: navEntry.domInteractive - navEntry.fetchStart,
+              });
+            }
+          }
+        }
+      });
+      
+      // Observe different performance metrics
+      if (this.performanceObserver.observe) {
+        // Observe long tasks
+        try { this.performanceObserver.observe({ entryTypes: ['longtask'] }); } catch (e) {}
+        // Observe resource timing
+        try { this.performanceObserver.observe({ entryTypes: ['resource'] }); } catch (e) {}
+        // Observe navigation timing
+        try { this.performanceObserver.observe({ entryTypes: ['navigation'] }); } catch (e) {}
+      }
+      
+      // Monitor memory usage if available
+      if ((performance as any).memory) {
+        setInterval(() => {
+          const memory = (performance as any).memory;
+          const usedMemoryMB = memory.usedJSHeapSize / (1024 * 1024);
+          const limitMB = memory.jsHeapSizeLimit / (1024 * 1024);
+          
+          // Alert if using > 90% of available memory
+          if (usedMemoryMB / limitMB > 0.9) {
+            this.capturePerformanceIssue('high-memory-usage', {
+              usedMemoryMB: Math.round(usedMemoryMB),
+              limitMB: Math.round(limitMB),
+              percentage: Math.round((usedMemoryMB / limitMB) * 100),
+            });
+          }
+        }, 30000); // Check every 30 seconds
+      }
+    } catch (error) {
+      console.warn('Failed to setup performance observer:', error);
+    }
+  }
+
+  // New method: Setup Security Handlers (CORS & CSP)
+  private setupSecurityHandlers(): void {
+    // Content Security Policy violations
+    this.securityPolicyHandler = (event: SecurityPolicyViolationEvent) => {
+      this.captureSecurityViolation('csp', {
+        violatedDirective: event.violatedDirective,
+        originalPolicy: event.originalPolicy,
+        blockedURI: event.blockedURI,
+        sourceFile: event.sourceFile,
+        lineNumber: event.lineNumber,
+        columnNumber: event.columnNumber,
+      });
+    };
+    
+    window.addEventListener('securitypolicyviolation', this.securityPolicyHandler);
+  }
+
+  // New method: Setup Zod Error Handling
+  private setupZodErrorHandling(): void {
+    // This will be called by the application when using Zod
+    (window as any).__captureZodError = (error: any, schema: string) => {
+      this.captureValidationError(error, schema);
+    };
+  }
+
+  // New method: Capture Resource Error
+  public captureResourceError(url: string, resourceType: string, details?: any): void {
+    const message = `Failed to load ${resourceType}: ${url}`;
+    
+    this.captureError(
+      new Error(message),
+      {
+        component: 'resource-loader',
+        errorType: 'resource',
+        resourceUrl: url,
+        resourceType,
+        ...details,
+      },
+      'error'
+    );
+  }
+
+  // New method: Capture WebSocket Error
+  public captureWebSocketError(error: any, details?: any): void {
+    const message = error?.message || 'WebSocket connection error';
+    
+    this.captureError(
+      error instanceof Error ? error : new Error(message),
+      {
+        component: 'websocket',
+        errorType: 'websocket',
+        ...details,
+      },
+      details?.reconnecting ? 'warning' : 'error'
+    );
+  }
+
+  // New method: Capture Validation Error
+  public captureValidationError(error: any, schema: string, details?: any): void {
+    let message = 'Validation error';
+    let validationDetails: any = {};
+    
+    // Handle Zod errors
+    if (error?.issues) {
+      const issues = error.issues.map((issue: any) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+        code: issue.code,
+      }));
+      message = `Validation failed in ${schema}: ${issues.map((i: any) => i.message).join(', ')}`;
+      validationDetails = { issues, schema };
+    } else if (error?.message) {
+      message = error.message;
+      validationDetails = { schema, error: error.toString() };
+    }
+    
+    this.captureError(
+      error instanceof Error ? error : new Error(message),
+      {
+        component: 'validation',
+        errorType: 'validation',
+        validationDetails,
+        ...details,
+      },
+      'warning'
+    );
+  }
+
+  // New method: Capture Performance Issue
+  public capturePerformanceIssue(issueType: string, metrics: any): void {
+    const message = `Performance issue detected: ${issueType}`;
+    
+    this.captureError(
+      new Error(message),
+      {
+        component: 'performance',
+        errorType: 'performance',
+        issueType,
+        performanceMetrics: metrics,
+      },
+      'warning'
+    );
+  }
+
+  // New method: Capture Security Violation
+  public captureSecurityViolation(violationType: string, details: any): void {
+    const message = violationType === 'csp' 
+      ? `CSP violation: ${details.violatedDirective}`
+      : `Security violation: ${violationType}`;
+    
+    this.captureError(
+      new Error(message),
+      {
+        component: 'security',
+        errorType: violationType === 'csp' ? 'csp' : 'cors',
+        violationType,
+        ...details,
+      },
+      'error'
+    );
+  }
+
+  // New method: Hook into Socket.io errors
+  public hookSocketErrors(socket: any): void {
+    if (!socket || this.socketErrorHandlers.has(socket)) return;
+    
+    const errorHandler = () => {
+      // Socket.io error events
+      socket.on('connect_error', (error: any) => {
+        this.captureWebSocketError(error, {
+          event: 'connect_error',
+          socketId: socket.id,
+          reconnecting: socket.reconnecting,
+        });
+      });
+      
+      socket.on('connect_timeout', () => {
+        this.captureWebSocketError(new Error('Socket connection timeout'), {
+          event: 'connect_timeout',
+          socketId: socket.id,
+        });
+      });
+      
+      socket.on('error', (error: any) => {
+        this.captureWebSocketError(error, {
+          event: 'error',
+          socketId: socket.id,
+        });
+      });
+      
+      socket.on('reconnect_error', (error: any) => {
+        this.captureWebSocketError(error, {
+          event: 'reconnect_error',
+          socketId: socket.id,
+          reconnecting: true,
+        });
+      });
+      
+      socket.on('reconnect_failed', () => {
+        this.captureWebSocketError(new Error('Socket reconnection failed'), {
+          event: 'reconnect_failed',
+          socketId: socket.id,
+          severity: 'critical',
+        });
+      });
+    };
+    
+    errorHandler();
+    this.socketErrorHandlers.set(socket, errorHandler);
   }
 }
 

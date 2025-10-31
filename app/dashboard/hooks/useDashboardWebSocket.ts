@@ -70,7 +70,31 @@ export function useDashboardWebSocket(userId?: string) {
 
     socket.on('error', (error) => {
       console.error('[Dashboard WS] WebSocket error:', error);
+      
+      // Hook into error tracking
+      if (typeof window !== 'undefined') {
+        import('@/lib/errorTracking').then(({ default: ErrorTracker }) => {
+          const tracker = ErrorTracker.getInstance();
+          if (tracker) {
+            tracker.captureWebSocketError(error, {
+              event: 'socket_error',
+              socketPath: '/ws/dashboard',
+              userId,
+            });
+          }
+        });
+      }
     });
+    
+    // Hook all socket errors to error tracking
+    if (typeof window !== 'undefined') {
+      import('@/lib/errorTracking').then(({ default: ErrorTracker }) => {
+        const tracker = ErrorTracker.getInstance();
+        if (tracker) {
+          tracker.hookSocketErrors(socket);
+        }
+      });
+    }
 
     return () => {
       socket.disconnect();
