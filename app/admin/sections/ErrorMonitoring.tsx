@@ -383,14 +383,529 @@ export default function ErrorMonitoring() {
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="errors" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="errors" data-testid="tab-errors">Error Groups</TabsTrigger>
+      {/* Tabs with Clear Categorization */}
+      <Tabs defaultValue="to-be-solved" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="to-be-solved" data-testid="tab-to-be-solved" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            To Be Solved
+            {stats?.criticalErrors > 0 && (
+              <Badge variant="destructive" className="ml-1">{stats.criticalErrors}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="unsolved" data-testid="tab-unsolved" className="flex items-center gap-2">
+            <XCircle className="h-4 w-4" />
+            Unsolved
+            {stats?.activeErrors > 0 && (
+              <Badge variant="secondary" className="ml-1">{stats.activeErrors}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="solved" data-testid="tab-solved" className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Solved
+            {stats?.resolvedErrors > 0 && (
+              <Badge variant="outline" className="ml-1">{stats.resolvedErrors}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="all" data-testid="tab-all">All Errors</TabsTrigger>
           <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="errors" className="space-y-4">
+        {/* To Be Solved Tab - Critical/High Priority Errors */}
+        <TabsContent value="to-be-solved" className="space-y-4">
+          <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+            <CardHeader>
+              <CardTitle className="text-red-600 dark:text-red-400">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Errors Requiring Immediate Attention
+                </div>
+              </CardTitle>
+              <CardDescription>
+                Top 10 most urgent errors ranked by priority score (severity + occurrence + recency)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingGroups ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">Priority</TableHead>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Error</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Occurrences</TableHead>
+                      <TableHead>Last Seen</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      // Calculate priority scores for all active errors
+                      const calculatePriorityScore = (error: ErrorGroup): number => {
+                        let score = 0;
+                        
+                        // Severity scoring (0-100)
+                        if (error.severity === 'critical') score += 100;
+                        else if (error.severity === 'error') score += 50;
+                        else if (error.severity === 'warning') score += 25;
+                        else score += 10;
+                        
+                        // Occurrence count scoring (0-50, capped at 50+ occurrences)
+                        score += Math.min(error.occurrenceCount, 50);
+                        
+                        // Recency scoring (0-20, errors in last hour get max points)
+                        const hoursSinceLastSeen = (Date.now() - new Date(error.lastSeen).getTime()) / (1000 * 60 * 60);
+                        if (hoursSinceLastSeen < 1) score += 20;
+                        else if (hoursSinceLastSeen < 6) score += 15;
+                        else if (hoursSinceLastSeen < 24) score += 10;
+                        else score += 5;
+                        
+                        return score;
+                      };
+                      
+                      // Get all active errors, calculate priorities, and take top 10
+                      const activeErrors = errorGroups?.groups
+                        ?.filter((g: ErrorGroup) => g.status === 'active')
+                        ?.map((error: ErrorGroup) => ({
+                          ...error,
+                          priorityScore: calculatePriorityScore(error)
+                        }))
+                        ?.sort((a, b) => b.priorityScore - a.priorityScore)
+                        ?.slice(0, 10); // Only show top 10 most urgent errors
+                      
+                      return activeErrors?.map((group, index: number) => (
+                        <>
+                          <TableRow key={group.id} data-testid={`row-priority-error-${group.id}`} className="bg-white dark:bg-gray-950">
+                            <TableCell>
+                              <Badge variant={index < 3 ? 'destructive' : 'secondary'}>
+                                #{index + 1}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleGroupExpand(group.id)}
+                                data-testid={`button-expand-${group.id}`}
+                              >
+                                {expandedGroups.has(group.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div className="space-y-1">
+                                <p className="line-clamp-2" data-testid={`text-error-message-${group.id}`}>
+                                  {group.message}
+                                </p>
+                                {group.component && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Component: {group.component}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getSeverityColor(group.severity)}>
+                                <span className="flex items-center gap-1">
+                                  {getSeverityIcon(group.severity)}
+                                  {group.severity}
+                                </span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span data-testid={`text-occurrences-${group.id}`}>
+                                {group.occurrenceCount}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <p>{formatDistanceToNow(new Date(group.lastSeen), { addSuffix: true })}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(group.lastSeen), 'PPp')}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setStatusModal({ groupId: group.id, currentStatus: group.status })}
+                                data-testid={`button-change-status-${group.id}`}
+                              >
+                                Change Status
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          {expandedGroups.has(group.id) && groupDetails?.events && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="bg-muted/50">
+                                <div className="space-y-4 p-4">
+                                  <div>
+                                    <h4 className="font-semibold mb-2">Recent Occurrences</h4>
+                                    <ScrollArea className="h-64">
+                                      <div className="space-y-2">
+                                        {groupDetails.events.map((event: ErrorEvent) => (
+                                          <Card key={event.id}>
+                                            <CardContent className="p-3 text-sm">
+                                              <div className="grid gap-2">
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Time:</span>
+                                                  <span>{format(new Date(event.createdAt), 'PPp')}</span>
+                                                </div>
+                                                {event.userId && (
+                                                  <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">User ID:</span>
+                                                    <span>{event.userId}</span>
+                                                  </div>
+                                                )}
+                                                {event.stackTrace && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Stack Trace:</span>
+                                                    <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-x-auto">
+                                                      {event.stackTrace}
+                                                    </pre>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </CardContent>
+                                          </Card>
+                                        ))}
+                                      </div>
+                                    </ScrollArea>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      ));
+                    })()}
+                    {(!errorGroups?.groups || errorGroups.groups.filter((g: ErrorGroup) => g.status === 'active').length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                          <p className="font-semibold">No active errors!</p>
+                          <p className="text-sm">All errors have been resolved.</p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Unsolved Errors Tab - All Active Errors */}
+        <TabsContent value="unsolved" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Unsolved Errors</CardTitle>
+              <CardDescription>
+                All active errors that haven't been resolved yet
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingGroups ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Error</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Occurrences</TableHead>
+                      <TableHead>Last Seen</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {errorGroups?.groups
+                      ?.filter((g: ErrorGroup) => g.status === 'active')
+                      ?.map((group: ErrorGroup) => (
+                        <>
+                          <TableRow key={group.id} data-testid={`row-unsolved-error-${group.id}`}>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleGroupExpand(group.id)}
+                                data-testid={`button-expand-${group.id}`}
+                              >
+                                {expandedGroups.has(group.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div className="space-y-1">
+                                <p className="line-clamp-2" data-testid={`text-error-message-${group.id}`}>
+                                  {group.message}
+                                </p>
+                                {group.component && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Component: {group.component}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getSeverityColor(group.severity)}>
+                                <span className="flex items-center gap-1">
+                                  {getSeverityIcon(group.severity)}
+                                  {group.severity}
+                                </span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span data-testid={`text-occurrences-${group.id}`}>
+                                {group.occurrenceCount}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <p>{formatDistanceToNow(new Date(group.lastSeen), { addSuffix: true })}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(group.lastSeen), 'PPp')}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setStatusModal({ groupId: group.id, currentStatus: group.status })}
+                                data-testid={`button-change-status-${group.id}`}
+                              >
+                                Resolve
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          {expandedGroups.has(group.id) && groupDetails?.events && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="bg-muted/50">
+                                <div className="space-y-4 p-4">
+                                  <div>
+                                    <h4 className="font-semibold mb-2">Recent Occurrences</h4>
+                                    <ScrollArea className="h-64">
+                                      <div className="space-y-2">
+                                        {groupDetails.events.map((event: ErrorEvent) => (
+                                          <Card key={event.id}>
+                                            <CardContent className="p-3 text-sm">
+                                              <div className="grid gap-2">
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Time:</span>
+                                                  <span>{format(new Date(event.createdAt), 'PPp')}</span>
+                                                </div>
+                                                {event.userId && (
+                                                  <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">User ID:</span>
+                                                    <span>{event.userId}</span>
+                                                  </div>
+                                                )}
+                                                {event.stackTrace && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Stack Trace:</span>
+                                                    <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-x-auto">
+                                                      {event.stackTrace}
+                                                    </pre>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </CardContent>
+                                          </Card>
+                                        ))}
+                                      </div>
+                                    </ScrollArea>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      ))}
+                    {errorGroups?.groups?.filter((g: ErrorGroup) => g.status === 'active').length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                          <p className="font-semibold">No unsolved errors!</p>
+                          <p className="text-sm">All errors have been resolved.</p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Solved Errors Tab */}
+        <TabsContent value="solved" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                <CheckCircle className="h-5 w-5" />
+                Solved Errors
+              </CardTitle>
+              <CardDescription>
+                Errors that have been successfully resolved
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingGroups ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Error</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Occurrences</TableHead>
+                      <TableHead>Resolved</TableHead>
+                      <TableHead>Resolved By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {errorGroups?.groups
+                      ?.filter((g: ErrorGroup) => g.status === 'resolved')
+                      ?.map((group: ErrorGroup) => (
+                        <>
+                          <TableRow key={group.id} data-testid={`row-solved-error-${group.id}`}>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleGroupExpand(group.id)}
+                                data-testid={`button-expand-${group.id}`}
+                              >
+                                {expandedGroups.has(group.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div className="space-y-1">
+                                <p className="line-clamp-2" data-testid={`text-error-message-${group.id}`}>
+                                  {group.message}
+                                </p>
+                                {group.component && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Component: {group.component}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getSeverityColor(group.severity)}>
+                                <span className="flex items-center gap-1">
+                                  {getSeverityIcon(group.severity)}
+                                  {group.severity}
+                                </span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span data-testid={`text-occurrences-${group.id}`}>
+                                {group.occurrenceCount}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {group.resolvedAt && (
+                                  <>
+                                    <p>{formatDistanceToNow(new Date(group.resolvedAt), { addSuffix: true })}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(new Date(group.resolvedAt), 'PPp')}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">
+                                {group.resolvedBy || 'System'}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                          {expandedGroups.has(group.id) && groupDetails?.events && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="bg-muted/50">
+                                <div className="space-y-4 p-4">
+                                  <div>
+                                    <h4 className="font-semibold mb-2">Error Details</h4>
+                                    <ScrollArea className="h-64">
+                                      <div className="space-y-2">
+                                        {groupDetails.events.slice(0, 5).map((event: ErrorEvent) => (
+                                          <Card key={event.id}>
+                                            <CardContent className="p-3 text-sm">
+                                              <div className="grid gap-2">
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Time:</span>
+                                                  <span>{format(new Date(event.createdAt), 'PPp')}</span>
+                                                </div>
+                                                {event.stackTrace && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Stack Trace:</span>
+                                                    <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-x-auto">
+                                                      {event.stackTrace.substring(0, 200)}...
+                                                    </pre>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </CardContent>
+                                          </Card>
+                                        ))}
+                                      </div>
+                                    </ScrollArea>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      ))}
+                    {errorGroups?.groups?.filter((g: ErrorGroup) => g.status === 'resolved').length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <Info className="h-8 w-8 mx-auto mb-2" />
+                          <p className="font-semibold">No resolved errors yet</p>
+                          <p className="text-sm">Resolved errors will appear here.</p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* All Errors Tab - Original functionality with filters */}
+        <TabsContent value="all" className="space-y-4">
           {/* Filters */}
           <Card>
             <CardHeader>
