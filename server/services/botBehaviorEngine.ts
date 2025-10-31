@@ -170,6 +170,18 @@ export async function executeFollow(userId: string) {
   // Pick a random bot
   const bot = engagementBots[Math.floor(Math.random() * engagementBots.length)];
   
+  // Check if bot has a corresponding user entry (required for follows)
+  const botUser = await db.select()
+    .from(users)
+    .where(eq(users.id, bot.id))
+    .limit(1);
+  
+  if (botUser.length === 0) {
+    // Bot doesn't have a user entry, skip follow
+    console.log(`[BOT ENGINE] Bot ${bot.username} doesn't have a user entry, skipping follow`);
+    return false;
+  }
+  
   // Check if bot already follows this user
   const existing = await db.select()
     .from(userFollows)
