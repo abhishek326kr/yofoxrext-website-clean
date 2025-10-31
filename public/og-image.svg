@@ -1,0 +1,12 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#gradient)"/>
+  <text x="50%" y="40%" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">YoForex</text>
+  <text x="50%" y="55%" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="36" fill="white" text-anchor="middle" opacity="0.9">Expert Advisor Forum &amp; EA Marketplace</text>
+  <text x="50%" y="70%" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="24" fill="white" text-anchor="middle" opacity="0.8">Join 10,000+ forex traders. Share strategies, earn coins.</text>
+</svg>
