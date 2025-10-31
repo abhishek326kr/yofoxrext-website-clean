@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useDropzone } from "react-dropzone";
+import AutoSEOPanel, { type SEOData } from "@/components/AutoSEOPanel";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,9 +91,9 @@ const threadSchema = z.object({
   broker: z.string().optional(),
   riskNote: z.string().max(500).optional(),
   
-  // SEO Fields
-  primaryKeyword: z.string().min(1).max(50, "Primary keyword should be 1-6 words"),
-  seoExcerpt: z.string().min(120, "SEO excerpt must be at least 120 characters").max(160, "SEO excerpt must be at most 160 characters"),
+  // SEO Fields - Now optional when auto-optimize is enabled
+  primaryKeyword: z.string().max(50, "Primary keyword should be 1-6 words").optional().default(""),
+  seoExcerpt: z.string().max(160, "SEO excerpt must be at most 160 characters").optional().default(""),
   hashtags: z.array(z.string()).max(10, "Maximum 10 hashtags allowed").default([]),
   slug: z.string().min(1, "Slug is required"),
   
@@ -125,11 +126,34 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [seoExpanded, setSeoExpanded] = useState(true);
-  const [hashtagInput, setHashtagInput] = useState("");
+  const [autoOptimizeSeo, setAutoOptimizeSeo] = useState(true);
+  const [seoData, setSeoData] = useState<SEOData | null>(null);
   
   const router = useRouter();
   const { toast } = useToast();
+
+  // Fetch categories for internal link suggestions
+  const { data: categories = [] } = useQuery({
+    queryKey: ["/api/seo-categories/tree"],
+    queryFn: async () => {
+      const response = await fetch("/api/seo-categories/tree");
+      if (!response.ok) return [];
+      const data = await response.json();
+      // Extract category slugs from the tree structure
+      const extractSlugs = (items: any[]): string[] => {
+        let slugs: string[] = [];
+        items.forEach(item => {
+          if (item.slug) slugs.push(item.slug);
+          if (item.children) {
+            slugs = slugs.concat(extractSlugs(item.children));
+          }
+        });
+        return slugs;
+      };
+      return extractSlugs(data.categories || []);
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   const form = useForm<ThreadFormData>({
     resolver: zodResolver(threadSchema),
@@ -157,37 +181,29 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
   const { watch, setValue, formState: { errors } } = form;
   const watchedFields = watch();
 
-  // Generate slug from title
+  // Handle SEO data updates from AutoSEOPanel
+  const handleSEOUpdate = useCallback((data: SEOData) => {
+    setSeoData(data);
+    // Update form values with SEO data when in auto-optimize mode
+    if (autoOptimizeSeo) {
+      setValue("primaryKeyword", data.primaryKeyword);
+      setValue("seoExcerpt", data.seoExcerpt);
+      setValue("hashtags", data.hashtags);
+      setValue("slug", data.urlSlug);
+    }
+  }, [autoOptimizeSeo, setValue]);
+
+  // Generate slug from title when not in auto-optimize mode
   useEffect(() => {
-    if (watchedFields.title) {
+    if (!autoOptimizeSeo && watchedFields.title) {
       const slug = watchedFields.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .substring(0, 60);
       setValue("slug", slug);
-      
-      // Auto-fill primary keyword from title if empty
-      if (!watchedFields.primaryKeyword) {
-        const keyword = watchedFields.title
-          .toLowerCase()
-          .split(" ")
-          .slice(0, 6)
-          .join(" ");
-        setValue("primaryKeyword", keyword);
-      }
     }
-  }, [watchedFields.title, watchedFields.primaryKeyword, setValue]);
-
-  // Calculate keyword density
-  const keywordDensity = useMemo(() => {
-    if (!watchedFields.primaryKeyword || !watchedFields.body) return 0;
-    const keyword = watchedFields.primaryKeyword.toLowerCase();
-    const body = watchedFields.body.toLowerCase();
-    const wordCount = body.split(/\s+/).length;
-    const keywordCount = (body.match(new RegExp(keyword, "g")) || []).length;
-    return wordCount > 0 ? (keywordCount / wordCount) * 100 : 0;
-  }, [watchedFields.primaryKeyword, watchedFields.body]);
+  }, [watchedFields.title, autoOptimizeSeo, setValue]);
 
   // Image upload with dropzone
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -246,19 +262,6 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
     setValue("imageUrls", newImages);
   };
 
-  // Add hashtag
-  const addHashtag = () => {
-    if (hashtagInput && watchedFields.hashtags.length < 10) {
-      const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`;
-      setValue("hashtags", [...watchedFields.hashtags, tag]);
-      setHashtagInput("");
-    }
-  };
-
-  // Remove hashtag
-  const removeHashtag = (index: number) => {
-    setValue("hashtags", watchedFields.hashtags.filter((_, i) => i !== index));
-  };
 
   // Generate video embed preview
   const getVideoEmbedPreview = (url: string) => {
@@ -313,7 +316,19 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
   });
 
   const onSubmit = (data: ThreadFormData) => {
-    createThreadMutation.mutate(data);
+    // Merge auto-generated SEO data if auto-optimize is enabled
+    if (autoOptimizeSeo && seoData) {
+      const mergedData = {
+        ...data,
+        primaryKeyword: seoData.primaryKeyword || data.primaryKeyword,
+        seoExcerpt: seoData.seoExcerpt || data.seoExcerpt,
+        hashtags: seoData.hashtags.length > 0 ? seoData.hashtags : data.hashtags,
+        slug: seoData.urlSlug || data.slug
+      };
+      createThreadMutation.mutate(mergedData);
+    } else {
+      createThreadMutation.mutate(data);
+    }
   };
 
   // Step navigation
@@ -324,7 +339,13 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
       case 2:
         return true; // Optional step
       case 3:
-        return !errors.primaryKeyword && !errors.seoExcerpt && watchedFields.seoExcerpt;
+        // In auto-optimize mode, we can proceed as long as SEO data is generated
+        // In manual mode, check for required fields
+        if (autoOptimizeSeo) {
+          return seoData !== null && seoData.primaryKeyword !== "" && seoData.seoExcerpt !== "";
+        } else {
+          return watchedFields.primaryKeyword !== "" && watchedFields.seoExcerpt !== "";
+        }
       case 4:
         return true; // Final preview
       default:
@@ -332,41 +353,6 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
     }
   };
 
-  const renderSEOTips = () => {
-    const tips = [];
-    
-    // Title length
-    if (watchedFields.title.length < 15) {
-      tips.push({ type: "warning", text: "Title is too short (minimum 15 characters)" });
-    } else if (watchedFields.title.length > 90) {
-      tips.push({ type: "error", text: "Title is too long (maximum 90 characters)" });
-    } else {
-      tips.push({ type: "success", text: "Title length is perfect" });
-    }
-    
-    // Keyword density
-    if (keywordDensity < 0.5) {
-      tips.push({ type: "warning", text: "Keyword density is too low (aim for 0.5-3%)" });
-    } else if (keywordDensity > 3) {
-      tips.push({ type: "warning", text: "Keyword density is too high (aim for 0.5-3%)" });
-    } else {
-      tips.push({ type: "success", text: `Keyword density is optimal (${keywordDensity.toFixed(1)}%)` });
-    }
-    
-    // Images
-    if (uploadedImages.length === 0) {
-      tips.push({ type: "info", text: "Consider adding images to improve engagement" });
-    } else {
-      tips.push({ type: "info", text: "Remember to add alt-text to images for better SEO" });
-    }
-    
-    // Internal links
-    if (watchedFields.body && !watchedFields.body.includes("[") && !watchedFields.body.includes("](")) {
-      tips.push({ type: "info", text: "Add internal links to related content for better SEO" });
-    }
-    
-    return tips;
-  };
 
   return (
     <Card className="w-full max-w-5xl mx-auto">
@@ -741,216 +727,13 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
             {/* Step 3: SEO Optimization */}
             {currentStep === 3 && (
               <div className="space-y-6">
-                <Collapsible open={seoExpanded} onOpenChange={setSeoExpanded}>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <Search className="h-5 w-5" />
-                      <span className="text-lg font-semibold">Advanced SEO Panel</span>
-                    </div>
-                    {seoExpanded ? <ChevronUp /> : <ChevronDown />}
-                  </CollapsibleTrigger>
-                  
-                  <CollapsibleContent className="space-y-6 mt-4">
-                    <FormField
-                      control={form.control}
-                      name="primaryKeyword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Primary Keyword</FormLabel>
-                          <FormDescription>1-6 words that best describe your content</FormDescription>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="e.g., forex trading strategy"
-                              data-testid="input-primary-keyword"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="seoExcerpt"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SEO Excerpt *</FormLabel>
-                          <FormDescription>
-                            This appears in search results (120-160 characters)
-                          </FormDescription>
-                          <FormControl>
-                            <div className="relative">
-                              <Textarea
-                                {...field}
-                                placeholder="Write a compelling description that will appear in search results..."
-                                className="resize-none"
-                                rows={3}
-                                data-testid="textarea-seo-excerpt"
-                              />
-                              <span className={`absolute right-2 bottom-2 text-xs ${
-                                field.value.length >= 120 && field.value.length <= 160
-                                  ? "text-green-500"
-                                  : "text-red-500"
-                              }`}>
-                                {field.value.length}/160
-                                {field.value.length >= 120 && field.value.length <= 160 && (
-                                  <Check className="inline h-3 w-3 ml-1" />
-                                )}
-                              </span>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="slug"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>URL Slug</FormLabel>
-                          <FormDescription>
-                            The URL path for your thread (auto-generated from title)
-                          </FormDescription>
-                          <FormControl>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground">/thread/</span>
-                              <Input
-                                {...field}
-                                placeholder="your-thread-slug"
-                                data-testid="input-slug"
-                              />
-                            </div>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <Label>Hashtags</Label>
-                      <div className="mt-2 space-y-3">
-                        <div className="flex gap-2">
-                          <Input
-                            value={hashtagInput}
-                            onChange={(e) => setHashtagInput(e.target.value)}
-                            onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
-                            placeholder="Enter hashtag..."
-                            disabled={watchedFields.hashtags.length >= 10}
-                            data-testid="input-hashtag"
-                          />
-                          <Button
-                            type="button"
-                            onClick={addHashtag}
-                            disabled={!hashtagInput || watchedFields.hashtags.length >= 10}
-                            data-testid="button-add-hashtag"
-                          >
-                            Add
-                          </Button>
-                        </div>
-                        
-                        {/* Current hashtags */}
-                        {watchedFields.hashtags.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {watchedFields.hashtags.map((tag, index) => (
-                              <Badge key={index} variant="secondary" className="pr-1">
-                                {tag}
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-4 w-4 ml-1"
-                                  onClick={() => removeHashtag(index)}
-                                  data-testid={`button-remove-hashtag-${index}`}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Popular hashtags */}
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-2">Popular hashtags:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {POPULAR_HASHTAGS.filter(tag => !watchedFields.hashtags.includes(tag)).map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="outline"
-                                className="cursor-pointer"
-                                onClick={() => {
-                                  if (watchedFields.hashtags.length < 10) {
-                                    setValue("hashtags", [...watchedFields.hashtags, tag]);
-                                  }
-                                }}
-                                data-testid={`badge-popular-hashtag-${tag}`}
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Live SERP Preview */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          Live SERP Preview
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-1">
-                          <div className="text-sm text-muted-foreground">
-                            yoforex.net › thread › {watchedFields.slug || "your-thread-slug"}
-                          </div>
-                          <div className="text-lg font-medium text-blue-600 hover:underline cursor-pointer">
-                            {watchedFields.title || "Your Thread Title"}
-                          </div>
-                          <div className="text-sm text-muted-foreground line-clamp-2">
-                            {watchedFields.seoExcerpt || "Your SEO description will appear here..."}
-                          </div>
-                        </div>
-                        
-                        <div className="mt-4 flex items-center gap-4">
-                          <Badge variant={
-                            keywordDensity >= 0.5 && keywordDensity <= 3 ? "default" : "destructive"
-                          }>
-                            Keyword Density: {keywordDensity.toFixed(1)}%
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* SEO Tips */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Info className="h-4 w-4" />
-                          Optimization Tips
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {renderSEOTips().map((tip, index) => (
-                            <Alert key={index} variant={
-                              tip.type === "error" ? "destructive" : 
-                              tip.type === "warning" ? "default" : 
-                              "default"
-                            }>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription>{tip.text}</AlertDescription>
-                            </Alert>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </CollapsibleContent>
-                </Collapsible>
+                <AutoSEOPanel
+                  title={watchedFields.title}
+                  body={watchedFields.body}
+                  imageUrls={uploadedImages}
+                  categories={categories}
+                  onSEOUpdate={handleSEOUpdate}
+                />
               </div>
             )}
 
