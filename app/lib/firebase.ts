@@ -5,17 +5,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebas
 
 // Check if all required Firebase environment variables are present
 function checkFirebaseConfig(): boolean {
-  const requiredVars = [
-    'NEXT_PUBLIC_FIREBASE_API_KEY',
-    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
-    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-    'NEXT_PUBLIC_FIREBASE_APP_ID',
-  ];
-
-  return requiredVars.every(varName => {
-    const value = process.env[varName];
-    return value && value.trim() !== '';
-  });
+  // Check using the actual values instead of process.env which may not be available on client
+  return !!(
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
+    process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  );
 }
 
 // Export flag to indicate if Google OAuth is available
