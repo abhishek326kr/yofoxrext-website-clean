@@ -1,7 +1,14 @@
 "use client";
 
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  type Auth 
+} from "firebase/auth";
 
 // Check if all required Firebase environment variables are present
 function checkFirebaseConfig(): boolean {
@@ -59,13 +66,47 @@ export async function signInWithGoogle(): Promise<string> {
   }
 
   try {
+    // Try popup first (better UX)
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     return idToken;
   } catch (error: any) {
-    console.error("Google sign-in error:", error);
+    console.error("Google sign-in popup error:", error);
+    
+    // If popup was blocked, try redirect method
+    if (error.code === 'auth/popup-blocked' || 
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/cancelled-popup-request') {
+      console.log("Popup blocked, using redirect method...");
+      
+      // Use redirect method as fallback
+      localStorage.setItem('googleSignInPending', 'true');
+      await signInWithRedirect(auth, googleProvider);
+      // This will redirect the user and never reach here
+      return "";
+    }
+    
     throw new Error(error.message || "Google sign-in failed");
   }
+}
+
+// Check for redirect result when the page loads
+export async function checkGoogleSignInRedirect(): Promise<string | null> {
+  if (!auth) return null;
+  
+  try {
+    const result = await getRedirectResult(auth);
+    if (result && result.user) {
+      localStorage.removeItem('googleSignInPending');
+      const idToken = await result.user.getIdToken();
+      return idToken;
+    }
+  } catch (error) {
+    console.error("Error getting redirect result:", error);
+    localStorage.removeItem('googleSignInPending');
+  }
+  
+  return null;
 }
 
 export { auth, googleProvider };

@@ -24,7 +24,7 @@ import { SiGoogle } from "react-icons/si";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { signInWithGoogle, isGoogleAuthEnabled } from "@/lib/firebase";
+import { signInWithGoogle, checkGoogleSignInRedirect, isGoogleAuthEnabled } from "@/lib/firebase";
 
 interface AuthModalProps {
   open: boolean;
@@ -45,6 +45,52 @@ export default function AuthModal({
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Check for Google Sign-In redirect result on component mount
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      // Check if we're returning from a Google sign-in redirect
+      if (localStorage.getItem('googleSignInPending') === 'true') {
+        setIsLoading(true);
+        try {
+          const idToken = await checkGoogleSignInRedirect();
+          
+          if (idToken) {
+            // Send ID token to backend for verification
+            const response = await apiRequest("POST", "/api/auth/google", { idToken });
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error || "Google authentication failed");
+            }
+
+            // Refresh user data
+            await queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+            await queryClient.refetchQueries({ queryKey: ["/api/me"] });
+
+            toast({
+              title: "Login Successful",
+              description: "Welcome to YoForex!",
+            });
+
+            onOpenChange(false);
+          }
+        } catch (error: any) {
+          console.error("Google redirect auth error:", error);
+          toast({
+            title: "Google Sign-In Failed",
+            description: error.message || "Something went wrong. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+          localStorage.removeItem('googleSignInPending');
+        }
+      }
+    };
+
+    handleRedirectResult();
+  }, []);
+
   // Close modal if user becomes authenticated
   useEffect(() => {
     if (user && open) {
