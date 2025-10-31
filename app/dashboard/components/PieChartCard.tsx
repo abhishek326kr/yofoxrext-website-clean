@@ -27,13 +27,18 @@ interface EarningsSource {
   details?: string;
 }
 
+interface ChartDataItem extends EarningsSource {
+  name: string;
+  value: number;
+}
+
 export function PieChartCard() {
   const { data, isLoading } = useQuery<EarningsSource[]>({
     queryKey: ['/api/dashboard/earnings-sources'],
     staleTime: 5 * 60 * 1000,
   });
 
-  const [selectedSegment, setSelectedSegment] = useState<EarningsSource | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<ChartDataItem | null>(null);
 
   if (isLoading) {
     return (
@@ -51,10 +56,10 @@ export function PieChartCard() {
     );
   }
 
-  const chartData = data?.map((item) => ({
+  const chartData: ChartDataItem[] = data?.map((item) => ({
+    ...item,
     name: item.source.charAt(0).toUpperCase() + item.source.slice(1),
     value: item.amount,
-    ...item,
   })) || [];
 
   return (

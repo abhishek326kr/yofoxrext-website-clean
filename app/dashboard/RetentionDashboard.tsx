@@ -39,7 +39,7 @@ function DashboardSkeleton() {
 }
 
 export function RetentionDashboard() {
-  const { data: user } = useQuery({ 
+  const { data: user } = useQuery<{ id: string; username: string } | null>({ 
     queryKey: ['/api/me'],
     staleTime: 5 * 60 * 1000
   });

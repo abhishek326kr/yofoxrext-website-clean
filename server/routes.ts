@@ -40,7 +40,8 @@ import {
   retentionBadges,
   earningsSources,
   activityHeatmap,
-  referrals
+  referrals,
+  aiNudges
 } from "../shared/schema.js";
 import { z } from "zod";
 import { db } from "./db.js";

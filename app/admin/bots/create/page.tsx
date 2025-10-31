@@ -76,9 +76,10 @@ export default function CreateBotPage() {
 
   const generateProfileMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/admin/bots/generate-profile", {
+      const response = await apiRequest("POST", "/api/admin/bots/generate-profile", {
         purpose: form.getValues("purpose")
       });
+      return await response.json();
     },
     onSuccess: (data) => {
       form.setValue("username", data.username);
@@ -96,7 +97,8 @@ export default function CreateBotPage() {
 
   const createBotMutation = useMutation({
     mutationFn: async (data: BotFormData) => {
-      return apiRequest("POST", "/api/admin/bots/create", data);
+      const response = await apiRequest("POST", "/api/admin/bots/create", data);
+      return await response.json();
     },
     onSuccess: (data) => {
       setCreatedBotId(data.id);
