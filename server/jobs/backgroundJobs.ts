@@ -89,6 +89,38 @@ export function startBackgroundJobs(storage: IStorage) {
 
   console.log('[JOBS] Sitemap generation scheduled (runs daily at 2 AM)');
   
+  // Bot Behavior Engine - Runs every 10 minutes (ENABLED)
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      console.log('[BOT ENGINE] Starting bot behavior engine...');
+      
+      const { runBotEngine } = await import('../services/botBehaviorEngine.js');
+      await runBotEngine();
+      
+      console.log('[BOT ENGINE] Bot behavior engine completed successfully');
+    } catch (error: any) {
+      console.error('[BOT ENGINE] Error during bot behavior execution:', error);
+    }
+  });
+  
+  console.log('[JOBS] Bot behavior engine scheduled (runs every 10 minutes)');
+  
+  // Bot Purchase Refunds - Runs at 3 AM daily (ENABLED)
+  cron.schedule('0 3 * * *', async () => {
+    try {
+      console.log('[BOT REFUNDS] Starting bot purchase refunds...');
+      
+      const { refundBotPurchases } = await import('../services/botBehaviorEngine.js');
+      await refundBotPurchases();
+      
+      console.log('[BOT REFUNDS] Bot purchase refunds completed successfully');
+    } catch (error: any) {
+      console.error('[BOT REFUNDS] Error during bot purchase refunds:', error);
+    }
+  });
+  
+  console.log('[JOBS] Bot purchase refunds scheduled (runs daily at 3 AM)');
+  
   // NOTE: All other background jobs are disabled to improve performance
   // To re-enable, uncomment the cron schedules below:
   

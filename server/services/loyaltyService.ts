@@ -1,9 +1,10 @@
 import { db } from '../db.js';
-import { retentionMetrics, loyaltyTiers, activityFeed } from '../../shared/schema.js';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { retentionMetrics, loyaltyTiers, activityFeed, coinTransactions } from '../../shared/schema.js';
+import { and, eq, gte, sql, isNull } from 'drizzle-orm';
 
 /**
  * Calculate user's loyalty tier based on active days in last 90 days
+ * REQUIREMENT: Filters out bot interactions from tier calculations
  * @param userId - User ID
  * @returns The calculated tier: "new", "committed", or "elite"
  */
@@ -12,6 +13,7 @@ export async function calculateLoyaltyTier(userId: string): Promise<"new" | "com
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   
   // Count unique active days from activity_feed in last 90 days
+  // Filter out bot-triggered activities by checking if activityType contains 'bot'
   const result = await db.select({
     activeDays: sql<number>`COUNT(DISTINCT DATE(${activityFeed.createdAt}))`
   })
@@ -19,13 +21,15 @@ export async function calculateLoyaltyTier(userId: string): Promise<"new" | "com
   .where(
     and(
       eq(activityFeed.userId, userId),
-      gte(activityFeed.createdAt, ninetyDaysAgo)
+      gte(activityFeed.createdAt, ninetyDaysAgo),
+      // Exclude bot activities
+      sql`${activityFeed.activityType} NOT ILIKE '%bot%'`
     )
   );
   
   const activeDays = result[0]?.activeDays || 0;
   
-  console.log(`[LOYALTY] User ${userId} has ${activeDays} active days in last 90 days`);
+  console.log(`[LOYALTY] User ${userId} has ${activeDays} active days in last 90 days (excluding bot interactions)`);
   
   // Determine tier based on active days
   if (activeDays >= 90) return "elite";

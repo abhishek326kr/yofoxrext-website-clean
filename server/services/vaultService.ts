@@ -84,21 +84,26 @@ export async function extendVaultUnlockForInactiveUsers() {
 /**
  * Unlock vaults that have reached their unlock date
  * This should run daily to unlock matured vault bonuses
+ * REQUIREMENT 18: Excludes bot-earned vault coins from auto-unlock
  */
 export async function unlockMaturedVaults() {
   console.log('[VAULT] Unlocking matured vaults...');
   
+  // Only unlock vaults that were NOT earned from bot interactions
+  // Check earnedFrom field to exclude bot sources
   const result = await db.update(vaultCoins)
     .set({ status: "unlocked" })
     .where(
       and(
         eq(vaultCoins.status, "locked"),
-        lte(vaultCoins.unlockAt, new Date())
+        lte(vaultCoins.unlockAt, new Date()),
+        // Exclude bot-earned vaults by checking if earnedFrom contains 'bot'
+        sql`${vaultCoins.earnedFrom} NOT ILIKE '%bot%'`
       )
     );
   
   const unlockedCount = result.rowCount || 0;
-  console.log(`[VAULT] Unlocked ${unlockedCount} vault bonuses`);
+  console.log(`[VAULT] Unlocked ${unlockedCount} vault bonuses (excluding bot-earned)`);
   
   return unlockedCount;
 }

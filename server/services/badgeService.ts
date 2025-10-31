@@ -1,6 +1,6 @@
 import { db } from '../db.js';
-import { retentionBadges, forumReplies, vaultCoins, users, forumThreads, contentPurchases } from '../../shared/schema.js';
-import { and, eq, sql, gte } from 'drizzle-orm';
+import { retentionBadges, forumReplies, vaultCoins, users, forumThreads, contentPurchases, botActions } from '../../shared/schema.js';
+import { and, eq, sql, gte, desc } from 'drizzle-orm';
 
 /**
  * Badge configuration
@@ -291,4 +291,57 @@ export async function claimBadge(userId: string, badgeId: string) {
   }
   
   return result[0];
+}
+
+/**
+ * Get bot retention boost for a user this week
+ * REQUIREMENT 9: Cap bot retention boosts at +5 per user per week
+ * @param userId - User ID
+ * @returns Total bot retention weight this week (capped at 5)
+ */
+export async function getBotRetentionBoost(userId: string): Promise<number> {
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  
+  // Sum retention weights from bot actions targeting this user in the last week
+  const result = await db.select({
+    total: sql<number>`COALESCE(SUM(${botActions.retentionWeight}), 0)`
+  })
+  .from(botActions)
+  .where(
+    and(
+      eq(botActions.targetId, userId),
+      gte(botActions.executedAt, weekAgo)
+    )
+  );
+  
+  const totalBoost = result[0]?.total || 0;
+  
+  // Cap at +5 per week
+  const cappedBoost = Math.min(5, totalBoost);
+  
+  console.log(`[BADGES] User ${userId} has ${totalBoost} bot retention boost this week (capped at ${cappedBoost})`);
+  
+  return cappedBoost;
+}
+
+/**
+ * Get user's retention score with bot boost separated
+ * REQUIREMENT 9: Admin views real vs bot score split
+ * @param userId - User ID
+ * @returns Object with realScore, botBoost, and totalScore
+ */
+export async function getUserRetentionScore(userId: string) {
+  // Calculate real retention score based on user's actual activities
+  const badges = await getUserBadges(userId);
+  const realScore = badges.length * 10; // Example: 10 points per badge
+  
+  // Get bot boost (capped at +5)
+  const botBoost = await getBotRetentionBoost(userId);
+  
+  return {
+    realScore,
+    botBoost,
+    totalScore: realScore + botBoost
+  };
 }

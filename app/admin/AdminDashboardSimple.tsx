@@ -26,7 +26,9 @@ import {
   TestTube,
   Code,
   Menu,
-  X
+  X,
+  Wallet,
+  LineChart
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminAuthCheck } from "./auth-check";
@@ -62,6 +64,9 @@ const sections = [
   { id: "marketplace", icon: Store, label: "Marketplace", path: "/admin/marketplace" },
   { id: "brokers", icon: Building, label: "Brokers", path: "/admin/brokers" },
   { id: "finance", icon: DollarSign, label: "Finance", path: "/admin/finance" },
+  { id: "bots", icon: Bot, label: "Bot Management", path: "/admin/bots" },
+  { id: "economy", icon: Wallet, label: "Economy Control", path: "/admin/economy" },
+  { id: "bot-analytics", icon: LineChart, label: "Bot Analytics", path: "/admin/analytics/bots" },
   { id: "analytics", icon: TrendingUp, label: "Analytics", path: "/admin/analytics" },
   { id: "ai-automation", icon: Bot, label: "AI & Automation", path: "/admin/ai-automation" },
   { id: "gamification", icon: Trophy, label: "Gamification", path: "/admin/gamification" },

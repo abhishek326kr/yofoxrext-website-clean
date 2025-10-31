@@ -89,7 +89,36 @@ import { SitemapGenerator } from './services/sitemap-generator.js';
 import { SitemapSubmissionService } from './services/sitemap-submission.js';
 import { createVaultBonus, getVaultSummary, claimVaultCoins } from './services/vaultService.js';
 import { getRetentionMetrics, getAllTiers, getDaysUntilNextTier } from './services/loyaltyService.js';
-import { getUserBadges, getBadgeProgress, checkAndAwardBadges } from './services/badgeService.js';
+import { getUserBadges, getBadgeProgress, checkAndAwardBadges, getUserRetentionScore } from './services/badgeService.js';
+import { 
+  getBalance as getTreasuryBalance, 
+  refill as refillTreasury, 
+  drainUserWallet, 
+  getAuditLog,
+  getEconomySettings,
+  updateEconomySettings,
+  setUserWalletCap,
+  getUserWalletCap,
+  getTreasuryStats
+} from './services/treasuryService.js';
+import {
+  generateProfile as generateBotProfile,
+  createBot,
+  activateBot,
+  deactivateBot,
+  toggleBot,
+  listBots,
+  listActiveBots,
+  getBot,
+  updateBot,
+  deleteBot,
+  getBotCount
+} from './services/botProfileService.js';
+import {
+  runBotEngine,
+  scanNewThreads,
+  scanNewContent
+} from './services/botBehaviorEngine.js';
 
 // Helper function to get authenticated user ID from session
 function getAuthenticatedUserId(req: any): string {
@@ -9554,6 +9583,414 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("[Email Admin] Error re-enabling email:", error);
       res.status(500).json({ error: "Failed to re-enable email" });
+    }
+  });
+
+  // ============================================
+  // BOT MANAGEMENT & ECONOMY CONTROL ENDPOINTS
+  // ============================================
+  
+  // GET /api/admin/bots - List all bots with stats
+  app.get("/api/admin/bots", isAdminMiddleware, async (req, res) => {
+    try {
+      const bots = await listBots();
+      const botCount = await getBotCount();
+      
+      res.json({ 
+        bots, 
+        count: botCount,
+        maxLimit: 15,
+        remaining: 15 - botCount
+      });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error listing bots:", error);
+      res.status(500).json({ error: "Failed to list bots" });
+    }
+  });
+  
+  // POST /api/admin/bots/create - Create a new bot
+  app.post("/api/admin/bots/create", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { purpose, username, displayName, bio, avatarUrl, trustLevel, activityCaps } = req.body;
+      
+      if (!purpose || !['engagement', 'marketplace', 'referral'].includes(purpose)) {
+        return res.status(400).json({ error: "Invalid purpose. Must be: engagement, marketplace, or referral" });
+      }
+      
+      const botData: any = { purpose };
+      
+      // Add optional fields if provided
+      if (username) botData.username = username;
+      if (displayName) botData.displayName = displayName;
+      if (bio) botData.bio = bio;
+      if (avatarUrl) botData.avatarUrl = avatarUrl;
+      if (trustLevel) botData.trustLevel = trustLevel;
+      if (activityCaps) botData.activityCaps = activityCaps;
+      
+      const bot = await createBot(botData);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'create_bot',
+        targetType: 'bot',
+        targetId: bot.id,
+        details: { botUsername: bot.username, purpose },
+      });
+      
+      res.json({ bot });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error creating bot:", error);
+      res.status(500).json({ error: error.message || "Failed to create bot" });
+    }
+  });
+  
+  // POST /api/admin/bots/generate-profile - Generate a random bot profile
+  app.post("/api/admin/bots/generate-profile", isAdminMiddleware, async (req, res) => {
+    try {
+      const { purpose } = req.body;
+      
+      if (!purpose || !['engagement', 'marketplace', 'referral'].includes(purpose)) {
+        return res.status(400).json({ error: "Invalid purpose" });
+      }
+      
+      const profile = generateBotProfile(purpose as any);
+      res.json({ profile });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error generating profile:", error);
+      res.status(500).json({ error: "Failed to generate profile" });
+    }
+  });
+  
+  // PATCH /api/admin/bots/:id/toggle - Toggle bot active state
+  app.patch("/api/admin/bots/:id/toggle", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { id } = req.params;
+      
+      const bot = await toggleBot(id);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: bot.isActive ? 'activate_bot' : 'deactivate_bot',
+        targetType: 'bot',
+        targetId: bot.id,
+        details: { botUsername: bot.username, isActive: bot.isActive },
+      });
+      
+      res.json({ bot });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error toggling bot:", error);
+      res.status(500).json({ error: error.message || "Failed to toggle bot" });
+    }
+  });
+  
+  // GET /api/admin/bots/:id - Get bot details
+  app.get("/api/admin/bots/:id", isAdminMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const bot = await getBot(id);
+      
+      if (!bot) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      res.json({ bot });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error getting bot:", error);
+      res.status(500).json({ error: "Failed to get bot" });
+    }
+  });
+  
+  // PATCH /api/admin/bots/:id - Update bot
+  app.patch("/api/admin/bots/:id", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const bot = await updateBot(id, updates);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'update_bot',
+        targetType: 'bot',
+        targetId: bot.id,
+        details: { botUsername: bot.username, updates },
+      });
+      
+      res.json({ bot });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error updating bot:", error);
+      res.status(500).json({ error: error.message || "Failed to update bot" });
+    }
+  });
+  
+  // DELETE /api/admin/bots/:id - Delete bot
+  app.delete("/api/admin/bots/:id", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { id } = req.params;
+      
+      const bot = await getBot(id);
+      if (!bot) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      await deleteBot(id);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'delete_bot',
+        targetType: 'bot',
+        targetId: id,
+        details: { botUsername: bot.username },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error deleting bot:", error);
+      res.status(500).json({ error: error.message || "Failed to delete bot" });
+    }
+  });
+  
+  // POST /api/admin/bots/:id/test-run - Simulate bot behavior
+  app.post("/api/admin/bots/:id/test-run", isAdminMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const bot = await getBot(id);
+      
+      if (!bot) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      // Simulate bot behavior (dry run)
+      const newThreads = await scanNewThreads(30);
+      const newContent = await scanNewContent(30);
+      
+      res.json({ 
+        success: true,
+        simulation: {
+          bot: bot.username,
+          potentialTargets: {
+            threads: newThreads.length,
+            content: newContent.length
+          },
+          estimatedActions: {
+            likes: Math.min(newThreads.length, bot.activityCaps?.dailyLikes || 10),
+            follows: Math.floor(newThreads.length * 0.1),
+            purchases: Math.min(newContent.length, bot.activityCaps?.dailyPurchases || 2)
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error running test:", error);
+      res.status(500).json({ error: "Failed to run test" });
+    }
+  });
+  
+  // ============================================
+  // TREASURY & ECONOMY CONTROL ENDPOINTS
+  // ============================================
+  
+  // GET /api/admin/treasury - Get treasury balance and stats
+  app.get("/api/admin/treasury", isAdminMiddleware, async (req, res) => {
+    try {
+      const treasury = await getTreasuryBalance();
+      const stats = await getTreasuryStats();
+      
+      res.json({ treasury, stats });
+    } catch (error: any) {
+      console.error("[Treasury Admin] Error getting treasury:", error);
+      res.status(500).json({ error: "Failed to get treasury data" });
+    }
+  });
+  
+  // POST /api/admin/treasury/refill - Refill treasury
+  app.post("/api/admin/treasury/refill", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { amount } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+      
+      const result = await refillTreasury(amount, adminId);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'refill_treasury',
+        targetType: 'treasury',
+        targetId: 'treasury',
+        details: { amount, newBalance: result.balance },
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Treasury Admin] Error refilling treasury:", error);
+      res.status(500).json({ error: error.message || "Failed to refill treasury" });
+    }
+  });
+  
+  // POST /api/admin/treasury/drain-user - Drain a user's wallet
+  app.post("/api/admin/treasury/drain-user", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { userId, percentage } = req.body;
+      
+      if (!userId || !percentage || percentage < 0 || percentage > 100) {
+        return res.status(400).json({ error: "Invalid userId or percentage" });
+      }
+      
+      const result = await drainUserWallet(userId, percentage, adminId);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'drain_user_wallet',
+        targetType: 'user',
+        targetId: userId,
+        details: { percentage, amount: result.amount },
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Treasury Admin] Error draining wallet:", error);
+      res.status(500).json({ error: error.message || "Failed to drain wallet" });
+    }
+  });
+  
+  // GET /api/admin/treasury/audit-log - Get audit log
+  app.get("/api/admin/treasury/audit-log", isAdminMiddleware, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const log = await getAuditLog(limit);
+      
+      res.json({ log });
+    } catch (error: any) {
+      console.error("[Treasury Admin] Error getting audit log:", error);
+      res.status(500).json({ error: "Failed to get audit log" });
+    }
+  });
+  
+  // GET /api/admin/economy/settings - Get economy settings
+  app.get("/api/admin/economy/settings", isAdminMiddleware, async (req, res) => {
+    try {
+      const settings = await getEconomySettings();
+      res.json({ settings });
+    } catch (error: any) {
+      console.error("[Economy Admin] Error getting settings:", error);
+      res.status(500).json({ error: "Failed to get economy settings" });
+    }
+  });
+  
+  // POST /api/admin/economy/settings - Update economy settings
+  app.post("/api/admin/economy/settings", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const updates = req.body;
+      
+      const settings = await updateEconomySettings(updates);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'update_economy_settings',
+        targetType: 'economy',
+        targetId: 'settings',
+        details: updates,
+      });
+      
+      res.json({ settings });
+    } catch (error: any) {
+      console.error("[Economy Admin] Error updating settings:", error);
+      res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+  
+  // POST /api/admin/economy/wallet-cap - Set wallet cap for a user
+  app.post("/api/admin/economy/wallet-cap", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      const { userId, cap } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+      
+      await setUserWalletCap(userId, cap);
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'set_wallet_cap',
+        targetType: 'user',
+        targetId: userId,
+        details: { cap },
+      });
+      
+      res.json({ success: true, userId, cap });
+    } catch (error: any) {
+      console.error("[Economy Admin] Error setting wallet cap:", error);
+      res.status(500).json({ error: "Failed to set wallet cap" });
+    }
+  });
+  
+  // GET /api/admin/economy/analytics - Get bot vs real user analytics
+  app.get("/api/admin/economy/analytics", isAdminMiddleware, async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      // If userId provided, get that user's retention score split
+      if (userId) {
+        const score = await getUserRetentionScore(userId as string);
+        return res.json({ userScore: score });
+      }
+      
+      // Otherwise return general analytics
+      const activeBots = await listActiveBots();
+      const treasuryStats = await getTreasuryStats();
+      
+      res.json({ 
+        bots: {
+          active: activeBots.length,
+          total: await getBotCount()
+        },
+        treasury: treasuryStats
+      });
+    } catch (error: any) {
+      console.error("[Economy Admin] Error getting analytics:", error);
+      res.status(500).json({ error: "Failed to get analytics" });
+    }
+  });
+  
+  // POST /api/admin/bots/run-engine - Manually trigger bot behavior engine
+  app.post("/api/admin/bots/run-engine", isAdminMiddleware, async (req, res) => {
+    try {
+      const adminId = getAuthenticatedUserId(req);
+      
+      // Run bot engine
+      await runBotEngine();
+      
+      // Log admin action
+      await storage.createAdminAction({
+        adminId,
+        actionType: 'run_bot_engine',
+        targetType: 'system',
+        targetId: 'bot_engine',
+        details: { manual: true },
+      });
+      
+      res.json({ success: true, message: "Bot engine executed successfully" });
+    } catch (error: any) {
+      console.error("[Bot Admin] Error running bot engine:", error);
+      res.status(500).json({ error: "Failed to run bot engine" });
     }
   });
 
