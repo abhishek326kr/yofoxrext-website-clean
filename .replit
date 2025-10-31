@@ -7,7 +7,7 @@ channel = "stable-25_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["bash", "build-production.sh"]
+build = ["bash", "build-optimized.sh"]
 run = ["bash", "start-production.sh"]
 
 [[ports]]
