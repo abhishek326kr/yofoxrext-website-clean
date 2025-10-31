@@ -4177,6 +4177,28 @@ export async function registerRoutes(app: Express): Promise<Express> {
     res.json(activeCategories);
   });
   
+  // Get categories tree (MUST be before :slug route to prevent matching)
+  app.get("/api/categories/tree", async (req, res) => {
+    // Cache for 5 minutes
+    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    
+    try {
+      const categories = await storage.listForumCategories();
+      const activeCategories = categories.filter((c: any) => c.isActive);
+      
+      // Build hierarchical tree structure
+      const mainCategories = activeCategories.filter((c: any) => !c.parentSlug);
+      const tree = mainCategories.map((main: any) => ({
+        ...main,
+        children: activeCategories.filter((c: any) => c.parentSlug === main.slug)
+      }));
+      
+      res.json(tree);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch category tree" });
+    }
+  });
+  
   // Get category by slug
   app.get("/api/categories/:slug", async (req, res) => {
     const category = await storage.getForumCategoryBySlug(req.params.slug);

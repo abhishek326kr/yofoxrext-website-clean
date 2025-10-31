@@ -12,9 +12,18 @@ export function useDashboardWebSocket(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    const socket: Socket = io({
+    // Connect to the API server (port 3001) for WebSocket
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.protocol}//${window.location.hostname}:3001`
+      : 'http://localhost:3001';
+      
+    const socket: Socket = io(apiUrl, {
       path: '/ws/dashboard',
-      autoConnect: true
+      autoConnect: true,
+      transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
     });
 
     socket.on('connect', () => {
