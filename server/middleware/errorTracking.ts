@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { storage } from '../storage';
 
 // Server-side error context
 export interface ServerErrorContext {
@@ -29,7 +30,6 @@ export interface ServerErrorEvent {
 
 class ServerErrorTracker {
   private static instance: ServerErrorTracker;
-  private errorQueue: ServerErrorEvent[] = [];
 
   static getInstance(): ServerErrorTracker {
     if (!ServerErrorTracker.instance) {
@@ -43,39 +43,61 @@ class ServerErrorTracker {
     return crypto.createHash('sha256').update(fingerprintData).digest('hex').substring(0, 16);
   }
 
-  public captureError(
+  public async captureError(
     error: Error | string,
     context: ServerErrorContext,
     severity: 'critical' | 'error' | 'warning' | 'info' = 'error'
-  ): void {
+  ): Promise<void> {
     const errorObj = error instanceof Error ? error : new Error(String(error));
     const message = errorObj.message || 'Unknown server error';
     
-    const errorEvent: ServerErrorEvent = {
-      fingerprint: this.generateFingerprint(message, context),
-      message,
-      severity,
-      stackTrace: errorObj.stack,
-      context,
-      timestamp: Date.now(),
-    };
-
-    this.errorQueue.push(errorEvent);
+    const fingerprint = this.generateFingerprint(message, context);
     
     // Log to console for debugging
     console.error(`[Server Error] ${severity.toUpperCase()}: ${message}`, {
-      fingerprint: errorEvent.fingerprint,
+      fingerprint: fingerprint,
       context: context,
     });
     
-    // TODO: Send to error storage/monitoring service
-    // For now, just maintain in-memory queue
-    if (this.errorQueue.length > 100) {
-      this.errorQueue.shift(); // Remove oldest error
+    // Save to database
+    try {
+      await storage.createErrorEvent({
+        fingerprint,
+        message,
+        component: `backend:${context.method}:${context.path}`,
+        severity,
+        userId: context.userId,
+        sessionId: context.requestId, // Using requestId as sessionId
+        stackTrace: errorObj.stack,
+        context: {
+          errorType: context.errorType,
+          serviceName: context.serviceName,
+          timestamp: new Date().toISOString(),
+        },
+        browserInfo: context.userAgent ? {
+          userAgent: context.userAgent,
+        } : undefined,
+        requestInfo: {
+          method: context.method,
+          path: context.path,
+          query: context.query,
+          body: context.body,
+          headers: context.headers,
+          ip: context.ip,
+        },
+        userDescription: undefined, // Not applicable for backend errors
+      });
+    } catch (dbError) {
+      // Log the database save error but don't crash
+      console.error('[Error Tracking] Failed to save error to database:', {
+        originalError: message,
+        dbError: dbError instanceof Error ? dbError.message : String(dbError),
+        fingerprint,
+      });
     }
   }
 
-  public captureValidationError(error: z.ZodError, schema: string, req: Request): void {
+  public async captureValidationError(error: z.ZodError, schema: string, req: Request): Promise<void> {
     const issues = error.issues.map(issue => ({
       path: issue.path.join('.'),
       message: issue.message,
@@ -84,7 +106,7 @@ class ServerErrorTracker {
     
     const message = `Validation failed in ${schema}: ${issues.map(i => i.message).join(', ')}`;
     
-    this.captureError(
+    await this.captureError(
       new Error(message),
       {
         requestId: (req as any).requestId || crypto.randomUUID(),
@@ -101,7 +123,7 @@ class ServerErrorTracker {
     );
   }
 
-  public captureThirdPartyError(error: Error, serviceName: string, req?: Request): void {
+  public async captureThirdPartyError(error: Error, serviceName: string, req?: Request): Promise<void> {
     const context: ServerErrorContext = {
       requestId: crypto.randomUUID(),
       method: req?.method || 'INTERNAL',
@@ -113,15 +135,15 @@ class ServerErrorTracker {
       userAgent: req?.headers['user-agent'],
     };
 
-    this.captureError(
+    await this.captureError(
       error,
       context,
       serviceName.includes('email') || serviceName.includes('firebase') ? 'error' : 'warning'
     );
   }
 
-  public captureUploadError(error: Error, req: Request, fileInfo?: any): void {
-    this.captureError(
+  public async captureUploadError(error: Error, req: Request, fileInfo?: any): Promise<void> {
+    await this.captureError(
       error,
       {
         requestId: (req as any).requestId || crypto.randomUUID(),
@@ -138,74 +160,77 @@ class ServerErrorTracker {
     );
   }
 
-  public getErrors(): ServerErrorEvent[] {
-    return [...this.errorQueue];
-  }
-
-  public clearErrors(): void {
-    this.errorQueue = [];
-  }
 }
 
 // Middleware to capture errors
-export const errorTrackingMiddleware = (err: any, req: Request, res: Response, next: NextFunction) => {
+export const errorTrackingMiddleware = async (err: any, req: Request, res: Response, next: NextFunction) => {
   const tracker = ServerErrorTracker.getInstance();
   
-  // Determine error type and capture accordingly
-  if (err.name === 'ZodError') {
-    tracker.captureValidationError(err, req.path, req);
-  } else if (err.name === 'MulterError') {
-    tracker.captureUploadError(err, req);
-  } else {
-    // General server error
-    tracker.captureError(
-      err,
-      {
-        requestId: (req as any).requestId || crypto.randomUUID(),
-        method: req.method,
-        path: req.path,
-        query: req.query,
-        body: req.body,
-        errorType: 'internal',
-        userId: (req as any).user?.id,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-      err.status >= 500 ? 'critical' : 'error'
-    );
+  try {
+    // Determine error type and capture accordingly
+    if (err.name === 'ZodError') {
+      await tracker.captureValidationError(err, req.path, req);
+    } else if (err.name === 'MulterError') {
+      await tracker.captureUploadError(err, req);
+    } else {
+      // General server error
+      await tracker.captureError(
+        err,
+        {
+          requestId: (req as any).requestId || crypto.randomUUID(),
+          method: req.method,
+          path: req.path,
+          query: req.query,
+          body: req.body,
+          errorType: 'internal',
+          userId: (req as any).user?.id,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+        },
+        err.status >= 500 ? 'critical' : 'error'
+      );
+    }
+  } catch (trackingError) {
+    // If error tracking itself fails, log it but continue
+    console.error('[Error Tracking Middleware] Failed to track error:', trackingError);
   }
   
   next(err);
 };
 
 // Wrapper for Zod parse operations
-export function safeZodParse<T>(
+export async function safeZodParse<T>(
   schema: z.ZodType<T>,
   data: unknown,
   schemaName: string,
   req?: Request
-): { success: true; data: T } | { success: false; error: z.ZodError } {
+): Promise<{ success: true; data: T } | { success: false; error: z.ZodError }> {
   try {
     const result = schema.parse(data);
     return { success: true, data: result };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const tracker = ServerErrorTracker.getInstance();
-      if (req) {
-        tracker.captureValidationError(error, schemaName, req);
-      } else {
-        // Capture without request context
-        tracker.captureError(
-          new Error(`Validation failed in ${schemaName}: ${error.message}`),
-          {
-            requestId: crypto.randomUUID(),
-            method: 'INTERNAL',
-            path: 'unknown',
-            errorType: 'validation',
-            serviceName: schemaName,
-          },
-          'warning'
-        );
+      try {
+        if (req) {
+          await tracker.captureValidationError(error, schemaName, req);
+        } else {
+          // Capture without request context
+          await tracker.captureError(
+            new Error(`Validation failed in ${schemaName}: ${error.message}`),
+            {
+              requestId: crypto.randomUUID(),
+              method: 'INTERNAL',
+              path: 'unknown',
+              errorType: 'validation',
+              serviceName: schemaName,
+            },
+            'warning'
+          );
+        }
+      } catch (trackingError) {
+        // If error tracking fails, log it but continue
+        console.error('[safeZodParse] Failed to track validation error:', trackingError);
       }
       return { success: false, error };
     }
@@ -224,7 +249,12 @@ export async function safeServiceCall<T>(
   try {
     return await operation();
   } catch (error) {
-    tracker.captureThirdPartyError(error as Error, serviceName, req);
+    try {
+      await tracker.captureThirdPartyError(error as Error, serviceName, req);
+    } catch (trackingError) {
+      // If error tracking fails, log it but continue
+      console.error('[safeServiceCall] Failed to track third-party error:', trackingError);
+    }
     throw error;
   }
 }
@@ -235,10 +265,15 @@ export const serverErrorTracker = ServerErrorTracker.getInstance();
 // Helper to wrap Multer middleware
 export function wrapMulterMiddleware(multerMiddleware: any) {
   return (req: Request, res: Response, next: NextFunction) => {
-    multerMiddleware(req, res, (err: any) => {
+    multerMiddleware(req, res, async (err: any) => {
       if (err) {
         const tracker = ServerErrorTracker.getInstance();
-        tracker.captureUploadError(err, req);
+        try {
+          await tracker.captureUploadError(err, req);
+        } catch (trackingError) {
+          // If error tracking fails, log it but continue
+          console.error('[wrapMulterMiddleware] Failed to track upload error:', trackingError);
+        }
       }
       next(err);
     });

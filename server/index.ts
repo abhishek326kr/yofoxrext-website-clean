@@ -9,6 +9,7 @@ import { startBackgroundJobs } from "./jobs/backgroundJobs";
 import { setupSecurityHeaders } from "./middleware/securityHeaders";
 import { categoryRedirectMiddleware, trackCategoryViews } from "./middleware/categoryRedirects";
 import { initializeDashboardWebSocket } from "./services/dashboardWebSocket";
+import { serverErrorTracker } from "./middleware/errorTracking";
 
 const app = express();
 
@@ -147,36 +148,8 @@ async function initializeServer() {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       
-      // Generate error fingerprint for backend errors
-      const generateBackendFingerprint = async (error: any, req: Request): Promise<string> => {
-        const crypto = await import('crypto');
-        const message = error.message || 'Unknown error';
-        const route = `${req.method} ${req.path}`;
-        const stackFrames = error.stack?.split('\n').slice(0, 4).join('\n') || '';
-        const fingerprintData = `${message}|${route}|${stackFrames}`;
-        return crypto.createHash('sha256').update(fingerprintData).digest('hex');
-      };
-      
-      // Log backend errors to database
+      // Use ServerErrorTracker to capture the error
       try {
-        const fingerprint = await generateBackendFingerprint(err, req);
-        
-        // Capture request info
-        const requestInfo = {
-          url: req.originalUrl,
-          method: req.method,
-          headers: req.headers,
-          body: req.body,
-          query: req.query,
-          params: req.params,
-          ip: req.ip,
-          userAgent: req.get('user-agent'),
-        };
-        
-        // Get user session info if available
-        const userId = (req as any).user?.id;
-        const sessionId = (req as any).session?.id;
-        
         // Determine severity based on status code
         let severity: 'critical' | 'error' | 'warning' | 'info' = 'error';
         if (status >= 500) {
@@ -187,38 +160,26 @@ async function initializeServer() {
           severity = 'warning';
         }
         
-        // Save error to database
-        await storage.createErrorEvent({
-          fingerprint,
-          message: err.message || 'Unknown error',
-          component: `backend:${req.method}:${req.path}`,
-          severity,
-          userId,
-          sessionId,
-          stackTrace: err.stack,
-          context: {
-            statusCode: status,
-            errorName: err.name,
-            errorCode: err.code,
-            route: req.route?.path,
-            timestamp: new Date().toISOString(),
-          },
-          browserInfo: {
+        // Use ServerErrorTracker to handle error persistence
+        await serverErrorTracker.captureError(
+          err,
+          {
+            requestId: (req as any).requestId || (req as any).session?.id || require('crypto').randomUUID(),
+            method: req.method,
+            path: req.path,
+            query: req.query,
+            body: req.body,
+            headers: req.headers as Record<string, string>,
+            errorType: 'internal',
+            userId: (req as any).user?.id,
+            ip: req.ip,
             userAgent: req.get('user-agent'),
           },
-          requestInfo,
-        });
-        
-        console.error(`[ERROR TRACKED] ${severity.toUpperCase()}: ${message}`, {
-          status,
-          path: req.originalUrl,
-          method: req.method,
-          userId,
-          fingerprint,
-        });
+          severity
+        );
       } catch (trackingError) {
         // If error tracking fails, log it but don't block the response
-        console.error('[ERROR TRACKING FAILED]', trackingError);
+        console.error('[EXPRESS ERROR HANDLER] Error tracking failed:', trackingError);
         console.error('[ORIGINAL ERROR]', err);
       }
 
