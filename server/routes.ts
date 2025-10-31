@@ -614,17 +614,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
     
-    const claims = (req.user as any)?.claims;
-    if (!claims?.sub) {
+    try {
+      const userId = getAuthenticatedUserId(req);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (error: any) {
       return res.status(401).json({ error: "Invalid session" });
     }
-    
-    const user = await storage.getUser(claims.sub);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    
-    res.json(user);
   });
 
   // TEST EMAIL ENDPOINT - Send test email (Admin only)
