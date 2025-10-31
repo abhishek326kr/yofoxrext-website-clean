@@ -6,9 +6,89 @@ YoForex is a comprehensive trading community platform that combines forum discus
 
 The platform features 60+ hierarchical categories, SEO-optimized URLs, automated email notifications (58+ types), a trust level progression system, and comprehensive analytics. It supports both free and premium content distribution with a gold coin economy that rewards user contributions.
 
+## Recent Changes
+
+### October 31, 2025 - Authentication & Database Fixes
+
+**Authentication System Fixed:**
+- Fixed cookie configuration for Next.js + Express hybrid setup
+  - Changed from `secure:true, sameSite:none` to `secure:false, sameSite:lax` in development
+  - File: `server/flexibleAuth.ts` (lines 23-35)
+  - Reason: Next.js rewrites proxy to Express over HTTP, not HTTPS
+- Fixed `/api/me` endpoint to work with email/password authentication
+  - Changed from Replit OIDC format (`claims.sub`) to standard user format (`user.id`)
+  - File: `server/routes.ts` (lines 615-632)
+  - Now properly uses `getAuthenticatedUserId()` helper
+
+**Database Schema Updates:**
+- Fixed JSON array columns to avoid parsing errors
+  - `support_tickets.replies`: Changed from `jsonb[]` to `jsonb` with default `'[]'::jsonb`
+  - `ab_tests.variants`: Changed from `jsonb[]` to `jsonb` with default `'[]'::jsonb`
+  - File: `shared/schema.ts`
+- Added unique constraint to `users.google_uid` for Google OAuth
+
+**Admin Account Created:**
+- Email: Admin@yoforex.net
+- Role: admin
+- Full administrative privileges across platform
+
+**Dependencies Added:**
+- `@uiw/react-md-editor` - Markdown editor for thread creation
+- `react-dropzone` - File upload functionality
+
+**Status:** ✅ All systems operational - authentication, database, and admin access working
+
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+### Communication Style
+- Use simple, everyday language
+- Avoid technical jargon when explaining to user
+- Be concise and clear
+
+### Task Execution Workflow (CRITICAL - ALWAYS FOLLOW)
+
+**When receiving a new task:**
+
+1. **Deep Analysis Phase**
+   - Think thoroughly about the task before starting
+   - Consider all edge cases and implications
+   - Identify potential challenges upfront
+
+2. **Planning Phase (MANDATORY)**
+   - Call `architect` tool with `responsibility: "plan"` to get strategic guidance
+   - Break down complex tasks into clear, logical subtasks
+   - Create comprehensive plan with dependencies identified
+   - Document the approach before implementation
+
+3. **Delegation Phase**
+   - Use `start_subagent` for complex, multi-step subtasks
+   - Provide clear context and success criteria to subagents
+   - Ensure subagents have all necessary file paths and context
+
+4. **Autonomous Execution**
+   - **DO NOT ask user for confirmation mid-task**
+   - Work through entire task list to completion
+   - Handle errors and obstacles independently
+   - Only return to user when task is 100% complete or genuinely blocked
+
+5. **Documentation Phase (MANDATORY)**
+   - Update replit.md regularly during work
+   - Document what was changed and why
+   - Keep documentation clean, organized, and current
+   - Remove outdated information
+   - Add completion dates to major changes
+
+6. **Review Phase (BEFORE COMPLETION)**
+   - Call `architect` with `responsibility: "evaluate_task"` to review all work
+   - Fix any issues architect identifies
+   - Only mark tasks complete after architect approval
+
+### Documentation Standards
+
+- **Update Frequency:** After each major change
+- **Keep Clean:** Remove outdated/deprecated information
+- **Be Specific:** Include file paths, dates, and reasons for changes
+- **Section Organization:** Recent Changes should list newest first with dates
 
 ## System Architecture
 
