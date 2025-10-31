@@ -145,6 +145,7 @@ export function ErrorMonitoring() {
       
       return apiRequest(`/api/admin/errors/groups?${params}`);
     },
+    refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   // Fetch error stats
@@ -153,6 +154,7 @@ export function ErrorMonitoring() {
     queryFn: async () => {
       return apiRequest(`/api/admin/errors/stats?period=${statsPeriod}`);
     },
+    refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   // Fetch error group details
