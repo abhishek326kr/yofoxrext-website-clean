@@ -14633,30 +14633,8 @@ export class DrizzleStorage implements IStorage {
     metadata?: any;
   }): Promise<ErrorGroup> {
     try {
-      // Check if error group already exists
-      const [existing] = await db
-        .select()
-        .from(errorGroups)
-        .where(eq(errorGroups.fingerprint, data.fingerprint))
-        .limit(1);
-
-      if (existing) {
-        // Update existing group
-        const [updated] = await db
-          .update(errorGroups)
-          .set({
-            lastSeen: new Date(),
-            occurrenceCount: sql`${errorGroups.occurrenceCount} + 1`,
-            metadata: data.metadata || existing.metadata,
-            updatedAt: new Date(),
-          })
-          .where(eq(errorGroups.id, existing.id))
-          .returning();
-        return updated;
-      }
-
-      // Create new error group
-      const [newGroup] = await db
+      // Use upsert with ON CONFLICT to handle race conditions
+      const result = await db
         .insert(errorGroups)
         .values({
           fingerprint: data.fingerprint,
@@ -14665,10 +14643,22 @@ export class DrizzleStorage implements IStorage {
           severity: data.severity || 'error',
           status: 'active',
           metadata: data.metadata,
+          occurrenceCount: 1,
+          firstSeen: new Date(),
+          lastSeen: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: errorGroups.fingerprint,
+          set: {
+            lastSeen: new Date(),
+            occurrenceCount: sql`${errorGroups.occurrenceCount} + 1`,
+            metadata: data.metadata || sql`${errorGroups.metadata}`,
+            updatedAt: new Date(),
+          },
         })
         .returning();
-      
-      return newGroup;
+
+      return result[0];
     } catch (error) {
       console.error('Error creating/updating error group:', error);
       throw error;

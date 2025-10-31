@@ -54,7 +54,7 @@ export function DailyEarnings() {
   // Follow user mutation
   const followMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest('POST', '/api/user/follow', { followingId: userId });
+      return apiRequest('POST', `/api/users/${userId}/follow`, {});
     },
     onSuccess: () => {
       toast({

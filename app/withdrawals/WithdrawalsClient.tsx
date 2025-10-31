@@ -48,6 +48,13 @@ export default function WithdrawalsClient({ initialUserCoins }: WithdrawalsClien
 
   const { data: userCoins } = useQuery({
     queryKey: user ? ['/api/user', user.id, 'coins'] : [],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/${user.id}/coins`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch coins');
+      return res.json();
+    },
     initialData: initialUserCoins,
     enabled: !!user,
   });

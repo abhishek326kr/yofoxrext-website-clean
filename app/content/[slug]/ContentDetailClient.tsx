@@ -83,6 +83,13 @@ export default function ContentDetailClient({
   // Use initial data for author query
   const { data: author } = useQuery<UserType>({
     queryKey: ["/api/user", content?.authorId],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/${content.authorId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch author');
+      return res.json();
+    },
     initialData: initialAuthor,
     enabled: !!content?.authorId,
   });
@@ -90,6 +97,13 @@ export default function ContentDetailClient({
   // Fetch current user's coins
   const { data: userCoins } = useQuery<{ totalCoins: number; weeklyEarned: number; rank: number | null }>({
     queryKey: ["/api/user", user?.id, "coins"],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/${user.id}/coins`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch coins');
+      return res.json();
+    },
     enabled: !!user?.id,
     retry: false,
     placeholderData: { totalCoins: 0, weeklyEarned: 0, rank: null },
@@ -111,6 +125,13 @@ export default function ContentDetailClient({
   // Use initial data for author releases query
   const { data: authorReleases } = useQuery<Content[]>({
     queryKey: ["/api/user", content?.authorId, "content"],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/${content.authorId}/content`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch author releases');
+      return res.json();
+    },
     initialData: initialAuthorReleases,
     enabled: !!content?.authorId,
   });

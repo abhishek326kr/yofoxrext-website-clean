@@ -41,6 +41,13 @@ export default function TrustLevel({
   // Fetch real user stats (no auto-refresh for performance)
   const { data: userStats, isLoading } = useQuery<UserStatsResponse>({
     queryKey: ['/api/users', user?.id, 'stats'],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${user.id}/stats`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

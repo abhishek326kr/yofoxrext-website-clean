@@ -102,6 +102,13 @@ export default function ProfileClient({
     error 
   } = useQuery<ProfileData>({
     queryKey: ['/api/user', username, 'profile'],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/${username}/profile`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch profile');
+      return res.json();
+    },
     initialData: initialData,
     enabled: !!username,
     retry: 1,
@@ -191,21 +198,8 @@ export default function ProfileClient({
     const shareTitle = `${username} - Forex Trader | YoForex`;
     const shareText = `Check out ${username}'s profile on YoForex. ${profileData?.stats?.followers || 0} followers, ${profileData?.stats?.content || 0} products, ${profileData?.stats?.totalSales || 0} sales.`;
     
-    // Track share event
+    // Track share event with Google Analytics only (backend API removed)
     try {
-      // Send tracking event to backend
-      apiRequest("POST", "/api/analytics/track", {
-        event: "profile_share",
-        properties: {
-          sharedUsername: username,
-          sharedUserId: userData?.id,
-          // @ts-ignore - Browser compatibility check
-          shareMethod: typeof navigator !== 'undefined' && 'share' in navigator ? "native" : "clipboard",
-          viewerUsername: currentUser?.username || "guest",
-          url: profileUrl,
-        }
-      }).catch(() => {}); // Don't block share if tracking fails
-      
       // Google Analytics tracking (if available)
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'share', {

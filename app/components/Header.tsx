@@ -73,6 +73,13 @@ export default function Header() {
   
   const { data: coinsData } = useQuery<{ totalCoins: number; weeklyEarned: number; rank: number | null }>({
     queryKey: ["/api/user", user?.id, "coins"],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/${user.id}/coins`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch coins');
+      return res.json();
+    },
     enabled: !!user?.id,
   });
 

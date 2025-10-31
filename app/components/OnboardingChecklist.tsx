@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, X, ChevronRight } from "lucide-react";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 import Link from "next/link";
 
 type OnboardingProgress = {
@@ -33,6 +33,8 @@ const ONBOARDING_TASKS = [
 export function OnboardingChecklist() {
   const { data, isLoading } = useQuery<OnboardingProgress>({
     queryKey: ['/api/me/onboarding'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
   });
 
   const dismiss = useMutation({
