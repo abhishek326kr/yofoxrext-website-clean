@@ -1,0 +1,193 @@
+================================================================================
+YoForex API Quick Reference
+================================================================================
+Last Updated: October 28, 2025
+Base URL: http://localhost:3001/api (Development)
+Content-Type: application/json
+
+================================================================================
+AUTHENTICATION
+================================================================================
+GET    /api/me                          Get current user info
+GET    /api/login                       Initiate Replit OIDC login
+GET    /api/logout                      Logout current user
+
+================================================================================
+FORUM THREADS
+================================================================================
+GET    /api/threads                     List all threads (paginated)
+GET    /api/threads/:slug               Get single thread by slug
+POST   /api/threads                     Create new thread (requires auth)
+PATCH  /api/threads/:id                 Update thread (requires auth)
+DELETE /api/threads/:id                 Delete thread (requires auth)
+GET    /api/hot                         Get trending/hot threads
+
+================================================================================
+FORUM REPLIES
+================================================================================
+GET    /api/threads/:threadId/replies   List thread replies
+POST   /api/threads/:threadId/replies   Create reply (requires auth)
+PATCH  /api/replies/:id                 Update reply (requires auth)
+DELETE /api/replies/:id                 Delete reply (requires auth)
+
+================================================================================
+CATEGORIES
+================================================================================
+GET    /api/categories                  List all categories
+GET    /api/categories/tree             Get category tree structure
+GET    /api/categories/tree/top         Get top-level categories (limit param)
+GET    /api/category/:slug              Get category by slug
+GET    /api/category/:slug/threads      Get threads in category
+
+================================================================================
+COINS & TRANSACTIONS
+================================================================================
+GET    /api/user/:userId/coins          Get user coin balance
+GET    /api/transactions                Get user transactions (requires auth)
+POST   /api/coins/earn                  Earn coins (requires auth)
+POST   /api/coins/spend                 Spend coins (requires auth)
+
+================================================================================
+MARKETPLACE
+================================================================================
+GET    /api/content                     List marketplace content
+GET    /api/content/:slug               Get content by slug
+POST   /api/content                     Publish content (requires auth)
+PATCH  /api/content/:id                 Update content (requires auth)
+POST   /api/content/:id/purchase        Purchase content (requires auth)
+GET    /api/content/top-sellers         Get best-selling content
+
+================================================================================
+BROKERS
+================================================================================
+GET    /api/brokers                     List all brokers
+GET    /api/brokers/:slug               Get broker by slug
+POST   /api/brokers                     Add broker (requires auth)
+POST   /api/brokers/:id/review          Submit broker review (requires auth)
+GET    /api/brokers/:id/reviews         Get broker reviews
+
+================================================================================
+USERS & SOCIAL
+================================================================================
+GET    /api/users/:id                   Get user profile
+PATCH  /api/user/profile                Update own profile (requires auth)
+GET    /api/users/:id/stats             Get user statistics
+POST   /api/follow/:userId              Follow user (requires auth)
+DELETE /api/unfollow/:userId            Unfollow user (requires auth)
+GET    /api/followers/:userId           Get user followers
+GET    /api/following/:userId           Get users followed
+
+================================================================================
+NOTIFICATIONS
+================================================================================
+GET    /api/notifications               Get user notifications (requires auth)
+GET    /api/notifications/unread-count  Get unread count (requires auth)
+PATCH  /api/notifications/:id/read      Mark notification as read (requires auth)
+
+================================================================================
+STATS & LEADERBOARD
+================================================================================
+GET    /api/stats                       Get platform statistics
+GET    /api/leaderboard                 Get leaderboard data
+GET    /api/users/:userId/coins         Get user coin balance
+GET    /api/users/:userId/stats         Get user stats
+
+================================================================================
+FEEDBACK & SUPPORT
+================================================================================
+POST   /api/feedback                    Submit feedback (no auth required)
+GET    /api/feedback                    List feedback (admin only)
+PATCH  /api/feedback/:id                Update feedback status (admin only)
+
+================================================================================
+ONBOARDING
+================================================================================
+GET    /api/me/onboarding               Get onboarding progress (requires auth)
+PATCH  /api/me/onboarding               Update onboarding progress (requires auth)
+
+================================================================================
+ADMIN
+================================================================================
+GET    /api/admin/stats                 Get admin dashboard stats (admin only)
+GET    /api/admin/users                 List all users (admin only)
+PATCH  /api/admin/users/:id             Update user (admin only)
+GET    /api/admin/content               List all content (admin only)
+PATCH  /api/admin/content/:id           Update content status (admin only)
+
+================================================================================
+RATE LIMITS
+================================================================================
+General API:         100 requests / 15 minutes
+Write Operations:    30 requests / 15 minutes
+Coin Operations:     10 requests / 15 minutes
+Content Creation:    5 posts / hour
+Reviews/Ratings:     20 requests / hour
+
+When rate limit exceeded: 429 Too Many Requests
+
+================================================================================
+COMMON QUERY PARAMETERS
+================================================================================
+?page=1              Pagination page number (default: 1)
+?limit=20            Items per page (default: 20, max: 100)
+?sort=createdAt      Sort field (createdAt, views, likes, etc.)
+?order=desc          Sort order (asc, desc)
+?category=slug       Filter by category
+?type=ea             Filter by type (ea, indicator, article, source_code)
+?status=approved     Filter by status (pending, approved, rejected)
+
+================================================================================
+COMMON RESPONSE CODES
+================================================================================
+200 OK               Request successful
+201 Created          Resource created successfully
+400 Bad Request      Invalid request data
+401 Unauthorized     Authentication required
+403 Forbidden        Insufficient permissions
+404 Not Found        Resource not found
+429 Too Many Requests Rate limit exceeded
+500 Internal Error   Server error
+
+================================================================================
+AUTHENTICATION NOTES
+================================================================================
+- Session-based authentication using Replit OIDC
+- Sessions stored in PostgreSQL (7-day TTL)
+- Include credentials in fetch: credentials: 'include'
+- All write operations require authentication
+- Read operations are generally public
+
+================================================================================
+SEO FEATURES (NEW - October 28, 2025)
+================================================================================
+Thread Creation SEO Fields:
+- primaryKeyword: String (1-6 words) - Focus keyword for SEO
+- seoExcerpt: String (120-160 chars) - Meta description for search results
+
+SEO Validation:
+- Keyword density: 0.5-3% optimal range
+- Description length: 120-160 characters
+- Real-time preview of Google search appearance
+- Auto-validation with feedback
+
+================================================================================
+TESTING
+================================================================================
+Integration Tests: tests/api.test.ts
+Run Tests: npx tsx tests/api.test.ts
+Test Coverage: 8 critical endpoints
+All Tests: ✅ Passing (100% success rate)
+
+Tested Endpoints:
+- GET /api/categories
+- GET /api/threads  
+- GET /api/stats
+- POST /api/feedback
+- GET /api/notifications/unread-count
+- GET /api/brokers
+- GET /api/hot
+- GET /api/content/top-sellers
+
+================================================================================
+END OF QUICK REFERENCE
+================================================================================

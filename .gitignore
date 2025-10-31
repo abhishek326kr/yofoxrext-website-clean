@@ -1,0 +1,65 @@
+# Node modules & build outputs
+node_modules/
+dist/
+.next/
+out/
+.cache/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Database exports or dumps
+*.sql
+*.sqlite
+database-export.sql
+
+# Temporary or auto-generated setup files
+.setup.log
+.setup-complete
+
+# Deployment / temporary files
+.deploy/
+.deploy*/ 
+tmp/
+temp/
+*.tar.gz
+
+# Compiled scripts or binaries
+*.pyc
+*.pyo
+*.exe
+*.dll
+*.so
+
+# Server public folder (generated assets)
+server/public/
+public/uploads/
+attached_assets/
+
+# Git backup files
+*.orig
+
+# Test coverage reports
+coverage/
+*.lcov
+
+# Docker-related (if not needed)
+docker-compose.override.yml
+.docker/

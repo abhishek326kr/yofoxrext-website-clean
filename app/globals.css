@@ -1,0 +1,402 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LIGHT MODE */
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+
+  /* Automatic computation of border around primary / danger buttons */
+  --opaque-button-border-intensity: -8; /* In terms of percentages */
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+
+  --background: 0 0% 100%;
+
+  --foreground: 220 13% 13%;
+
+  --border: 220 13% 91%;
+
+  --card: 220 13% 98%;
+
+  --card-foreground: 220 13% 13%;
+
+  --card-border: 220 13% 94%;
+
+  --sidebar: 220 13% 96%;
+
+  --sidebar-foreground: 220 13% 13%;
+
+  --sidebar-border: 220 13% 92%;
+
+  --sidebar-primary: 217 91% 35%;
+
+  --sidebar-primary-foreground: 217 91% 98%;
+
+  --sidebar-accent: 220 13% 90%;
+
+  --sidebar-accent-foreground: 220 13% 13%;
+
+  --sidebar-ring: 217 91% 60%;
+
+  --popover: 220 13% 93%;
+
+  --popover-foreground: 220 13% 13%;
+
+  --popover-border: 220 13% 88%;
+
+  --primary: 217 91% 45%;
+
+  --primary-foreground: 217 91% 98%;
+
+  --secondary: 220 13% 88%;
+
+  --secondary-foreground: 220 13% 13%;
+
+  --muted: 220 15% 91%;
+
+  --muted-foreground: 220 13% 35%;
+
+  --accent: 220 18% 89%;
+
+  --accent-foreground: 220 13% 13%;
+
+  --destructive: 0 84% 35%;
+
+  --destructive-foreground: 0 84% 98%;
+
+  --input: 220 13% 78%;
+  --ring: 217 91% 60%;
+  --chart-1: 217 91% 35%;
+  --chart-2: 195 82% 38%;
+  --chart-3: 160 68% 32%;
+  --chart-4: 34 85% 42%;
+  --chart-5: 280 65% 42%;
+
+  --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', Menlo, monospace;
+  --radius: .5rem; /* 8px */
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 13% 13% / 0.05);
+  --shadow-xs: 0px 1px 3px 0px hsl(220 13% 13% / 0.08);
+  --shadow-sm: 0px 2px 4px 0px hsl(220 13% 13% / 0.06), 0px 1px 2px -1px hsl(220 13% 13% / 0.06);
+  --shadow: 0px 4px 6px -1px hsl(220 13% 13% / 0.08), 0px 2px 4px -1px hsl(220 13% 13% / 0.06);
+  --shadow-md: 0px 6px 12px -2px hsl(220 13% 13% / 0.10), 0px 3px 6px -2px hsl(220 13% 13% / 0.08);
+  --shadow-lg: 0px 10px 20px -4px hsl(220 13% 13% / 0.12), 0px 4px 8px -2px hsl(220 13% 13% / 0.08);
+  --shadow-xl: 0px 20px 30px -6px hsl(220 13% 13% / 0.14), 0px 8px 12px -4px hsl(220 13% 13% / 0.10);
+  --shadow-2xl: 0px 25px 40px -8px hsl(220 13% 13% / 0.16);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
+
+  /* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+
+  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 220 13% 9%;
+
+  --foreground: 220 13% 95%;
+
+  --border: 220 13% 18%;
+
+  --card: 220 13% 11%;
+
+  --card-foreground: 220 13% 95%;
+
+  --card-border: 220 13% 15%;
+
+  --sidebar: 220 13% 13%;
+
+  --sidebar-foreground: 220 13% 95%;
+
+  --sidebar-border: 220 13% 17%;
+
+  --sidebar-primary: 217 91% 60%;
+
+  --sidebar-primary-foreground: 217 91% 10%;
+
+  --sidebar-accent: 220 13% 17%;
+
+  --sidebar-accent-foreground: 220 13% 95%;
+
+  --sidebar-ring: 217 91% 60%;
+
+  --popover: 220 13% 15%;
+
+  --popover-foreground: 220 13% 95%;
+
+  --popover-border: 220 13% 20%;
+
+  --primary: 217 91% 60%;
+
+  --primary-foreground: 217 91% 10%;
+
+  --secondary: 220 13% 19%;
+
+  --secondary-foreground: 220 13% 95%;
+
+  --muted: 220 15% 17%;
+
+  --muted-foreground: 220 13% 70%;
+
+  --accent: 220 18% 18%;
+
+  --accent-foreground: 220 13% 95%;
+
+  --destructive: 0 84% 35%;
+
+  --destructive-foreground: 0 84% 98%;
+
+  --input: 220 13% 28%;
+  --ring: 217 91% 60%;
+  --chart-1: 217 91% 60%;
+  --chart-2: 195 82% 65%;
+  --chart-3: 160 68% 60%;
+  --chart-4: 34 85% 68%;
+  --chart-5: 280 65% 68%;
+
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 13% 5% / 0.30);
+  --shadow-xs: 0px 1px 3px 0px hsl(220 13% 5% / 0.40);
+  --shadow-sm: 0px 2px 4px 0px hsl(220 13% 5% / 0.35), 0px 1px 2px -1px hsl(220 13% 5% / 0.35);
+  --shadow: 0px 4px 6px -1px hsl(220 13% 5% / 0.40), 0px 2px 4px -1px hsl(220 13% 5% / 0.35);
+  --shadow-md: 0px 6px 12px -2px hsl(220 13% 5% / 0.45), 0px 3px 6px -2px hsl(220 13% 5% / 0.40);
+  --shadow-lg: 0px 10px 20px -4px hsl(220 13% 5% / 0.50), 0px 4px 8px -2px hsl(220 13% 5% / 0.40);
+  --shadow-xl: 0px 20px 30px -6px hsl(220 13% 5% / 0.55), 0px 8px 12px -4px hsl(220 13% 5% / 0.45);
+  --shadow-2xl: 0px 25px 40px -8px hsl(220 13% 5% / 0.60);
+
+  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
+  
+  /* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/**
+ * Using the elevate system.
+ * Automatic contrast adjustment.
+ *
+ * <element className="hover-elevate" />
+ * <element className="active-elevate-2" />
+ *
+ * // Using the tailwind utility when a data attribute is "on"
+ * <element className="toggle-elevate data-[state=on]:toggle-elevated" />
+ * // Or manually controlling the toggle state
+ * <element className="toggle-elevate toggle-elevated" />
+ *
+ * Elevation systems have to handle many states.
+ * - not-hovered, vs. hovered vs. active  (three mutually exclusive states)
+ * - toggled or not
+ * - focused or not (this is not handled with these utilities)
+ *
+ * Even without handling focused or not, this is six possible combinations that
+ * need to be distinguished from eachother visually.
+ */
+@layer utilities {
+  /* Custom Professional Scrollbar Styles - Production Ready */
+  .custom-scrollbar {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+    border-radius: 6px !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3) !important;
+    border-radius: 6px !important;
+    border: 2px solid transparent !important;
+    background-clip: padding-box !important;
+    transition: background 0.2s ease !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5) !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: rgba(156, 163, 175, 0.7) !important;
+  }
+
+  /* Dark mode - darker scrollbar for better contrast */
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent !important;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4) !important;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6) !important;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: rgba(148, 163, 184, 0.8) !important;
+  }
+
+  /* Firefox scrollbar colors */
+  @supports (scrollbar-color: auto) {
+    .custom-scrollbar {
+      scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+    }
+    
+    .dark .custom-scrollbar {
+      scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+    }
+  }
+
+  /* Hide ugly search cancel button in Chrome until we can style it properly */
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+
+  /* Placeholder styling for contentEditable div */
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+
+  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
+   * buttons/badges can remove the automatic brightness adjustment on interactions
+   * and program their own. */
+  .no-default-hover-elevate {}
+
+  .no-default-active-elevate {}
+
+
+  /**
+   * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
+   * This way they can stack/compound. Both will overlap the parent's borders!
+   * So borders will be automatically adjusted both on toggle, and hover/active,
+   * and they will be compounded.
+   */
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    /*border-radius: inherit;   match rounded corners */
+    border-radius: inherit;
+    z-index: -1;
+    /* sits behind content but above backdrop */
+  }
+
+  .toggle-elevate.toggle-elevated::before {
+    background-color: var(--elevate-2);
+  }
+
+  /* Does not work on elements with overflow:hidden! */
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) {
+    position: relative;
+    z-index: 0;
+  }
+
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    /*border-radius: inherit;   match rounded corners */
+    border-radius: inherit;
+    z-index: 999;
+    /* sits in front of content */
+  }
+
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+}

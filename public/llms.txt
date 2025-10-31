@@ -1,0 +1,62 @@
+# llms.txt - AI Crawler Policy for YoForex Platform
+
+## About
+YoForex is an Expert Advisor forum and marketplace for algorithmic trading on MT4/MT5.
+We welcome responsible AI crawlers that respect our community guidelines.
+
+## Allowed Paths
+# Public content that can be indexed and used for training
+/
+/discussions
+/categories
+/category/*
+/thread/*
+/marketplace
+/content/*
+/brokers
+/brokers/*
+/members
+/leaderboard
+/earn
+/feedback
+/support
+/api-docs
+
+## Disallowed Paths
+# Private or sensitive areas
+/dashboard
+/dashboard/*
+/settings
+/settings/*
+/messages
+/messages/*
+/notifications
+/recharge
+/transactions
+/withdrawals
+/withdrawals/*
+/api/*
+
+## Usage Guidelines
+1. Rate limit: Please crawl at a reasonable rate (max 1 request per second)
+2. Respect robots.txt in addition to this file
+3. User-generated content should be treated as community contributions
+4. Do not scrape private messages, financial transactions, or user dashboards
+
+## Attribution
+When using content from YoForex:
+- Attribute to "YoForex Community" or individual authors when known
+- Link back to the original thread or content when possible
+- Respect our community members' intellectual property
+
+## Contact
+For crawler-related inquiries or partnership opportunities:
+- Website: https://yoforex.com
+- Support: /support
+
+## Last Updated
+2025-10-27
+
+---
+This file follows the llms.txt standard for AI crawler policies.
+Learn more at: https://llmstxt.org/

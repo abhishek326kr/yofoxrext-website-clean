@@ -1,0 +1,169 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: yoforex-postgres
+    environment:
+      POSTGRES_DB: yoforex_dev
+      POSTGRES_USER: yoforex_user
+      POSTGRES_PASSWORD: yoforex_dev_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d:ro
+    networks:
+      - yoforex-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yoforex_user -d yoforex_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: yoforex-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - yoforex-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # YoForex Application (Development Mode with Hot Reload)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        NODE_ENV: development
+    container_name: yoforex-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Node Environment
+      NODE_ENV: development
+      
+      # Server Ports
+      PORT: 5000
+      API_PORT: 3001
+      
+      # Database
+      DATABASE_URL: postgresql://yoforex_user:yoforex_dev_password@postgres:5432/yoforex_dev?sslmode=disable
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # URLs
+      NEXT_PUBLIC_SITE_URL: http://localhost:5000
+      EXPRESS_URL: http://localhost:3001
+      
+      # Session
+      SESSION_SECRET: dev-session-secret-change-in-production
+      
+      # Authentication (Replit OAuth)
+      REPLIT_CLIENT_ID: ${REPLIT_CLIENT_ID}
+      REPLIT_CLIENT_SECRET: ${REPLIT_CLIENT_SECRET}
+      
+      # Email (SMTP)
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@localhost}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-YoForex Dev}
+      
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY}
+      
+      # Feature Flags
+      EMAIL_NOTIFICATIONS_ENABLED: ${EMAIL_NOTIFICATIONS_ENABLED:-false}
+      CACHE_ENABLED: ${CACHE_ENABLED:-true}
+      
+      # Development Tools
+      NEXT_TELEMETRY_DISABLED: 1
+      WATCHPACK_POLLING: true
+      
+    ports:
+      - "5000:5000"    # Next.js Frontend
+      - "3001:3001"    # Express API
+      - "9229:9229"    # Node.js Debugger
+    volumes:
+      # Mount source code for hot reload
+      - .:/app:delegated
+      - /app/node_modules
+      - /app/.next
+      - /app/dist
+      
+      # Persistent storage for uploads
+      - uploads_data:/app/public/uploads
+      
+    networks:
+      - yoforex-network
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    command: npm run dev
+
+  # Optional: Adminer for Database Management
+  adminer:
+    image: adminer:latest
+    container_name: yoforex-adminer
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    networks:
+      - yoforex-network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    restart: unless-stopped
+
+  # Optional: Redis Commander for Redis Management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: yoforex-redis-commander
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    networks:
+      - yoforex-network
+    restart: unless-stopped
+
+networks:
+  yoforex-network:
+    driver: bridge
+    name: yoforex-network
+
+volumes:
+  postgres_data:
+    driver: local
+    name: yoforex_postgres_data
+  redis_data:
+    driver: local
+    name: yoforex_redis_data
+  uploads_data:
+    driver: local
+    name: yoforex_uploads_data

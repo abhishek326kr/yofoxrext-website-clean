@@ -1,0 +1,2067 @@
+{
+  "timestamp": "2025-10-28T18:50:32.741Z",
+  "duration": "0.1",
+  "results": [
+    {
+      "id": "T001",
+      "name": "GET /api/admin/settings returns all settings",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 18,
+      "error": "Authentication required (expected)"
+    },
+    {
+      "id": "T002",
+      "name": "Settings test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T003",
+      "name": "Settings test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T004",
+      "name": "Settings test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T005",
+      "name": "Settings test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T006",
+      "name": "Settings test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T007",
+      "name": "Support ticket test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T008",
+      "name": "Support ticket test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T009",
+      "name": "Support ticket test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T010",
+      "name": "Support ticket test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T011",
+      "name": "Support ticket test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T012",
+      "name": "Support ticket test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T013",
+      "name": "Announcement test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T014",
+      "name": "Announcement test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T015",
+      "name": "Announcement test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T016",
+      "name": "Announcement test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T017",
+      "name": "Announcement test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T018",
+      "name": "Announcement test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T019",
+      "name": "Announcement test 7",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T020",
+      "name": "Announcement test 8",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T021",
+      "name": "Email template test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T022",
+      "name": "Email template test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T023",
+      "name": "Email template test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T024",
+      "name": "Email template test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T025",
+      "name": "Email template test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T026",
+      "name": "Email template test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T027",
+      "name": "Email template test 7",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T028",
+      "name": "Email template test 8",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T029",
+      "name": "Role management test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T030",
+      "name": "Role management test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T031",
+      "name": "Role management test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T032",
+      "name": "Role management test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T033",
+      "name": "Role management test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T034",
+      "name": "Role management test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T035",
+      "name": "Security event test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T036",
+      "name": "Security event test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T037",
+      "name": "Security event test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T038",
+      "name": "Security event test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T039",
+      "name": "Log test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T040",
+      "name": "Log test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T041",
+      "name": "Log test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T042",
+      "name": "Log test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T043",
+      "name": "Performance test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T044",
+      "name": "Performance test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T045",
+      "name": "Performance test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T046",
+      "name": "Performance test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T047",
+      "name": "Automation rule test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T048",
+      "name": "Automation rule test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T049",
+      "name": "Automation rule test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T050",
+      "name": "Automation rule test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T051",
+      "name": "Automation rule test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T052",
+      "name": "Automation rule test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T053",
+      "name": "A/B test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T054",
+      "name": "A/B test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T055",
+      "name": "A/B test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T056",
+      "name": "A/B test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T057",
+      "name": "A/B test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T058",
+      "name": "A/B test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T059",
+      "name": "Feature flag test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T060",
+      "name": "Feature flag test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T061",
+      "name": "Feature flag test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T062",
+      "name": "Feature flag test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T063",
+      "name": "Feature flag test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T064",
+      "name": "Feature flag test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T065",
+      "name": "Feature flag test 7",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T066",
+      "name": "Feature flag test 8",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T067",
+      "name": "API key test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T068",
+      "name": "API key test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T069",
+      "name": "API key test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T070",
+      "name": "API key test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T071",
+      "name": "API key test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T072",
+      "name": "API key test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T073",
+      "name": "Webhook test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T074",
+      "name": "Webhook test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T075",
+      "name": "Webhook test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T076",
+      "name": "Webhook test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T077",
+      "name": "Webhook test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T078",
+      "name": "Webhook test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T079",
+      "name": "Webhook test 7",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T080",
+      "name": "Webhook test 8",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T081",
+      "name": "Media studio test 1",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T082",
+      "name": "Media studio test 2",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T083",
+      "name": "Media studio test 3",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T084",
+      "name": "Media studio test 4",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T085",
+      "name": "Media studio test 5",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T086",
+      "name": "Media studio test 6",
+      "category": "Functional",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T087",
+      "name": "GET /api/admin/settings rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T088",
+      "name": "GET /api/admin/settings/:key rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T089",
+      "name": "PATCH /api/admin/settings/:key rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T090",
+      "name": "GET /api/admin/support/tickets rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T091",
+      "name": "POST /api/admin/support/tickets rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T092",
+      "name": "PATCH /api/admin/support/tickets/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T093",
+      "name": "GET /api/admin/announcements rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T094",
+      "name": "POST /api/admin/announcements rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T095",
+      "name": "PATCH /api/admin/announcements/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T096",
+      "name": "DELETE /api/admin/announcements/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T097",
+      "name": "POST /api/admin/content rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T098",
+      "name": "GET /api/admin/email-templates rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T099",
+      "name": "GET /api/admin/email-templates/:key rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T100",
+      "name": "PATCH /api/admin/email-templates/:key rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T101",
+      "name": "POST /api/admin/email-templates rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T102",
+      "name": "GET /api/admin/roles rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T103",
+      "name": "POST /api/admin/roles/grant rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T104",
+      "name": "POST /api/admin/roles/revoke rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T105",
+      "name": "GET /api/admin/security/events rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T106",
+      "name": "GET /api/admin/security/ip-bans rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T107",
+      "name": "GET /api/admin/logs/actions rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T108",
+      "name": "GET /api/admin/logs/recent rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T109",
+      "name": "GET /api/admin/performance/metrics rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T110",
+      "name": "GET /api/admin/performance/alerts rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T111",
+      "name": "GET /api/admin/automation/rules rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T112",
+      "name": "POST /api/admin/automation/rules rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T113",
+      "name": "PATCH /api/admin/automation/rules/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T114",
+      "name": "GET /api/admin/testing/ab-tests rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T115",
+      "name": "POST /api/admin/testing/ab-tests rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T116",
+      "name": "PATCH /api/admin/testing/ab-tests/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T117",
+      "name": "GET /api/admin/testing/feature-flags rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T118",
+      "name": "GET /api/admin/testing/feature-flags/:key rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T119",
+      "name": "PATCH /api/admin/testing/feature-flags/:key rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T120",
+      "name": "POST /api/admin/testing/feature-flags rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T121",
+      "name": "GET /api/admin/integrations/api-keys rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T122",
+      "name": "POST /api/admin/integrations/api-keys rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T123",
+      "name": "DELETE /api/admin/integrations/api-keys/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T124",
+      "name": "GET /api/admin/integrations/webhooks rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T125",
+      "name": "POST /api/admin/integrations/webhooks rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T126",
+      "name": "PATCH /api/admin/integrations/webhooks/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T127",
+      "name": "DELETE /api/admin/integrations/webhooks/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T128",
+      "name": "GET /api/admin/studio/media rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 2
+    },
+    {
+      "id": "T129",
+      "name": "PATCH /api/admin/studio/media/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "PASS",
+      "duration": 1
+    },
+    {
+      "id": "T130",
+      "name": "DELETE /api/admin/studio/media/:id rejects unauthenticated request",
+      "category": "Security",
+      "status": "FAIL",
+      "duration": 1,
+      "error": "Expected 401, got 429"
+    },
+    {
+      "id": "T131",
+      "name": "Validation test 1",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T132",
+      "name": "Validation test 2",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T133",
+      "name": "Validation test 3",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T134",
+      "name": "Validation test 4",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T135",
+      "name": "Validation test 5",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T136",
+      "name": "Validation test 6",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T137",
+      "name": "Validation test 7",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T138",
+      "name": "Validation test 8",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T139",
+      "name": "Validation test 9",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T140",
+      "name": "Validation test 10",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T141",
+      "name": "Validation test 11",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T142",
+      "name": "Validation test 12",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T143",
+      "name": "Validation test 13",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T144",
+      "name": "Validation test 14",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T145",
+      "name": "Validation test 15",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T146",
+      "name": "Validation test 16",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T147",
+      "name": "Validation test 17",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T148",
+      "name": "Validation test 18",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T149",
+      "name": "Validation test 19",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T150",
+      "name": "Validation test 20",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T151",
+      "name": "Validation test 21",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T152",
+      "name": "Validation test 22",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T153",
+      "name": "Validation test 23",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T154",
+      "name": "Validation test 24",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T155",
+      "name": "Validation test 25",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T156",
+      "name": "Validation test 26",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T157",
+      "name": "Validation test 27",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T158",
+      "name": "Validation test 28",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T159",
+      "name": "Validation test 29",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T160",
+      "name": "Validation test 30",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T161",
+      "name": "Validation test 31",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T162",
+      "name": "Validation test 32",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T163",
+      "name": "Validation test 33",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T164",
+      "name": "Validation test 34",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T165",
+      "name": "Validation test 35",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T166",
+      "name": "Validation test 36",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T167",
+      "name": "Validation test 37",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T168",
+      "name": "Validation test 38",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T169",
+      "name": "Validation test 39",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T170",
+      "name": "Validation test 40",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T171",
+      "name": "Validation test 41",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T172",
+      "name": "Validation test 42",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T173",
+      "name": "Validation test 43",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T174",
+      "name": "Validation test 44",
+      "category": "Validation",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T175",
+      "name": "Error handling test 1",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T176",
+      "name": "Error handling test 2",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T177",
+      "name": "Error handling test 3",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T178",
+      "name": "Error handling test 4",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T179",
+      "name": "Error handling test 5",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T180",
+      "name": "Error handling test 6",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T181",
+      "name": "Error handling test 7",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T182",
+      "name": "Error handling test 8",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T183",
+      "name": "Error handling test 9",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T184",
+      "name": "Error handling test 10",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T185",
+      "name": "Error handling test 11",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T186",
+      "name": "Error handling test 12",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T187",
+      "name": "Error handling test 13",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T188",
+      "name": "Error handling test 14",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T189",
+      "name": "Error handling test 15",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T190",
+      "name": "Error handling test 16",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T191",
+      "name": "Error handling test 17",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T192",
+      "name": "Error handling test 18",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T193",
+      "name": "Error handling test 19",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T194",
+      "name": "Error handling test 20",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T195",
+      "name": "Error handling test 21",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T196",
+      "name": "Error handling test 22",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T197",
+      "name": "Error handling test 23",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T198",
+      "name": "Error handling test 24",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T199",
+      "name": "Error handling test 25",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T200",
+      "name": "Error handling test 26",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T201",
+      "name": "Error handling test 27",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T202",
+      "name": "Error handling test 28",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T203",
+      "name": "Error handling test 29",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T204",
+      "name": "Error handling test 30",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T205",
+      "name": "Error handling test 31",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T206",
+      "name": "Error handling test 32",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T207",
+      "name": "Error handling test 33",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T208",
+      "name": "Error handling test 34",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T209",
+      "name": "Error handling test 35",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T210",
+      "name": "Error handling test 36",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T211",
+      "name": "Error handling test 37",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T212",
+      "name": "Error handling test 38",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T213",
+      "name": "Error handling test 39",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T214",
+      "name": "Error handling test 40",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T215",
+      "name": "Error handling test 41",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T216",
+      "name": "Error handling test 42",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T217",
+      "name": "Error handling test 43",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T218",
+      "name": "Error handling test 44",
+      "category": "Error Handling",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T219",
+      "name": "Integration test 1",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T220",
+      "name": "Integration test 2",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T221",
+      "name": "Integration test 3",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T222",
+      "name": "Integration test 4",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T223",
+      "name": "Integration test 5",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T224",
+      "name": "Integration test 6",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T225",
+      "name": "Integration test 7",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T226",
+      "name": "Integration test 8",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T227",
+      "name": "Integration test 9",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T228",
+      "name": "Integration test 10",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T229",
+      "name": "Integration test 11",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T230",
+      "name": "Integration test 12",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T231",
+      "name": "Integration test 13",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T232",
+      "name": "Integration test 14",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T233",
+      "name": "Integration test 15",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T234",
+      "name": "Integration test 16",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T235",
+      "name": "Integration test 17",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T236",
+      "name": "Integration test 18",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T237",
+      "name": "Integration test 19",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T238",
+      "name": "Integration test 20",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T239",
+      "name": "Integration test 21",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T240",
+      "name": "Integration test 22",
+      "category": "Integration",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T241",
+      "name": "Performance test 1",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T242",
+      "name": "Performance test 2",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T243",
+      "name": "Performance test 3",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T244",
+      "name": "Performance test 4",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T245",
+      "name": "Performance test 5",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T246",
+      "name": "Performance test 6",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T247",
+      "name": "Performance test 7",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T248",
+      "name": "Performance test 8",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T249",
+      "name": "Performance test 9",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T250",
+      "name": "Performance test 10",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T251",
+      "name": "Performance test 11",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T252",
+      "name": "Performance test 12",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T253",
+      "name": "Performance test 13",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T254",
+      "name": "Performance test 14",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T255",
+      "name": "Performance test 15",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T256",
+      "name": "Performance test 16",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T257",
+      "name": "Performance test 17",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T258",
+      "name": "Performance test 18",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T259",
+      "name": "Performance test 19",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T260",
+      "name": "Performance test 20",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T261",
+      "name": "Performance test 21",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    },
+    {
+      "id": "T262",
+      "name": "Performance test 22",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration": 0,
+      "error": "Requires authentication"
+    }
+  ],
+  "summary": {
+    "total": 262,
+    "passed": 43,
+    "failed": 1,
+    "skipped": 218,
+    "passRate": "16.4",
+    "executedPassRate": "97.7"
+  }
+}

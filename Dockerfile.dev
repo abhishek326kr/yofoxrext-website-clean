@@ -1,0 +1,36 @@
+# Development Dockerfile for YoForex
+# This is optimized for hot reload and debugging, not for production
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install system dependencies needed for development
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    postgresql-client \
+    bash \
+    git
+
+# Copy package files
+COPY package*.json ./
+COPY drizzle.config.ts ./
+
+# Install ALL dependencies (including devDependencies)
+RUN npm ci
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/public/uploads /app/.next /app/dist
+
+# Expose ports
+EXPOSE 5000 3001 9229
+
+# Set development environment
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
+# Default command (can be overridden by docker-compose)
+CMD ["npm", "run", "dev"]
