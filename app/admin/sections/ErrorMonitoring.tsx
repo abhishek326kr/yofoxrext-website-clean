@@ -143,7 +143,8 @@ export default function ErrorMonitoring() {
       params.append('sortBy', filters.sortBy);
       params.append('sortOrder', filters.sortOrder);
       
-      return apiRequest('GET', `/api/admin/errors/groups?${params}`);
+      const response = await apiRequest('GET', `/api/admin/errors/groups?${params}`);
+      return response.json();
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
@@ -152,7 +153,8 @@ export default function ErrorMonitoring() {
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ['/api/admin/errors/stats', statsPeriod],
     queryFn: async () => {
-      return apiRequest('GET', `/api/admin/errors/stats?period=${statsPeriod}`);
+      const response = await apiRequest('GET', `/api/admin/errors/stats?period=${statsPeriod}`);
+      return response.json();
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
@@ -162,7 +164,8 @@ export default function ErrorMonitoring() {
     queryKey: ['/api/admin/errors/groups', selectedGroup],
     queryFn: async () => {
       if (!selectedGroup) return null;
-      return apiRequest('GET', `/api/admin/errors/groups/${selectedGroup}`);
+      const response = await apiRequest('GET', `/api/admin/errors/groups/${selectedGroup}`);
+      return response.json();
     },
     enabled: !!selectedGroup,
   });
@@ -170,7 +173,8 @@ export default function ErrorMonitoring() {
   // Update error status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ groupId, status, reason }: { groupId: string; status: string; reason: string }) => {
-      return apiRequest('PATCH', `/api/admin/errors/groups/${groupId}/status`, { status, reason });
+      const response = await apiRequest('PATCH', `/api/admin/errors/groups/${groupId}/status`, { status, reason });
+      return response.json();
     },
     onSuccess: () => {
       toast({ title: 'Status updated successfully' });
@@ -192,9 +196,10 @@ export default function ErrorMonitoring() {
   // Cleanup mutation
   const cleanupMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/admin/errors/cleanup');
+      const response = await apiRequest('POST', '/api/admin/errors/cleanup');
+      return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast({ 
         title: 'Cleanup completed',
         description: `Deleted ${data.cleanup.deletedGroups} groups and ${data.cleanup.deletedEvents} events. Auto-resolved ${data.autoResolve.resolvedCount} inactive errors.`
