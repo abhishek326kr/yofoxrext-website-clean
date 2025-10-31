@@ -9,7 +9,7 @@ import { startBackgroundJobs } from "./jobs/backgroundJobs";
 import { setupSecurityHeaders } from "./middleware/securityHeaders";
 import { categoryRedirectMiddleware, trackCategoryViews } from "./middleware/categoryRedirects";
 import { initializeDashboardWebSocket } from "./services/dashboardWebSocket";
-import { serverErrorTracker } from "./middleware/errorTracking";
+import { serverErrorTracker, errorTrackingMiddleware } from "./middleware/errorTracking";
 
 const app = express();
 
@@ -142,6 +142,10 @@ async function initializeServer() {
     await setupLocalAuth(app);
     
     const expressApp = await registerRoutes(app);
+    
+    // Register error tracking middleware to capture specialized error types
+    // This middleware will capture errors and then pass them to the next error handler
+    expressApp.use(errorTrackingMiddleware);
     
     // Add comprehensive error handling middleware AFTER routes
     expressApp.use(async (err: any, req: Request, res: Response, _next: NextFunction) => {

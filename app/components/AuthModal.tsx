@@ -37,7 +37,7 @@ export default function AuthModal({
   onOpenChange,
   action = "continue"
 }: AuthModalProps) {
-  const mode = "login"; // Signup disabled - admins only
+  const mode: "login" | "signup" = "login"; // Signup disabled - admins only
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
