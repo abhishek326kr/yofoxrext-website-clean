@@ -57,13 +57,24 @@ export class ErrorTracker {
   private interceptors: Set<() => void> = new Set();
 
   private constructor() {
-    this.sessionId = this.generateSessionId();
-    this.loadUnsentErrors();
-    this.setupErrorHandlers();
-    this.setupConsoleInterception();
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined') {
+      this.sessionId = this.generateSessionId();
+      this.loadUnsentErrors();
+      this.setupErrorHandlers();
+      this.setupConsoleInterception();
+    } else {
+      // Server-side: create minimal instance
+      this.sessionId = 'ssr-' + Date.now();
+    }
   }
 
-  static getInstance(): ErrorTracker {
+  static getInstance(): ErrorTracker | null {
+    // Only create instance in browser environment
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    
     if (!ErrorTracker.instance) {
       ErrorTracker.instance = new ErrorTracker();
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,13 +18,24 @@ import {
 
 export default function ErrorTestPage() {
   const [testResults, setTestResults] = useState<string[]>([]);
-  const errorTracker = ErrorTracker.getInstance();
+  const [errorTracker, setErrorTracker] = useState<any>(null);
+  
+  useEffect(() => {
+    // Only instantiate ErrorTracker on the client side
+    if (typeof window !== 'undefined') {
+      setErrorTracker(ErrorTracker.getInstance());
+    }
+  }, []);
 
   const addResult = (result: string) => {
     setTestResults((prev) => [...prev, `${new Date().toLocaleTimeString()} - ${result}`]);
   };
 
   const testJavaScriptError = () => {
+    if (!errorTracker) {
+      addResult('⚠ Error tracker not initialized');
+      return;
+    }
     try {
       addResult('Testing JavaScript Error...');
       throw new Error('Test JavaScript error from test page');
