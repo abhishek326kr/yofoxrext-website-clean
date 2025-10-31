@@ -686,7 +686,7 @@ export default function EmailDashboard() {
                     <Skeleton className="h-[300px] w-full" />
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={analytics?.typeData || []}>
+                      <BarChart data={(analytics as any)?.typeData || []}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="type" />
                         <YAxis />
@@ -709,7 +709,7 @@ export default function EmailDashboard() {
                   ) : (
                     <div className="grid grid-cols-24 gap-1">
                       {Array.from({ length: 24 }, (_, hour) => {
-                        const activity = analytics?.timezoneData?.find((d: any) => d.hour === hour);
+                        const activity = (analytics as any)?.timezoneData?.find((d: any) => d.hour === hour);
                         const intensity = activity ? Math.min(activity.count / 100, 1) : 0;
                         return (
                           <div
@@ -809,7 +809,7 @@ export default function EmailDashboard() {
                             <TableCell className="font-medium">{log.recipientEmail}</TableCell>
                             <TableCell>{log.templateKey}</TableCell>
                             <TableCell>
-                              <Badge variant="secondary" className={STATUS_COLORS[log.status]}>
+                              <Badge variant="secondary" className={STATUS_COLORS[log.status as keyof typeof STATUS_COLORS]}>
                                 {log.status}
                               </Badge>
                             </TableCell>
@@ -850,12 +850,12 @@ export default function EmailDashboard() {
                     Array.from({ length: 5 }).map((_, i) => (
                       <Skeleton key={i} className="h-20 w-full" />
                     ))
-                  ) : templates?.length === 0 ? (
+                  ) : Array.isArray(templates) && templates.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       No templates configured
                     </div>
                   ) : (
-                    templates?.map((template: any) => (
+                    Array.isArray(templates) && templates.map((template: any) => (
                       <div
                         key={template.key}
                         className="border rounded-lg p-4 space-y-3"
@@ -943,19 +943,19 @@ export default function EmailDashboard() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Email Notifications Enabled</span>
-                      <span className="font-semibold">{preferences?.enabledCount || 0} users</span>
+                      <span className="font-semibold">{(preferences as any)?.enabledCount || 0} users</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Unsubscribed</span>
-                      <span className="font-semibold text-red-500">{preferences?.unsubscribedCount || 0} users</span>
+                      <span className="font-semibold text-red-500">{(preferences as any)?.unsubscribedCount || 0} users</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Auto-disabled (bounces)</span>
-                      <span className="font-semibold text-orange-500">{preferences?.bouncedCount || 0} users</span>
+                      <span className="font-semibold text-orange-500">{(preferences as any)?.bouncedCount || 0} users</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Marketing Emails</span>
-                      <span className="font-semibold">{preferences?.marketingEnabledCount || 0} users</span>
+                      <span className="font-semibold">{(preferences as any)?.marketingEnabledCount || 0} users</span>
                     </div>
                   </div>
                 </CardContent>
@@ -974,13 +974,13 @@ export default function EmailDashboard() {
                           <Skeleton key={i} className="h-12 w-full" />
                         ))}
                       </div>
-                    ) : preferences?.bouncedUsers?.length === 0 ? (
+                    ) : (preferences as any)?.bouncedUsers?.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
                         No bounced emails
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {preferences?.bouncedUsers?.map((user: any) => (
+                        {(preferences as any)?.bouncedUsers?.map((user: any) => (
                           <div
                             key={user.id}
                             className="flex items-center justify-between p-2 border rounded"
@@ -1040,7 +1040,7 @@ export default function EmailDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {templates?.map((template: any) => (
+                        {(templates as any[])?.map((template: any) => (
                           <SelectItem key={template.key} value={template.key}>
                             {template.name}
                           </SelectItem>
@@ -1108,7 +1108,7 @@ export default function EmailDashboard() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Send Bulk Announcement?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will send an email to all {preferences?.enabledCount || 0} subscribed users. 
+                          This will send an email to all {(preferences as any)?.enabledCount || 0} subscribed users. 
                           Are you sure you want to proceed?
                         </AlertDialogDescription>
                       </AlertDialogHeader>

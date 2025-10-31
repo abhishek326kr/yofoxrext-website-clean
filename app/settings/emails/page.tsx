@@ -123,11 +123,7 @@ export default function EmailPreferencesPage() {
   // Update preferences mutation
   const updatePrefsMutation = useMutation({
     mutationFn: async (data: Partial<EmailPreferences>) => {
-      return apiRequest('/api/user/email-preferences', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      return apiRequest('PATCH', '/api/user/email-preferences', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/email-preferences'] });
@@ -149,14 +145,14 @@ export default function EmailPreferencesPage() {
   // Initialize local preferences
   useEffect(() => {
     if (preferences && !localPrefs) {
-      setLocalPrefs(preferences);
-      setMasterToggle(!preferences.unsubscribedAt);
+      setLocalPrefs(preferences as EmailPreferences);
+      setMasterToggle(!(preferences as any).unsubscribedAt);
       
       // Set vacation dates if they exist
-      if (preferences.vacationStart && preferences.vacationEnd) {
+      if ((preferences as any).vacationStart && (preferences as any).vacationEnd) {
         setVacationDates({
-          from: new Date(preferences.vacationStart),
-          to: new Date(preferences.vacationEnd),
+          from: new Date((preferences as any).vacationStart),
+          to: new Date((preferences as any).vacationEnd),
         });
       }
     }
@@ -821,10 +817,10 @@ export default function EmailPreferencesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {emailHistory && emailHistory.length > 0 ? (
+              {emailHistory && (emailHistory as any[]).length > 0 ? (
                 <ScrollArea className="h-[500px]">
                   <div className="space-y-4">
-                    {emailHistory.map((email: EmailHistory) => (
+                    {(emailHistory as EmailHistory[]).map((email: EmailHistory) => (
                       <div
                         key={email.id}
                         className="border rounded-lg p-4 space-y-2"

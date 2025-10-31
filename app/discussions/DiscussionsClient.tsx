@@ -32,6 +32,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthPrompt } from "@/hooks/useAuthPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Thread = {
@@ -143,7 +144,8 @@ function useActivityFeed() {
 }
 
 export default function DiscussionsClient({ initialThreads }: DiscussionsClientProps) {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { requireAuth, AuthPrompt } = useAuthPrompt("start a discussion");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("latest");
@@ -312,7 +314,9 @@ export default function DiscussionsClient({ initialThreads }: DiscussionsClientP
 
   const handleNewThread = () => {
     if (!isAuthenticated) {
-      login();
+      requireAuth(() => {
+        window.location.href = '/discussions/new';
+      });
     } else {
       window.location.href = '/discussions/new';
     }
@@ -798,6 +802,7 @@ export default function DiscussionsClient({ initialThreads }: DiscussionsClientP
           </Card>
         </div>
       </div>
+      <AuthPrompt />
     </main>
   );
 }

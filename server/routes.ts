@@ -1759,7 +1759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   recipientName: user.username,
                   coinsEarned: result.coinsEarned,
                   earnedFrom: 'Activity Reward',
-                  totalBalance: user.coinBalance + result.coinsEarned,
+                  totalBalance: (user as any).coinBalance + result.coinsEarned,
                   totalMinutes: result.totalMinutes
                 },
                 priority: EmailPriority.LOW,

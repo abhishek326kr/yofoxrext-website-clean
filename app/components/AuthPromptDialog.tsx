@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Users, TrendingUp, Award, MessageSquare } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import AuthModal from "./AuthModal";
 
 interface AuthPromptDialogProps {
   open: boolean;
@@ -23,13 +24,15 @@ export default function AuthPromptDialog({
   onOpenChange,
   action = "continue"
 }: AuthPromptDialogProps) {
-  const { login } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleLogin = () => {
-    login();
+    onOpenChange(false);
+    setShowAuthModal(true);
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -83,5 +86,11 @@ export default function AuthPromptDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AuthModal 
+      open={showAuthModal} 
+      onOpenChange={setShowAuthModal} 
+      action={action} 
+    />
+    </>
   );
 }
