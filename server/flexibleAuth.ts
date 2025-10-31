@@ -22,13 +22,14 @@ export function getSession() {
   const forceSecureCookies = process.env.FORCE_SECURE_COOKIES === "true";
   const isHTTPS = process.env.USE_HTTPS === "true" || process.env.SSL_ENABLED === "true";
   
-  // In development, we need secure: true for sameSite: "none" to work
-  // In production, use secure cookies based on HTTPS
-  const secureCookies = forceSecureCookies || (isProduction && isHTTPS) || !isProduction;
+  // CRITICAL FIX: In development, Next.js proxies API requests through same origin (via rewrites)
+  // so we can use sameSite: "lax" which doesn't require secure: true
+  // This allows cookies to work with HTTP connections (127.0.0.1:3001)
+  const secureCookies = forceSecureCookies || (isProduction && isHTTPS);
   
-  // For cross-origin requests (Next.js on 5000, Express on 3001), we need sameSite: "none"
-  // In production with a single domain, we can use "lax" for better security
-  const sameSiteValue = isProduction && !process.env.CROSS_ORIGIN_COOKIES ? "lax" : "none";
+  // Use "lax" in development (Next.js proxy = same origin)
+  // Use "none" only if explicitly set for cross-origin production setups
+  const sameSiteValue = isProduction && process.env.CROSS_ORIGIN_COOKIES === "true" ? "none" : "lax";
   
   console.log(`🍪 Cookie config: secure=${secureCookies}, sameSite=${sameSiteValue}, httpOnly=true`);
   
