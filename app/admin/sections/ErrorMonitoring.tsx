@@ -483,7 +483,7 @@ export default function ErrorMonitoring() {
                         ?.sort((a: ErrorWithPriority, b: ErrorWithPriority) => b.priorityScore - a.priorityScore)
                         ?.slice(0, 10); // Only show top 10 most urgent errors
                       
-                      return activeErrors?.map((group, index: number) => (
+                      return activeErrors?.map((group: ErrorWithPriority, index: number) => (
                         <>
                           <TableRow key={group.id} data-testid={`row-priority-error-${group.id}`} className="bg-white dark:bg-gray-950">
                             <TableCell>
