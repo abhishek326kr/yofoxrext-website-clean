@@ -91,12 +91,17 @@ The QueryClient uses relative URLs (no baseUrl) to work with Next.js rewrites, a
 
 ### Authentication System
 
-**Replit OIDC + PostgreSQL Sessions:**
-- OAuth flow handled by Express middleware
-- Session storage in PostgreSQL with configurable expiry
+**Email/Password + Google OAuth with PostgreSQL Sessions:**
+- Custom email/password authentication using bcryptjs
+- Google OAuth integration via Firebase Admin SDK
+- Session storage in PostgreSQL with configurable expiry (default: 7 days)
 - `isAuthenticated` middleware protects sensitive endpoints
 - Session cleanup on SIGTERM/SIGINT for graceful shutdown
-- Support for MFA and temporary access tokens
+
+**Cookie Configuration (CRITICAL):**
+- **Development**: `secure: false`, `sameSite: "lax"` (works with Next.js HTTP proxy)
+- **Production**: `secure: true`, `sameSite: "lax"` (or "none" if CROSS_ORIGIN_COOKIES=true)
+- **Key Fix (Oct 2025)**: Changed dev cookies from `secure:true, sameSite:none` to `secure:false, sameSite:lax` to fix login issues with Next.js rewrites proxying to Express over HTTP
 
 ### Email System
 
