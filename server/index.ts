@@ -128,51 +128,68 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  // Session middleware MUST be set up BEFORE routes
-  // Import and setup authentication middleware first
-  const { setupAuth } = await import('./flexibleAuth');
-  await setupAuth(app);
-  
-  // Setup local authentication (includes password reset endpoints)
-  const { setupLocalAuth } = await import('./localAuth');
-  await setupLocalAuth(app);
-  
-  const expressApp = await registerRoutes(app);
-  
-  // Create HTTP server and initialize WebSocket
-  const httpServer = createServer(expressApp);
-  const io = initializeDashboardWebSocket(httpServer);
-  log("WebSocket server initialized on /ws/dashboard");
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // React SPA removed - Next.js runs separately on port 3000
-  // Express server now only serves API endpoints
-  log("Express server running API-only mode (React SPA archived)");
-
-  // Express API server runs on port 3001 (internal)
-  // Next.js frontend runs on port 5000 (user-facing, required by Replit)
-  const port = parseInt(process.env.API_PORT || '3001', 10);
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port} with WebSocket support`);
+// Initialize the server with proper async handling
+async function initializeServer() {
+  try {
+    // Session middleware MUST be set up BEFORE routes
+    // Import and setup authentication middleware first
+    const { setupAuth } = await import('./flexibleAuth');
+    await setupAuth(app);
     
-    // Defer background jobs if needed for health checks
-    if (process.env.DEFER_BACKGROUND_JOBS === 'true') {
-      log('Deferring background jobs for 5 seconds to allow health checks to pass...');
-      setTimeout(() => {
-        log('Starting background jobs after deferment period');
+    // Setup local authentication (includes password reset endpoints)
+    const { setupLocalAuth } = await import('./localAuth');
+    await setupLocalAuth(app);
+    
+    const expressApp = await registerRoutes(app);
+    
+    // Add error handling middleware AFTER routes
+    expressApp.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+
+      res.status(status).json({ message });
+      throw err;
+    });
+
+    // React SPA removed - Next.js runs separately on port 3000
+    // Express server now only serves API endpoints
+    log("Express server running API-only mode (React SPA archived)");
+
+    // Create HTTP server and initialize WebSocket
+    const httpServer = createServer(expressApp);
+    const io = initializeDashboardWebSocket(httpServer);
+    log("WebSocket server initialized on /ws/dashboard");
+
+    // Express API server runs on port 3001 (internal)
+    // Next.js frontend runs on port 5000 (user-facing, required by Replit)
+    const port = parseInt(process.env.API_PORT || '3001', 10);
+    
+    // Start the server only after all setup is complete
+    httpServer.listen(port, "0.0.0.0", () => {
+      log(`serving on port ${port} with WebSocket support`);
+      
+      // Defer background jobs if needed for health checks
+      if (process.env.DEFER_BACKGROUND_JOBS === 'true') {
+        log('Deferring background jobs for 5 seconds to allow health checks to pass...');
+        setTimeout(() => {
+          log('Starting background jobs after deferment period');
+          startBackgroundJobs(storage);
+        }, 5000); // Start after 5 seconds
+      } else {
+        // Start background jobs immediately
         startBackgroundJobs(storage);
-      }, 5000); // Start after 5 seconds
-    } else {
-      // Start background jobs immediately
-      startBackgroundJobs(storage);
-    }
-  });
-})();
+      }
+    });
+
+    return httpServer;
+  } catch (error) {
+    console.error('Failed to initialize server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server with proper error handling
+initializeServer().catch((error) => {
+  console.error('Fatal server initialization error:', error);
+  process.exit(1);
+});

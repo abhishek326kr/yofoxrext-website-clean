@@ -1,5 +1,4 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage/index.js";
 import { setupAuth, isAuthenticated } from "./flexibleAuth.js";
 import bcrypt from "bcryptjs";
@@ -224,7 +223,7 @@ const upload = multer({
   }
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<Express> {
   // Authentication is now set up in server/index.ts before routes
   // This ensures session middleware runs before route handlers
 
@@ -10066,7 +10065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TODO: Queue reinstatement notifications with EmailPriority.HIGH
   // TODO: Queue warning notifications with EmailPriority.MEDIUM
 
-  const httpServer = createServer(app);
-
-  return httpServer;
+  // Return the Express app with all routes registered
+  // Server creation happens in index.ts
+  return app;
 }
