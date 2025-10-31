@@ -473,13 +473,14 @@ export default function ErrorMonitoring() {
                       };
                       
                       // Get all active errors, calculate priorities, and take top 10
+                      type ErrorWithPriority = ErrorGroup & { priorityScore: number };
                       const activeErrors = errorGroups?.groups
                         ?.filter((g: ErrorGroup) => g.status === 'active')
-                        ?.map((error: ErrorGroup) => ({
+                        ?.map((error: ErrorGroup): ErrorWithPriority => ({
                           ...error,
                           priorityScore: calculatePriorityScore(error)
                         }))
-                        ?.sort((a, b) => b.priorityScore - a.priorityScore)
+                        ?.sort((a: ErrorWithPriority, b: ErrorWithPriority) => b.priorityScore - a.priorityScore)
                         ?.slice(0, 10); // Only show top 10 most urgent errors
                       
                       return activeErrors?.map((group, index: number) => (
