@@ -539,8 +539,17 @@ export class ErrorTracker {
   // Method to integrate with fetch API
   public wrapFetch(originalFetch: typeof fetch): typeof fetch {
     return async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      const method = init?.method || 'GET';
+      let url: string;
+      if (typeof input === 'string') {
+        url = input;
+      } else if (input instanceof URL) {
+        url = input.toString();
+      } else if (input instanceof Request) {
+        url = input.url;
+      } else {
+        url = 'unknown';
+      }
+      const method = init?.method || (input instanceof Request ? input.method : 'GET');
       
       try {
         const response = await originalFetch(input, init);
