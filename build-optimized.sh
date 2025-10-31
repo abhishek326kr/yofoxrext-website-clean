@@ -11,7 +11,7 @@ echo "🚀 Starting Optimized Production Build..."
 export EXPRESS_URL=${EXPRESS_URL:-http://127.0.0.1:3001}
 export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://$REPL_SLUG.$REPL_OWNER.repl.co}
 export NODE_ENV=production
-export NODE_OPTIONS="--max-old-space-size=3072"  # Increase memory for build
+export NODE_OPTIONS="--max-old-space-size=2048"  # 2GB for Next.js build (optimized for Replit)
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
@@ -31,24 +31,34 @@ echo "📦 Building Next.js frontend with optimizations..."
 
 # Skip linting and type checking for faster builds
 export NEXT_TELEMETRY_DISABLED=1
+export SKIP_ENV_VALIDATION=1
 
 # Ensure Express URL is set for Next.js build
 echo "   EXPRESS_URL=$EXPRESS_URL"
 echo "   NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL"
+echo "   NODE_OPTIONS=$NODE_OPTIONS"
 
-# Build Next.js with proper error handling
-npm run build:next || {
-  echo "❌ Next.js build failed"
-  echo "Checking for common issues..."
+# Build Next.js with proper error handling and output
+echo "   Starting Next.js build process..."
+if npm run build:next; then
+  echo "✅ Next.js build command completed successfully"
+else
+  BUILD_EXIT_CODE=$?
+  echo "❌ Next.js build command failed with exit code $BUILD_EXIT_CODE"
   
-  # Check if .next directory was created
+  # Check if .next directory was created despite error
   if [ ! -d ".next" ]; then
     echo "❌ .next directory not created - build completely failed"
+    echo "💡 Troubleshooting tips:"
+    echo "   1. Check if you have enough memory (current: $NODE_OPTIONS)"
+    echo "   2. Verify environment variables are set correctly"
+    echo "   3. Check Next.js logs above for specific errors"
     exit 1
   fi
   
-  echo "⚠️  Next.js build had warnings but .next directory exists, continuing..."
-}
+  echo "⚠️  Next.js build had errors but .next directory exists"
+  echo "   This might be okay if it's just warnings. Continuing..."
+fi
 
 if [ ! -d ".next" ]; then
   echo "❌ Next.js build failed - .next directory not found"

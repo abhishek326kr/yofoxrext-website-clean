@@ -46,10 +46,10 @@ const corsOptions = {
         /^https?:\/\/localhost:\d+$/,        // Any localhost port
         /^https?:\/\/127\.0\.0\.1:\d+$/,     // Any 127.0.0.1 port
         /^https?:\/\/0\.0\.0\.0:\d+$/,       // Any 0.0.0.0 port
-        /^https?:\/\/[^.]+\.replit\.dev$/,   // Any Replit dev domain
-        /^https?:\/\/[^.]+\.repl\.co$/,      // Any Replit co domain
-        /^https?:\/\/[^.]+\.replit\.app$/,   // Any Replit app domain
-        /^https?:\/\/[^.]+\.repl\.run$/,     // Any Replit run domain
+        /^https?:\/\/.*\.replit\.dev$/,      // Any Replit dev domain (multi-level)
+        /^https?:\/\/.*\.repl\.co$/,         // Any Replit co domain (multi-level)
+        /^https?:\/\/.*\.replit\.app$/,      // Any Replit app domain (multi-level)
+        /^https?:\/\/.*\.repl\.run$/,        // Any Replit run domain (multi-level)
       ];
       
       // Check if origin matches any pattern
@@ -74,8 +74,8 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    // For production Replit domains
-    if (/^https?:\/\/[^.]+\.replit\.app$/.test(origin)) {
+    // For production Replit domains (multi-level subdomains)
+    if (/^https?:\/\/.*\.replit\.app$/.test(origin)) {
       return callback(null, true);
     }
     
