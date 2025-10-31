@@ -23,7 +23,7 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  private errorTracker: ErrorTracker;
+  private errorTracker: ErrorTracker | null;
 
   constructor(props: Props) {
     super(props);
@@ -52,16 +52,18 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log error to our error tracking system
-    this.errorTracker.captureError(
-      error,
-      {
-        component: errorInfo.componentStack,
-        props: this.props,
-        errorBoundary: true,
-      },
-      'critical'
-    );
+    // Log error to our error tracking system if available
+    if (this.errorTracker) {
+      this.errorTracker.captureError(
+        error,
+        {
+          component: errorInfo.componentStack,
+          props: this.props,
+          errorBoundary: true,
+        },
+        'critical'
+      );
+    }
 
     // Update state with error details
     this.setState({
@@ -86,13 +88,15 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ sending: true });
 
     try {
-      // Add user description to the error
-      if (this.state.userDescription) {
-        this.errorTracker.addUserDescription(this.state.userDescription);
-      }
+      if (this.errorTracker) {
+        // Add user description to the error
+        if (this.state.userDescription) {
+          this.errorTracker.addUserDescription(this.state.userDescription);
+        }
 
-      // Force send the error batch
-      await this.errorTracker.forceFlush();
+        // Force send the error batch
+        await this.errorTracker.forceFlush();
+      }
 
       this.setState({
         reportSent: true,
