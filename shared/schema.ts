@@ -2930,6 +2930,107 @@ export const botEconomySettings = pgTable("bot_economy_settings", {
 });
 
 // ============================================================================
+// ERROR TRACKING SYSTEM TABLES
+// ============================================================================
+
+// Error Groups - Groups similar errors together based on fingerprint
+export const errorGroups = pgTable("error_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull().unique(), // SHA256 hash
+  message: text("message").notNull(),
+  component: varchar("component", { length: 255 }), // Component or file where error occurred
+  firstSeen: timestamp("first_seen").notNull().defaultNow(),
+  lastSeen: timestamp("last_seen").notNull().defaultNow(),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  severity: varchar("severity", { length: 20 }).notNull().$type<"critical" | "error" | "warning" | "info">().default("error"),
+  status: varchar("status", { length: 20 }).notNull().$type<"active" | "resolved" | "ignored">().default("active"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  metadata: jsonb("metadata").$type<{
+    browser?: string;
+    os?: string;
+    url?: string;
+    method?: string;
+    statusCode?: number;
+    userAgent?: string;
+    environment?: string;
+  }>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  fingerprintIdx: index("idx_error_groups_fingerprint").on(table.fingerprint),
+  severityIdx: index("idx_error_groups_severity").on(table.severity),
+  statusIdx: index("idx_error_groups_status").on(table.status),
+  lastSeenIdx: index("idx_error_groups_last_seen").on(table.lastSeen),
+  occurrenceCountIdx: index("idx_error_groups_occurrence_count").on(table.occurrenceCount),
+}));
+
+// Error Events - Individual error occurrences
+export const errorEvents = pgTable("error_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull().references(() => errorGroups.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id", { length: 100 }),
+  stackTrace: text("stack_trace"),
+  context: jsonb("context").$type<{
+    componentStack?: string;
+    props?: any;
+    state?: any;
+    route?: string;
+    action?: string;
+    payload?: any;
+    customData?: any;
+  }>(),
+  browserInfo: jsonb("browser_info").$type<{
+    name?: string;
+    version?: string;
+    os?: string;
+    platform?: string;
+    mobile?: boolean;
+    viewport?: { width: number; height: number };
+    screen?: { width: number; height: number };
+    language?: string;
+    cookiesEnabled?: boolean;
+    onlineStatus?: boolean;
+    doNotTrack?: boolean;
+  }>(),
+  requestInfo: jsonb("request_info").$type<{
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    params?: Record<string, any>;
+    query?: Record<string, any>;
+    body?: any;
+    ip?: string;
+    referrer?: string;
+    responseStatus?: number;
+    responseTime?: number;
+  }>(),
+  userDescription: text("user_description"), // Optional user-provided description
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  groupIdIdx: index("idx_error_events_group_id").on(table.groupId),
+  userIdIdx: index("idx_error_events_user_id").on(table.userId),
+  createdAtIdx: index("idx_error_events_created_at").on(table.createdAt),
+  sessionIdIdx: index("idx_error_events_session_id").on(table.sessionId),
+}));
+
+// Error Status Changes - Audit trail for error status changes
+export const errorStatusChanges = pgTable("error_status_changes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  errorGroupId: varchar("error_group_id").notNull().references(() => errorGroups.id, { onDelete: "cascade" }),
+  changedBy: varchar("changed_by").notNull().references(() => users.id),
+  oldStatus: varchar("old_status", { length: 20 }).notNull().$type<"active" | "resolved" | "ignored">(),
+  newStatus: varchar("new_status", { length: 20 }).notNull().$type<"active" | "resolved" | "ignored">(),
+  reason: text("reason"),
+  changedAt: timestamp("changed_at").notNull().defaultNow(),
+}, (table) => ({
+  errorGroupIdIdx: index("idx_error_status_changes_error_group_id").on(table.errorGroupId),
+  changedByIdx: index("idx_error_status_changes_changed_by").on(table.changedBy),
+  changedAtIdx: index("idx_error_status_changes_changed_at").on(table.changedAt),
+}));
+
+// ============================================================================
 // BOT SYSTEM SCHEMAS AND TYPES
 // ============================================================================
 
@@ -2970,3 +3071,53 @@ export type AdminTreasury = typeof adminTreasury.$inferSelect;
 
 // Bot Economy Settings
 export type BotEconomySettings = typeof botEconomySettings.$inferSelect;
+
+// ============================================================================
+// ERROR TRACKING SYSTEM SCHEMAS AND TYPES
+// ============================================================================
+
+// Error Groups
+export const insertErrorGroupSchema = createInsertSchema(errorGroups).omit({
+  id: true,
+  firstSeen: true,
+  lastSeen: true,
+  occurrenceCount: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  fingerprint: z.string().length(64), // SHA256 hash
+  message: z.string().min(1),
+  component: z.string().optional(),
+  severity: z.enum(["critical", "error", "warning", "info"]).default("error"),
+  status: z.enum(["active", "resolved", "ignored"]).default("active"),
+});
+export type InsertErrorGroup = z.infer<typeof insertErrorGroupSchema>;
+export type ErrorGroup = typeof errorGroups.$inferSelect;
+
+// Error Events
+export const insertErrorEventSchema = createInsertSchema(errorEvents).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  groupId: z.string().uuid(),
+  userId: z.string().uuid().optional(),
+  sessionId: z.string().max(100).optional(),
+  stackTrace: z.string().optional(),
+  userDescription: z.string().optional(),
+});
+export type InsertErrorEvent = z.infer<typeof insertErrorEventSchema>;
+export type ErrorEvent = typeof errorEvents.$inferSelect;
+
+// Error Status Changes
+export const insertErrorStatusChangeSchema = createInsertSchema(errorStatusChanges).omit({
+  id: true,
+  changedAt: true,
+}).extend({
+  errorGroupId: z.string().uuid(),
+  changedBy: z.string().uuid(),
+  oldStatus: z.enum(["active", "resolved", "ignored"]),
+  newStatus: z.enum(["active", "resolved", "ignored"]),
+  reason: z.string().optional(),
+});
+export type InsertErrorStatusChange = z.infer<typeof insertErrorStatusChangeSchema>;
+export type ErrorStatusChange = typeof errorStatusChanges.$inferSelect;

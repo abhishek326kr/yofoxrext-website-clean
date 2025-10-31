@@ -142,13 +142,91 @@ async function initializeServer() {
     
     const expressApp = await registerRoutes(app);
     
-    // Add error handling middleware AFTER routes
-    expressApp.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    // Add comprehensive error handling middleware AFTER routes
+    expressApp.use(async (err: any, req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
+      
+      // Generate error fingerprint for backend errors
+      const generateBackendFingerprint = async (error: any, req: Request): Promise<string> => {
+        const crypto = await import('crypto');
+        const message = error.message || 'Unknown error';
+        const route = `${req.method} ${req.path}`;
+        const stackFrames = error.stack?.split('\n').slice(0, 4).join('\n') || '';
+        const fingerprintData = `${message}|${route}|${stackFrames}`;
+        return crypto.createHash('sha256').update(fingerprintData).digest('hex');
+      };
+      
+      // Log backend errors to database
+      try {
+        const fingerprint = await generateBackendFingerprint(err, req);
+        
+        // Capture request info
+        const requestInfo = {
+          url: req.originalUrl,
+          method: req.method,
+          headers: req.headers,
+          body: req.body,
+          query: req.query,
+          params: req.params,
+          ip: req.ip,
+          userAgent: req.get('user-agent'),
+        };
+        
+        // Get user session info if available
+        const userId = (req as any).user?.id;
+        const sessionId = (req as any).session?.id;
+        
+        // Determine severity based on status code
+        let severity: 'critical' | 'error' | 'warning' | 'info' = 'error';
+        if (status >= 500) {
+          severity = 'critical';
+        } else if (status >= 400) {
+          severity = 'error';
+        } else {
+          severity = 'warning';
+        }
+        
+        // Save error to database
+        await storage.createErrorEvent({
+          fingerprint,
+          message: err.message || 'Unknown error',
+          component: `backend:${req.method}:${req.path}`,
+          severity,
+          userId,
+          sessionId,
+          stackTrace: err.stack,
+          context: {
+            statusCode: status,
+            errorName: err.name,
+            errorCode: err.code,
+            route: req.route?.path,
+            timestamp: new Date().toISOString(),
+          },
+          browserInfo: {
+            userAgent: req.get('user-agent'),
+          },
+          requestInfo,
+        });
+        
+        console.error(`[ERROR TRACKED] ${severity.toUpperCase()}: ${message}`, {
+          status,
+          path: req.originalUrl,
+          method: req.method,
+          userId,
+          fingerprint,
+        });
+      } catch (trackingError) {
+        // If error tracking fails, log it but don't block the response
+        console.error('[ERROR TRACKING FAILED]', trackingError);
+        console.error('[ORIGINAL ERROR]', err);
+      }
 
-      res.status(status).json({ message });
-      throw err;
+      // Send response to client
+      res.status(status).json({ 
+        message,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+      });
     });
 
     // React SPA removed - Next.js runs separately on port 3000

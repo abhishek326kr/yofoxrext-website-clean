@@ -100,6 +100,13 @@ import {
   type InsertUserActivity,
   type Feedback,
   type InsertFeedback,
+  // Error tracking types
+  type ErrorGroup,
+  type InsertErrorGroup,
+  type ErrorEvent,
+  type InsertErrorEvent,
+  type ErrorStatusChange,
+  type InsertErrorStatusChange,
   users,
   userActivity,
   coinTransactions,
@@ -160,6 +167,10 @@ import {
   securityEvents,
   mediaLibrary,
   contentRevisions,
+  // Error tracking tables
+  errorGroups,
+  errorEvents,
+  errorStatusChanges,
   BADGE_TYPES,
   type BadgeType
 } from "@shared/schema";
@@ -2017,6 +2028,110 @@ export interface IStorage {
    * Resend a failed email
    */
   resendEmail(userId: string, notificationId: string): Promise<void>;
+
+  // ============================================================================
+  // ERROR TRACKING SYSTEM
+  // ============================================================================
+  
+  /**
+   * Create or update an error group based on fingerprint
+   */
+  createErrorGroup(data: {
+    fingerprint: string;
+    message: string;
+    component?: string;
+    severity?: "critical" | "error" | "warning" | "info";
+    metadata?: any;
+  }): Promise<ErrorGroup>;
+  
+  /**
+   * Create a new error event and associate with error group
+   */
+  createErrorEvent(data: {
+    fingerprint: string;
+    message: string;
+    component?: string;
+    severity?: "critical" | "error" | "warning" | "info";
+    userId?: string;
+    sessionId?: string;
+    stackTrace?: string;
+    context?: any;
+    browserInfo?: any;
+    requestInfo?: any;
+    userDescription?: string;
+  }): Promise<ErrorEvent>;
+  
+  /**
+   * Get error groups with filters
+   */
+  getErrorGroups(filters?: {
+    severity?: "critical" | "error" | "warning" | "info";
+    status?: "active" | "resolved" | "ignored";
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: "occurrences" | "last_seen" | "first_seen";
+    sortOrder?: "asc" | "desc";
+  }): Promise<{
+    groups: ErrorGroup[];
+    total: number;
+  }>;
+  
+  /**
+   * Get error events for a specific error group
+   */
+  getErrorEventsByGroup(groupId: string, limit?: number, offset?: number): Promise<{
+    events: ErrorEvent[];
+    total: number;
+  }>;
+  
+  /**
+   * Update error group status
+   */
+  updateErrorGroupStatus(groupId: string, data: {
+    status: "active" | "resolved" | "ignored";
+    resolvedBy?: string;
+    reason?: string;
+  }): Promise<ErrorGroup>;
+  
+  /**
+   * Get error statistics
+   */
+  getErrorStats(period?: "24h" | "7d" | "30d"): Promise<{
+    totalErrors: number;
+    uniqueErrors: number;
+    criticalErrors: number;
+    activeErrors: number;
+    resolvedErrors: number;
+    errorsByHour: Array<{ hour: string; count: number }>;
+    topErrors: Array<{ groupId: string; message: string; count: number }>;
+    errorsBySeverity: Array<{ severity: string; count: number }>;
+    errorsByBrowser: Array<{ browser: string; count: number }>;
+    recentResolutions: Array<{ groupId: string; message: string; resolvedAt: Date; resolvedBy: string }>;
+  }>;
+  
+  /**
+   * Delete resolved errors older than specified days
+   */
+  cleanupOldErrors(daysOld: number): Promise<{ deletedGroups: number; deletedEvents: number }>;
+  
+  /**
+   * Auto-resolve errors that haven't occurred recently
+   */
+  autoResolveInactiveErrors(daysInactive: number): Promise<{ resolvedCount: number }>;
+  
+  /**
+   * Get error group details with all related data
+   */
+  getErrorGroupDetails(groupId: string): Promise<{
+    group: ErrorGroup | null;
+    recentEvents: ErrorEvent[];
+    affectedUsers: number;
+    browsers: Array<{ name: string; count: number }>;
+    timeline: Array<{ date: string; count: number }>;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -14499,6 +14614,593 @@ export class DrizzleStorage implements IStorage {
         );
     } catch (error) {
       console.error('Error resending email:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // ERROR TRACKING SYSTEM IMPLEMENTATION
+  // ============================================================================
+
+  /**
+   * Create or update an error group based on fingerprint
+   */
+  async createErrorGroup(data: {
+    fingerprint: string;
+    message: string;
+    component?: string;
+    severity?: "critical" | "error" | "warning" | "info";
+    metadata?: any;
+  }): Promise<ErrorGroup> {
+    try {
+      // Check if error group already exists
+      const [existing] = await db
+        .select()
+        .from(errorGroups)
+        .where(eq(errorGroups.fingerprint, data.fingerprint))
+        .limit(1);
+
+      if (existing) {
+        // Update existing group
+        const [updated] = await db
+          .update(errorGroups)
+          .set({
+            lastSeen: new Date(),
+            occurrenceCount: sql`${errorGroups.occurrenceCount} + 1`,
+            metadata: data.metadata || existing.metadata,
+            updatedAt: new Date(),
+          })
+          .where(eq(errorGroups.id, existing.id))
+          .returning();
+        return updated;
+      }
+
+      // Create new error group
+      const [newGroup] = await db
+        .insert(errorGroups)
+        .values({
+          fingerprint: data.fingerprint,
+          message: data.message,
+          component: data.component,
+          severity: data.severity || 'error',
+          status: 'active',
+          metadata: data.metadata,
+        })
+        .returning();
+      
+      return newGroup;
+    } catch (error) {
+      console.error('Error creating/updating error group:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new error event and associate with error group
+   */
+  async createErrorEvent(data: {
+    fingerprint: string;
+    message: string;
+    component?: string;
+    severity?: "critical" | "error" | "warning" | "info";
+    userId?: string;
+    sessionId?: string;
+    stackTrace?: string;
+    context?: any;
+    browserInfo?: any;
+    requestInfo?: any;
+    userDescription?: string;
+  }): Promise<ErrorEvent> {
+    try {
+      // First ensure error group exists
+      const group = await this.createErrorGroup({
+        fingerprint: data.fingerprint,
+        message: data.message,
+        component: data.component,
+        severity: data.severity,
+        metadata: {
+          browser: data.browserInfo?.name,
+          os: data.browserInfo?.os,
+          url: data.requestInfo?.url,
+          method: data.requestInfo?.method,
+          statusCode: data.requestInfo?.responseStatus,
+          userAgent: data.browserInfo?.userAgent,
+          environment: process.env.NODE_ENV || 'development',
+        },
+      });
+
+      // Create the error event
+      const [event] = await db
+        .insert(errorEvents)
+        .values({
+          groupId: group.id,
+          userId: data.userId,
+          sessionId: data.sessionId,
+          stackTrace: data.stackTrace,
+          context: data.context,
+          browserInfo: data.browserInfo,
+          requestInfo: data.requestInfo,
+          userDescription: data.userDescription,
+        })
+        .returning();
+
+      return event;
+    } catch (error) {
+      console.error('Error creating error event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get error groups with filters
+   */
+  async getErrorGroups(filters?: {
+    severity?: "critical" | "error" | "warning" | "info";
+    status?: "active" | "resolved" | "ignored";
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: "occurrences" | "last_seen" | "first_seen";
+    sortOrder?: "asc" | "desc";
+  }): Promise<{ groups: ErrorGroup[]; total: number }> {
+    try {
+      const conditions = [];
+
+      if (filters?.severity) {
+        conditions.push(eq(errorGroups.severity, filters.severity));
+      }
+      if (filters?.status) {
+        conditions.push(eq(errorGroups.status, filters.status));
+      }
+      if (filters?.startDate) {
+        conditions.push(gte(errorGroups.firstSeen, filters.startDate));
+      }
+      if (filters?.endDate) {
+        conditions.push(lte(errorGroups.lastSeen, filters.endDate));
+      }
+      if (filters?.search) {
+        conditions.push(
+          or(
+            ilike(errorGroups.message, `%${filters.search}%`),
+            ilike(errorGroups.component, `%${filters.search}%`)
+          )
+        );
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Get total count
+      const [{ total }] = await db
+        .select({ total: count() })
+        .from(errorGroups)
+        .where(whereClause);
+
+      // Get sorted results with pagination
+      let orderByClause;
+      const order = filters?.sortOrder === 'asc' ? asc : desc;
+      
+      switch (filters?.sortBy) {
+        case 'occurrences':
+          orderByClause = order(errorGroups.occurrenceCount);
+          break;
+        case 'first_seen':
+          orderByClause = order(errorGroups.firstSeen);
+          break;
+        case 'last_seen':
+        default:
+          orderByClause = order(errorGroups.lastSeen);
+          break;
+      }
+
+      const groups = await db
+        .select()
+        .from(errorGroups)
+        .where(whereClause)
+        .orderBy(orderByClause)
+        .limit(filters?.limit || 50)
+        .offset(filters?.offset || 0);
+
+      return { groups, total };
+    } catch (error) {
+      console.error('Error getting error groups:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get error events for a specific error group
+   */
+  async getErrorEventsByGroup(
+    groupId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{ events: ErrorEvent[]; total: number }> {
+    try {
+      // Get total count
+      const [{ total }] = await db
+        .select({ total: count() })
+        .from(errorEvents)
+        .where(eq(errorEvents.groupId, groupId));
+
+      // Get events
+      const events = await db
+        .select()
+        .from(errorEvents)
+        .where(eq(errorEvents.groupId, groupId))
+        .orderBy(desc(errorEvents.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      return { events, total };
+    } catch (error) {
+      console.error('Error getting error events by group:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update error group status
+   */
+  async updateErrorGroupStatus(
+    groupId: string,
+    data: {
+      status: "active" | "resolved" | "ignored";
+      resolvedBy?: string;
+      reason?: string;
+    }
+  ): Promise<ErrorGroup> {
+    try {
+      // Get current status
+      const [currentGroup] = await db
+        .select()
+        .from(errorGroups)
+        .where(eq(errorGroups.id, groupId))
+        .limit(1);
+
+      if (!currentGroup) {
+        throw new Error('Error group not found');
+      }
+
+      // Update group status
+      const [updated] = await db
+        .update(errorGroups)
+        .set({
+          status: data.status,
+          resolvedAt: data.status === 'resolved' ? new Date() : null,
+          resolvedBy: data.status === 'resolved' ? data.resolvedBy : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(errorGroups.id, groupId))
+        .returning();
+
+      // Create status change audit log
+      if (data.resolvedBy && currentGroup.status !== data.status) {
+        await db.insert(errorStatusChanges).values({
+          errorGroupId: groupId,
+          changedBy: data.resolvedBy,
+          oldStatus: currentGroup.status,
+          newStatus: data.status,
+          reason: data.reason,
+        });
+      }
+
+      return updated;
+    } catch (error) {
+      console.error('Error updating error group status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get error statistics
+   */
+  async getErrorStats(period: "24h" | "7d" | "30d" = "24h"): Promise<{
+    totalErrors: number;
+    uniqueErrors: number;
+    criticalErrors: number;
+    activeErrors: number;
+    resolvedErrors: number;
+    errorsByHour: Array<{ hour: string; count: number }>;
+    topErrors: Array<{ groupId: string; message: string; count: number }>;
+    errorsBySeverity: Array<{ severity: string; count: number }>;
+    errorsByBrowser: Array<{ browser: string; count: number }>;
+    recentResolutions: Array<{ groupId: string; message: string; resolvedAt: Date; resolvedBy: string }>;
+  }> {
+    try {
+      const now = new Date();
+      const periodDate = new Date();
+      
+      switch (period) {
+        case '24h':
+          periodDate.setHours(periodDate.getHours() - 24);
+          break;
+        case '7d':
+          periodDate.setDate(periodDate.getDate() - 7);
+          break;
+        case '30d':
+          periodDate.setDate(periodDate.getDate() - 30);
+          break;
+      }
+
+      // Get total errors in period
+      const [{ totalErrors }] = await db
+        .select({ totalErrors: sql`COALESCE(SUM(${errorGroups.occurrenceCount}), 0)::int` })
+        .from(errorGroups)
+        .where(gte(errorGroups.lastSeen, periodDate));
+
+      // Get unique error count
+      const [{ uniqueErrors }] = await db
+        .select({ uniqueErrors: count() })
+        .from(errorGroups)
+        .where(gte(errorGroups.lastSeen, periodDate));
+
+      // Get critical errors
+      const [{ criticalErrors }] = await db
+        .select({ criticalErrors: count() })
+        .from(errorGroups)
+        .where(
+          and(
+            eq(errorGroups.severity, 'critical'),
+            gte(errorGroups.lastSeen, periodDate)
+          )
+        );
+
+      // Get active and resolved counts
+      const [{ activeErrors }] = await db
+        .select({ activeErrors: count() })
+        .from(errorGroups)
+        .where(eq(errorGroups.status, 'active'));
+
+      const [{ resolvedErrors }] = await db
+        .select({ resolvedErrors: count() })
+        .from(errorGroups)
+        .where(eq(errorGroups.status, 'resolved'));
+
+      // Get top errors
+      const topErrors = await db
+        .select({
+          groupId: errorGroups.id,
+          message: errorGroups.message,
+          count: errorGroups.occurrenceCount,
+        })
+        .from(errorGroups)
+        .where(gte(errorGroups.lastSeen, periodDate))
+        .orderBy(desc(errorGroups.occurrenceCount))
+        .limit(10);
+
+      // Get errors by severity
+      const errorsBySeverity = await db
+        .select({
+          severity: errorGroups.severity,
+          count: count(),
+        })
+        .from(errorGroups)
+        .where(gte(errorGroups.lastSeen, periodDate))
+        .groupBy(errorGroups.severity);
+
+      // Get errors by browser (from metadata)
+      const errorsByBrowser = await db
+        .select({
+          browser: sql<string>`${errorGroups.metadata}->>'browser'`,
+          count: count(),
+        })
+        .from(errorGroups)
+        .where(
+          and(
+            gte(errorGroups.lastSeen, periodDate),
+            isNotNull(sql`${errorGroups.metadata}->>'browser'`)
+          )
+        )
+        .groupBy(sql`${errorGroups.metadata}->>'browser'`);
+
+      // Get recent resolutions
+      const recentResolutions = await db
+        .select({
+          groupId: errorGroups.id,
+          message: errorGroups.message,
+          resolvedAt: errorGroups.resolvedAt,
+          resolvedBy: errorGroups.resolvedBy,
+        })
+        .from(errorGroups)
+        .where(
+          and(
+            eq(errorGroups.status, 'resolved'),
+            isNotNull(errorGroups.resolvedAt),
+            gte(errorGroups.resolvedAt, periodDate)
+          )
+        )
+        .orderBy(desc(errorGroups.resolvedAt))
+        .limit(10);
+
+      // Get errors by hour (simplified - returns empty array for now)
+      const errorsByHour: Array<{ hour: string; count: number }> = [];
+
+      return {
+        totalErrors,
+        uniqueErrors,
+        criticalErrors,
+        activeErrors,
+        resolvedErrors,
+        errorsByHour,
+        topErrors,
+        errorsBySeverity,
+        errorsByBrowser,
+        recentResolutions: recentResolutions.filter(r => r.resolvedAt && r.resolvedBy) as any,
+      };
+    } catch (error) {
+      console.error('Error getting error stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete resolved errors older than specified days
+   */
+  async cleanupOldErrors(daysOld: number): Promise<{ deletedGroups: number; deletedEvents: number }> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+      // Get groups to delete
+      const groupsToDelete = await db
+        .select({ id: errorGroups.id })
+        .from(errorGroups)
+        .where(
+          and(
+            eq(errorGroups.status, 'resolved'),
+            lte(errorGroups.resolvedAt, cutoffDate)
+          )
+        );
+
+      const groupIds = groupsToDelete.map(g => g.id);
+
+      if (groupIds.length === 0) {
+        return { deletedGroups: 0, deletedEvents: 0 };
+      }
+
+      // Delete events first (cascade will handle this, but counting for stats)
+      const deletedEventsResult = await db
+        .delete(errorEvents)
+        .where(inArray(errorEvents.groupId, groupIds))
+        .returning({ id: errorEvents.id });
+
+      // Delete groups
+      const deletedGroupsResult = await db
+        .delete(errorGroups)
+        .where(inArray(errorGroups.id, groupIds))
+        .returning({ id: errorGroups.id });
+
+      return {
+        deletedGroups: deletedGroupsResult.length,
+        deletedEvents: deletedEventsResult.length,
+      };
+    } catch (error) {
+      console.error('Error cleaning up old errors:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Auto-resolve errors that haven't occurred recently
+   */
+  async autoResolveInactiveErrors(daysInactive: number): Promise<{ resolvedCount: number }> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysInactive);
+
+      // Update inactive errors to resolved
+      const resolved = await db
+        .update(errorGroups)
+        .set({
+          status: 'resolved',
+          resolvedAt: new Date(),
+          resolvedBy: 'system',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(errorGroups.status, 'active'),
+            lte(errorGroups.lastSeen, cutoffDate)
+          )
+        )
+        .returning({ id: errorGroups.id });
+
+      // Create status change logs for auto-resolved errors
+      if (resolved.length > 0) {
+        const statusChanges = resolved.map(group => ({
+          errorGroupId: group.id,
+          changedBy: 'system',
+          oldStatus: 'active' as const,
+          newStatus: 'resolved' as const,
+          reason: `Auto-resolved after ${daysInactive} days of inactivity`,
+        }));
+
+        await db.insert(errorStatusChanges).values(statusChanges);
+      }
+
+      return { resolvedCount: resolved.length };
+    } catch (error) {
+      console.error('Error auto-resolving inactive errors:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get error group details with all related data
+   */
+  async getErrorGroupDetails(groupId: string): Promise<{
+    group: ErrorGroup | null;
+    recentEvents: ErrorEvent[];
+    affectedUsers: number;
+    browsers: Array<{ name: string; count: number }>;
+    timeline: Array<{ date: string; count: number }>;
+  }> {
+    try {
+      // Get error group
+      const [group] = await db
+        .select()
+        .from(errorGroups)
+        .where(eq(errorGroups.id, groupId))
+        .limit(1);
+
+      if (!group) {
+        return {
+          group: null,
+          recentEvents: [],
+          affectedUsers: 0,
+          browsers: [],
+          timeline: [],
+        };
+      }
+
+      // Get recent events
+      const recentEvents = await db
+        .select()
+        .from(errorEvents)
+        .where(eq(errorEvents.groupId, groupId))
+        .orderBy(desc(errorEvents.createdAt))
+        .limit(10);
+
+      // Get affected users count
+      const affectedUsersResult = await db
+        .selectDistinct({ userId: errorEvents.userId })
+        .from(errorEvents)
+        .where(
+          and(
+            eq(errorEvents.groupId, groupId),
+            isNotNull(errorEvents.userId)
+          )
+        );
+
+      // Get browser distribution
+      const browsers = await db
+        .select({
+          name: sql<string>`${errorEvents.browserInfo}->>'name'`,
+          count: count(),
+        })
+        .from(errorEvents)
+        .where(
+          and(
+            eq(errorEvents.groupId, groupId),
+            isNotNull(sql`${errorEvents.browserInfo}->>'name'`)
+          )
+        )
+        .groupBy(sql`${errorEvents.browserInfo}->>'name'`);
+
+      // Get timeline (simplified - returns empty array for now)
+      const timeline: Array<{ date: string; count: number }> = [];
+
+      return {
+        group,
+        recentEvents,
+        affectedUsers: affectedUsersResult.length,
+        browsers,
+        timeline,
+      };
+    } catch (error) {
+      console.error('Error getting error group details:', error);
       throw error;
     }
   }

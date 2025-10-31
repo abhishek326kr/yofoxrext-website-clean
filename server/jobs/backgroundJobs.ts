@@ -121,6 +121,42 @@ export function startBackgroundJobs(storage: IStorage) {
   
   console.log('[JOBS] Bot purchase refunds scheduled (runs daily at 3 AM)');
   
+  // ============================================
+  // ERROR TRACKING BACKGROUND JOBS
+  // ============================================
+  
+  // Auto-resolve inactive errors - Runs daily at 4 AM
+  cron.schedule('0 4 * * *', async () => {
+    try {
+      console.log('[ERROR CLEANUP] Starting auto-resolve of inactive errors...');
+      
+      // Auto-resolve errors that haven't occurred in 7 days
+      const resolvedResult = await storage.autoResolveInactiveErrors(7);
+      
+      console.log(`[ERROR CLEANUP] Auto-resolved ${resolvedResult.resolvedCount} inactive errors`);
+    } catch (error: any) {
+      console.error('[ERROR CLEANUP] Error during auto-resolve:', error);
+    }
+  });
+  
+  console.log('[JOBS] Error auto-resolve scheduled (runs daily at 4 AM)');
+  
+  // Clean up old resolved errors - Runs daily at 4:30 AM
+  cron.schedule('30 4 * * *', async () => {
+    try {
+      console.log('[ERROR CLEANUP] Starting cleanup of old resolved errors...');
+      
+      // Delete resolved errors older than 30 days
+      const cleanupResult = await storage.cleanupOldErrors(30);
+      
+      console.log(`[ERROR CLEANUP] Deleted ${cleanupResult.deletedGroups} error groups and ${cleanupResult.deletedEvents} error events`);
+    } catch (error: any) {
+      console.error('[ERROR CLEANUP] Error during cleanup:', error);
+    }
+  });
+  
+  console.log('[JOBS] Error cleanup scheduled (runs daily at 4:30 AM)');
+  
   // NOTE: All other background jobs are disabled to improve performance
   // To re-enable, uncomment the cron schedules below:
   

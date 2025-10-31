@@ -65,6 +65,7 @@ import {
   adminOperationLimiter,
   activityTrackingLimiter,
 } from "./rateLimiting.js";
+import rateLimit from 'express-rate-limit';
 import { generateSlug, generateFocusKeyword, generateMetaDescription as generateMetaDescriptionOld, generateImageAltTexts } from './seo.js';
 import { autoGenerateSEOFields } from './seo-utils.js';
 import { emailService } from './services/emailService.js';
@@ -10013,6 +10014,277 @@ export async function registerRoutes(app: Express): Promise<Express> {
     } catch (error: any) {
       console.error("[Bot Admin] Error running bot engine:", error);
       res.status(500).json({ error: "Failed to run bot engine" });
+    }
+  });
+
+  // ============================================
+  // ERROR TRACKING & MONITORING ROUTES
+  // ============================================
+
+  // Create a rate limiter for error telemetry
+  const errorTelemetryLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 100, // limit each IP to 100 requests per minute
+    message: 'Too many error reports from this IP, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Schema for error event ingestion
+  const errorEventIngestionSchema = z.object({
+    fingerprint: z.string().min(1).max(255),
+    message: z.string().min(1).max(1000),
+    component: z.string().optional(),
+    severity: z.enum(['critical', 'error', 'warning', 'info']).optional().default('error'),
+    stackTrace: z.string().optional(),
+    context: z.record(z.any()).optional(),
+    browserInfo: z.object({
+      name: z.string().optional(),
+      version: z.string().optional(),
+      os: z.string().optional(),
+      userAgent: z.string().optional(),
+    }).optional(),
+    requestInfo: z.object({
+      url: z.string().optional(),
+      method: z.string().optional(),
+      headers: z.record(z.string()).optional(),
+      responseStatus: z.number().optional(),
+      responseText: z.string().optional(),
+    }).optional(),
+    userDescription: z.string().max(5000).optional(),
+    sessionId: z.string().optional(),
+  });
+
+  // POST /api/telemetry/errors - Ingest errors from frontend
+  app.post("/api/telemetry/errors", errorTelemetryLimiter, async (req, res) => {
+    try {
+      // Validate request body
+      const validation = errorEventIngestionSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid error data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const errorData = validation.data;
+
+      // Get user ID if authenticated
+      const userId = req.user?.id || null;
+
+      // Sanitize sensitive data from error messages and stack traces
+      const sanitizedMessage = errorData.message
+        .replace(/password['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'password=***')
+        .replace(/api[_-]?key['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'api_key=***')
+        .replace(/token['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'token=***')
+        .replace(/secret['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'secret=***');
+
+      const sanitizedStackTrace = errorData.stackTrace
+        ?.replace(/password['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'password=***')
+        .replace(/api[_-]?key['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'api_key=***')
+        .replace(/token['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'token=***')
+        .replace(/secret['\"]?\s*[:=]\s*['\"]?[^'\"}\s]+/gi, 'secret=***');
+
+      // Create error event in storage
+      const event = await storage.createErrorEvent({
+        fingerprint: errorData.fingerprint,
+        message: sanitizedMessage,
+        component: errorData.component,
+        severity: errorData.severity,
+        userId,
+        sessionId: errorData.sessionId,
+        stackTrace: sanitizedStackTrace,
+        context: errorData.context,
+        browserInfo: errorData.browserInfo,
+        requestInfo: errorData.requestInfo,
+        userDescription: errorData.userDescription,
+      });
+
+      res.status(201).json({ 
+        success: true, 
+        eventId: event.id,
+        groupId: event.groupId 
+      });
+    } catch (error: any) {
+      console.error("[Telemetry] Error ingesting error event:", error);
+      res.status(500).json({ error: "Failed to ingest error event" });
+    }
+  });
+
+  // GET /api/admin/errors/groups - List error groups with filters
+  app.get("/api/admin/errors/groups", isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      // Check if user is admin
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      // Parse query parameters
+      const {
+        severity,
+        status,
+        startDate,
+        endDate,
+        search,
+        limit,
+        offset,
+        sortBy,
+        sortOrder,
+      } = req.query;
+
+      const filters: any = {};
+      if (severity) filters.severity = severity as any;
+      if (status) filters.status = status as any;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (search) filters.search = search as string;
+      if (limit) filters.limit = parseInt(limit as string);
+      if (offset) filters.offset = parseInt(offset as string);
+      if (sortBy) filters.sortBy = sortBy as any;
+      if (sortOrder) filters.sortOrder = sortOrder as any;
+
+      // Get error groups from storage
+      const result = await storage.getErrorGroups(filters);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Error Admin] Error getting error groups:", error);
+      res.status(500).json({ error: "Failed to get error groups" });
+    }
+  });
+
+  // GET /api/admin/errors/groups/:id - Get error group details with events
+  app.get("/api/admin/errors/groups/:id", isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      // Check if user is admin
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const groupId = req.params.id;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
+      // Get error group details
+      const details = await storage.getErrorGroupDetails(groupId);
+      
+      if (!details.group) {
+        return res.status(404).json({ error: "Error group not found" });
+      }
+
+      // Get events for this group
+      const eventsResult = await storage.getErrorEventsByGroup(groupId, limit, offset);
+
+      res.json({
+        ...details,
+        events: eventsResult.events,
+        eventsTotal: eventsResult.total,
+      });
+    } catch (error: any) {
+      console.error("[Error Admin] Error getting error group details:", error);
+      res.status(500).json({ error: "Failed to get error group details" });
+    }
+  });
+
+  // PATCH /api/admin/errors/groups/:id/status - Update error group status
+  app.patch("/api/admin/errors/groups/:id/status", isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      // Check if user is admin
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const groupId = req.params.id;
+      const { status, reason } = req.body;
+
+      // Validate status
+      if (!['active', 'resolved', 'ignored'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'active', 'resolved', or 'ignored'" });
+      }
+
+      // Update error group status
+      const updated = await storage.updateErrorGroupStatus(groupId, {
+        status,
+        resolvedBy: user.id,
+        reason,
+      });
+
+      // Log admin action
+      await storage.createAdminAction({
+        adminId: user.id,
+        actionType: 'update_error_status',
+        targetType: 'error_group',
+        targetId: groupId,
+        details: { status, reason },
+      });
+
+      res.json({ success: true, group: updated });
+    } catch (error: any) {
+      console.error("[Error Admin] Error updating error group status:", error);
+      res.status(500).json({ error: "Failed to update error group status" });
+    }
+  });
+
+  // GET /api/admin/errors/stats - Get error statistics
+  app.get("/api/admin/errors/stats", isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      // Check if user is admin
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const period = req.query.period as "24h" | "7d" | "30d" || "24h";
+
+      // Get error statistics
+      const stats = await storage.getErrorStats(period);
+
+      res.json(stats);
+    } catch (error: any) {
+      console.error("[Error Admin] Error getting error stats:", error);
+      res.status(500).json({ error: "Failed to get error stats" });
+    }
+  });
+
+  // POST /api/admin/errors/cleanup - Manually trigger error cleanup
+  app.post("/api/admin/errors/cleanup", isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      // Check if user is admin
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      // Clean up old resolved errors (30 days)
+      const cleanupResult = await storage.cleanupOldErrors(30);
+
+      // Auto-resolve inactive errors (7 days)
+      const autoResolveResult = await storage.autoResolveInactiveErrors(7);
+
+      // Log admin action
+      await storage.createAdminAction({
+        adminId: user.id,
+        actionType: 'error_cleanup',
+        targetType: 'system',
+        targetId: 'error_tracking',
+        details: {
+          deletedGroups: cleanupResult.deletedGroups,
+          deletedEvents: cleanupResult.deletedEvents,
+          autoResolved: autoResolveResult.resolvedCount,
+        },
+      });
+
+      res.json({
+        success: true,
+        cleanup: cleanupResult,
+        autoResolve: autoResolveResult,
+      });
+    } catch (error: any) {
+      console.error("[Error Admin] Error performing cleanup:", error);
+      res.status(500).json({ error: "Failed to perform error cleanup" });
     }
   });
 
