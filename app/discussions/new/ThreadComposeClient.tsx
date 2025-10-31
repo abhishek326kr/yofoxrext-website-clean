@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,11 +12,9 @@ import {
   TIMEFRAMES, 
   STRATEGIES, 
   PLATFORMS, 
-  POPULAR_BROKERS, 
-  THREAD_TYPES,
+  POPULAR_BROKERS,
   extractPotentialTags 
 } from "@shared/tradingMetadata";
-import { countWords } from "@shared/threadUtils";
 import Header from "@/components/Header";
 import EnhancedFooter from "@/components/EnhancedFooter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -25,7 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -42,47 +42,60 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthPrompt } from "@/hooks/useAuthPrompt";
 import { apiRequest } from "@/lib/queryClient";
-import { AlertCircle, ChevronLeft, ChevronRight, HelpCircle, MessageSquare, Star, BookOpen, Lightbulb, Code, X, Upload, FileText, Loader2, Check, Copy, Share2, Bell } from "lucide-react";
-import SEOPreview from "@/components/SEOPreview";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  AlertCircle, 
+  Check, 
+  Copy, 
+  Share2, 
+  Bell,
+  Sparkles,
+  Upload,
+  X,
+  Coins,
+  Eye,
+  Save,
+  Send,
+  Hash,
+  Clock,
+  Zap,
+  Info,
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  Target,
+  Shield,
+  MessageSquare
+} from "lucide-react";
 
-// Form validation schema
+// Simplified form validation schema
 const threadFormSchema = z.object({
   title: z.string()
-    .min(15, "This is a bit short—add 3–4 more words?")
-    .max(90, "Title must not exceed 90 characters")
+    .min(15, "Add 3-4 more words to help others understand")
+    .max(90, "Keep it under 90 characters")
     .refine(
       (val) => {
         const upperCount = (val.match(/[A-Z]/g) || []).length;
         const letterCount = (val.match(/[a-zA-Z]/g) || []).length;
         return letterCount === 0 || upperCount / letterCount < 0.5;
       },
-      { message: "Let's tone this down a bit so more folks read it" }
+      { message: "Avoid ALL CAPS - it's easier to read in normal case" }
     ),
   body: z.string()
-    .min(150, "Need more detail—add a few sentences? (150 characters minimum)")
-    .max(50000, "Body is too long"),
+    .min(150, "Add a bit more detail (min 150 characters)")
+    .max(50000, "That's too long - try to be more concise"),
   categorySlug: z.string().min(1, "Please select a category"),
-  subcategorySlug: z.string().optional(),
-  threadType: z.enum(["question", "discussion", "review", "journal", "guide", "program_sharing"]).default("discussion"),
-  seoExcerpt: z.string().optional().or(z.literal("")),
-  primaryKeyword: z.string().optional().or(z.literal("")),
   instruments: z.array(z.string()).default([]),
   timeframes: z.array(z.string()).default([]),
   strategies: z.array(z.string()).default([]),
-  platform: z.string().optional().or(z.literal("")),
-  broker: z.string().max(40).optional().or(z.literal("")),
-  riskNote: z.string().max(500).optional().or(z.literal("")),
-  hashtags: z.array(z.string()).max(10, "Maximum 10 hashtags").default([]),
-  reviewTarget: z.string().optional().or(z.literal("")),
-  reviewVersion: z.string().optional().or(z.literal("")),
-  reviewRating: z.number().int().min(1).max(5).optional(),
-  reviewPros: z.array(z.string()).default([]),
-  reviewCons: z.array(z.string()).default([]),
-  questionSummary: z.string().max(200).optional().or(z.literal("")),
+  platform: z.string().optional(),
+  broker: z.string().optional(),
+  hashtags: z.array(z.string()).max(10).default([]),
   attachmentUrls: z.array(z.string()).default([]),
 });
 
@@ -93,19 +106,27 @@ interface ThreadComposeClientProps {
 }
 
 // Auto-save draft hook
-function useThreadDraft(categorySlug: string) {
+function useThreadDraft() {
   const [hasDraft, setHasDraft] = useState(false);
-  const draftKey = `thread_draft_${categorySlug}`;
+  const draftKey = "thread_draft_v2";
+  const lastSaveRef = useRef<NodeJS.Timeout>();
 
   const saveDraft = useCallback((data: Partial<ThreadFormData>) => {
-    try {
-      localStorage.setItem(draftKey, JSON.stringify({
-        ...data,
-        savedAt: new Date().toISOString(),
-      }));
-    } catch (error) {
-      console.error('Failed to save draft:', error);
+    if (lastSaveRef.current) {
+      clearTimeout(lastSaveRef.current);
     }
+    
+    lastSaveRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({
+          ...data,
+          savedAt: new Date().toISOString(),
+        }));
+        setHasDraft(true);
+      } catch (error) {
+        console.error('Failed to save draft:', error);
+      }
+    }, 1000); // Debounce saves
   }, [draftKey]);
 
   const loadDraft = useCallback((): Partial<ThreadFormData> | null => {
@@ -113,8 +134,14 @@ function useThreadDraft(categorySlug: string) {
       const saved = localStorage.getItem(draftKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setHasDraft(true);
-        return parsed;
+        const savedDate = new Date(parsed.savedAt);
+        const hoursSince = (Date.now() - savedDate.getTime()) / (1000 * 60 * 60);
+        
+        // Only restore drafts less than 24 hours old
+        if (hoursSince < 24) {
+          setHasDraft(true);
+          return parsed;
+        }
       }
     } catch (error) {
       console.error('Failed to load draft:', error);
@@ -126,12 +153,93 @@ function useThreadDraft(categorySlug: string) {
     try {
       localStorage.removeItem(draftKey);
       setHasDraft(false);
+      if (lastSaveRef.current) {
+        clearTimeout(lastSaveRef.current);
+      }
     } catch (error) {
       console.error('Failed to clear draft:', error);
     }
   }, [draftKey]);
 
   return { saveDraft, loadDraft, clearDraft, hasDraft };
+}
+
+// Step indicator component
+function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+  return (
+    <div className="flex items-center justify-center space-x-2 mb-8">
+      {Array.from({ length: totalSteps }).map((_, index) => {
+        const stepNumber = index + 1;
+        const isActive = stepNumber === currentStep;
+        const isCompleted = stepNumber < currentStep;
+        
+        return (
+          <div key={stepNumber} className="flex items-center">
+            <div
+              className={`
+                w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all
+                ${isActive ? 'bg-primary text-primary-foreground scale-110' : ''}
+                ${isCompleted ? 'bg-primary/20 text-primary' : ''}
+                ${!isActive && !isCompleted ? 'bg-muted text-muted-foreground' : ''}
+              `}
+            >
+              {isCompleted ? <Check className="w-5 h-5" /> : stepNumber}
+            </div>
+            {stepNumber < totalSteps && (
+              <div className={`w-12 h-0.5 mx-1 ${isCompleted ? 'bg-primary' : 'bg-muted'}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Character counter component
+function CharacterCounter({ current, min, max }: { current: number; min?: number; max: number }) {
+  const percentage = (current / max) * 100;
+  const isValid = (!min || current >= min) && current <= max;
+  
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <Progress value={percentage} className="h-1 w-20" />
+      <span className={isValid ? "text-muted-foreground" : "text-destructive"}>
+        {current}/{max}
+      </span>
+    </div>
+  );
+}
+
+// Tag chip component
+function TagChip({ 
+  label, 
+  isSelected, 
+  onClick, 
+  icon 
+}: { 
+  label: string; 
+  isSelected: boolean; 
+  onClick: () => void;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all
+        ${isSelected 
+          ? 'bg-primary text-primary-foreground scale-105' 
+          : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+        }
+      `}
+      data-testid={`chip-${label.toLowerCase()}`}
+    >
+      {icon && <span className="w-4 h-4">{icon}</span>}
+      {label}
+      {isSelected && <Check className="w-3 h-3 ml-1" />}
+    </button>
+  );
 }
 
 export default function ThreadComposeClient({ categories }: ThreadComposeClientProps) {
@@ -143,30 +251,20 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
   const [currentStep, setCurrentStep] = useState(1);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState("");
-  const [proInput, setProInput] = useState("");
-  const [conInput, setConInput] = useState("");
-  const [bodyCharCount, setBodyCharCount] = useState(0);
-  const [titleCharCount, setTitleCharCount] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; url: string }>>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showCustomBroker, setShowCustomBroker] = useState(false);
-  const [showCustomPlatform, setShowCustomPlatform] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   
   // Pre-select category from URL param
   const categoryParam = searchParams?.get("category") || "";
   
-  // Get subcategories for selected category
+  // Get categories for selection
   const parentCategories = categories.filter(c => !c.parentSlug);
-  const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
-  const subcategories = categories.filter(c => c.parentSlug === selectedCategory);
-  
-  // Fetch all brokers from database using apiRequest
-  const { data: brokers, isLoading: brokersLoading } = useQuery<Broker[]>({
-    queryKey: ['/api/brokers'],
-  });
+  const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || "");
   
   // Auto-save draft
-  const { saveDraft, loadDraft, clearDraft } = useThreadDraft(selectedCategory || "general");
+  const { saveDraft, loadDraft, clearDraft, hasDraft } = useThreadDraft();
   
   const form = useForm<ThreadFormData>({
     resolver: zodResolver(threadFormSchema),
@@ -174,80 +272,81 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
       title: "",
       body: "",
       categorySlug: categoryParam,
-      subcategorySlug: "",
-      threadType: "discussion",
-      seoExcerpt: "",
-      primaryKeyword: "",
       instruments: [],
       timeframes: [],
       strategies: [],
       platform: "",
       broker: "",
-      riskNote: "",
       hashtags: [],
-      reviewTarget: "",
-      reviewVersion: "",
-      reviewPros: [],
-      reviewCons: [],
-      questionSummary: "",
       attachmentUrls: [],
     },
   });
 
   const watchedValues = form.watch();
-  const watchedThreadType = form.watch("threadType");
+  const titleLength = watchedValues.title?.length || 0;
+  const bodyLength = watchedValues.body?.length || 0;
 
   // Load draft on mount
   useEffect(() => {
     const draft = loadDraft();
-    if (draft) {
-      const shouldRestore = window.confirm("Restore previous draft?");
-      if (shouldRestore && draft) {
-        Object.keys(draft).forEach((key) => {
-          if (key !== 'savedAt') {
-            form.setValue(key as any, (draft as any)[key]);
-          }
-        });
-      } else {
-        clearDraft();
-      }
+    if (draft && (draft.title || draft.body)) {
+      toast({
+        title: "Draft found",
+        description: (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                Object.keys(draft).forEach((key) => {
+                  if (key !== 'savedAt') {
+                    form.setValue(key as any, (draft as any)[key]);
+                  }
+                });
+                setSelectedCategory(draft.categorySlug || "");
+                toast({ title: "Draft restored!" });
+              }}
+            >
+              <Clock className="w-3 h-3 mr-1" />
+              Restore
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                clearDraft();
+                toast({ title: "Draft discarded" });
+              }}
+            >
+              Discard
+            </Button>
+          </div>
+        ),
+        duration: 8000,
+      });
     }
   }, []);
 
-  // Auto-save every 5 seconds
+  // Auto-save on changes
   useEffect(() => {
-    const interval = setInterval(() => {
-      const values = form.getValues();
-      if (values.title || values.body) {
-        saveDraft(values);
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [form, saveDraft]);
+    const values = form.getValues();
+    if (values.title || values.body) {
+      setIsSavingDraft(true);
+      saveDraft(values);
+      setTimeout(() => setIsSavingDraft(false), 500);
+    }
+  }, [watchedValues, saveDraft]);
 
-  // Auto-suggest tags based on title and body
+  // Auto-suggest tags based on content
   useEffect(() => {
     const text = `${watchedValues.title} ${watchedValues.body}`;
-    if (text.trim().length > 20) {
-      const tags = extractPotentialTags(text);
+    if (text.trim().length > 30) {
+      const tags = extractPotentialTags(text).slice(0, 8);
       setSuggestedTags(tags);
     } else {
       setSuggestedTags([]);
     }
   }, [watchedValues.title, watchedValues.body]);
-
-  // Update character counts
-  useEffect(() => {
-    setBodyCharCount((watchedValues.body || "").length);
-    setTitleCharCount((watchedValues.title || "").length);
-  }, [watchedValues.body, watchedValues.title]);
-
-  // Skip step 1 if no subcategories
-  useEffect(() => {
-    if (currentStep === 1 && subcategories.length === 0) {
-      setCurrentStep(2);
-    }
-  }, [currentStep, subcategories.length]);
 
   const createThreadMutation = useMutation({
     mutationFn: async (data: ThreadFormData) => {
@@ -259,67 +358,22 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
       
       const threadUrl = `${window.location.origin}/thread/${response.thread.slug}`;
       
-      const copyLink = async () => {
-        try {
-          await navigator.clipboard.writeText(threadUrl);
-          toast({
-            title: "Link copied!",
-            description: "Thread URL copied to clipboard",
-          });
-        } catch (error) {
-          toast({
-            title: "Failed to copy",
-            description: "Please copy the link manually",
-            variant: "destructive",
-          });
-        }
-      };
-      
-      const shareThread = async () => {
-        if (navigator.share) {
-          try {
-            await navigator.share({
-              title: response.thread.title,
-              text: "Check out this thread on YoForex",
-              url: threadUrl,
-            });
-          } catch (error) {
-            // User cancelled or share failed, fall back to copy
-            copyLink();
-          }
-        } else {
-          // Fallback to copy link
-          copyLink();
-        }
-      };
-      
-      const followThread = async () => {
-        try {
-          // TODO: Implement follow thread API call when available
-          toast({
-            title: "Following thread",
-            description: "You'll get notified of new replies",
-          });
-        } catch (error) {
-          toast({
-            title: "Failed to follow",
-            description: "Please try again later",
-            variant: "destructive",
-          });
-        }
-      };
-      
+      // Success toast with actions
       toast({
-        title: "Posted!",
+        title: "Thread posted! 🎉",
         description: (
           <div className="space-y-3">
-            <p>{response.message} (+{response.coinsEarned} coins)</p>
+            <p className="font-medium">
+              +{response.coinsEarned} coins earned!
+            </p>
             <div className="flex gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={copyLink}
-                data-testid="button-copy-link"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(threadUrl);
+                  toast({ title: "Link copied!" });
+                }}
               >
                 <Copy className="h-3 w-3 mr-1" />
                 Copy link
@@ -327,35 +381,32 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
               <Button
                 size="sm"
                 variant="outline"
-                onClick={shareThread}
-                data-testid="button-share"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: response.thread.title,
+                      url: threadUrl,
+                    });
+                  }
+                }}
               >
                 <Share2 className="h-3 w-3 mr-1" />
                 Share
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={followThread}
-                data-testid="button-follow"
-              >
-                <Bell className="h-3 w-3 mr-1" />
-                Follow
-              </Button>
             </div>
           </div>
         ),
-        duration: 10000, // Extended duration to allow interaction with buttons
+        duration: 10000,
       });
       
-      // Navigate after a short delay to allow toast interaction
+      // Navigate to the thread
       setTimeout(() => {
         router.push(`/thread/${response.thread.slug}`);
       }, 1000);
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to create thread",
+        title: "Failed to post",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -364,9 +415,7 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
 
   const onSubmit = async (data: ThreadFormData) => {
     requireAuth(() => {
-      // Add uploaded file URLs to form data
       data.attachmentUrls = uploadedFiles.map(f => f.url);
-      
       createThreadMutation.mutate(data);
     });
   };
@@ -375,17 +424,15 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // Validate file count
-    if (uploadedFiles.length + files.length > 10) {
+    if (uploadedFiles.length + files.length > 5) {
       toast({
         title: "Too many files",
-        description: "Maximum 10 files allowed",
+        description: "Maximum 5 attachments allowed",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate file sizes
     for (const file of Array.from(files)) {
       if (file.size > 5 * 1024 * 1024) {
         toast({
@@ -412,38 +459,27 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Upload failed");
+        throw new Error("Upload failed");
       }
 
       const response = await res.json() as { urls: string[]; message: string };
-
       const newFiles = response.urls.map((url: string, idx: number) => ({
         name: files[idx].name,
         url: url,
       }));
 
       setUploadedFiles([...uploadedFiles, ...newFiles]);
-      
-      toast({
-        title: "Files uploaded!",
-        description: response.message,
-      });
-    } catch (error: any) {
+      toast({ title: "Files uploaded!" });
+    } catch (error) {
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload files",
+        description: "Please try again",
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
-      // Reset input
       event.target.value = '';
     }
-  };
-
-  const removeUploadedFile = (index: number) => {
-    setUploadedFiles(uploadedFiles.filter((_, i) => i !== index));
   };
 
   const toggleTag = (field: "instruments" | "timeframes" | "strategies", value: string) => {
@@ -457,12 +493,12 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
 
   const addHashtag = () => {
     if (!hashtagInput.trim()) return;
-    const normalized = hashtagInput.trim().replace(/^#/, "").toLowerCase();
+    const normalized = hashtagInput.trim().toLowerCase().replace(/^#/, "");
     const current = form.getValues("hashtags") || [];
     if (!current.includes(normalized) && current.length < 10) {
       form.setValue("hashtags", [...current, normalized]);
+      setHashtagInput("");
     }
-    setHashtagInput("");
   };
 
   const removeHashtag = (tag: string) => {
@@ -470,117 +506,107 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
     form.setValue("hashtags", current.filter(t => t !== tag));
   };
 
-  const addPro = () => {
-    if (!proInput.trim()) return;
-    const current = form.getValues("reviewPros") || [];
-    form.setValue("reviewPros", [...current, proInput.trim()]);
-    setProInput("");
-  };
-
-  const addCon = () => {
-    if (!conInput.trim()) return;
-    const current = form.getValues("reviewCons") || [];
-    form.setValue("reviewCons", [...current, conInput.trim()]);
-    setConInput("");
-  };
-
-  const totalTags = (watchedValues.instruments?.length || 0) + 
-    (watchedValues.timeframes?.length || 0) + 
-    (watchedValues.strategies?.length || 0) + 
-    (watchedValues.hashtags?.length || 0);
-
-  const threadTypeIcon = {
-    question: HelpCircle,
-    discussion: MessageSquare,
-    review: Star,
-    journal: BookOpen,
-    guide: Lightbulb,
-    program_sharing: Code,
-  };
+  const canProceedStep1 = titleLength >= 15 && bodyLength >= 150;
+  const isFormValid = form.formState.isValid;
 
   return (
     <>
       <Header />
       <div className="min-h-screen bg-background">
-        <div className="container max-w-4xl mx-auto px-4 py-8">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">Start a Thread</h1>
-            <p className="text-muted-foreground mt-2">Share your knowledge, ask questions, and connect with traders</p>
+        <div className="container max-w-3xl mx-auto px-4 py-6">
+          {/* Header with progress */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold">Start a Thread</h1>
+              {isSavingDraft && (
+                <Badge variant="secondary" className="animate-pulse">
+                  <Save className="w-3 h-3 mr-1" />
+                  Saving...
+                </Badge>
+              )}
+            </div>
+            <StepIndicator currentStep={currentStep} totalSteps={3} />
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* STEP 1: Where (Subcategory Selection) */}
-              {currentStep === 1 && subcategories.length > 0 && (
-                <Card data-testid="card-step-where">
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              {/* STEP 1: Core Content */}
+              {currentStep === 1 && (
+                <Card className="border-2">
                   <CardHeader>
-                    <CardTitle>Where does this fit?</CardTitle>
-                    <CardDescription>Choose the best subcategory for your thread</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5" />
+                      What's on your mind?
+                    </CardTitle>
+                    <CardDescription>
+                      Share your trading question, strategy, or insight
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
+                    {/* Category Selection */}
                     <FormField
                       control={form.control}
-                      name="subcategorySlug"
+                      name="categorySlug"
                       render={({ field }) => (
                         <FormItem>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {subcategories.map((sub) => (
-                              <Button
-                                key={sub.slug}
-                                type="button"
-                                variant={field.value === sub.slug ? "default" : "outline"}
-                                className="h-auto py-4 px-4 flex-col items-start gap-1"
-                                onClick={() => field.onChange(sub.slug)}
-                                data-testid={`button-subcategory-${sub.slug}`}
-                              >
-                                <span className="font-semibold text-sm">{sub.name}</span>
-                                <span className="text-xs opacity-80">{sub.description}</span>
-                              </Button>
-                            ))}
-                          </div>
+                          <FormLabel>Category</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedCategory(value);
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-category">
+                                <SelectValue placeholder="Where does this belong?" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {parentCategories.map((cat) => (
+                                <SelectItem 
+                                  key={cat.slug} 
+                                  value={cat.slug}
+                                  data-testid={`option-category-${cat.slug}`}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{cat.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {cat.description}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        onClick={() => setCurrentStep(2)}
-                        data-testid="button-next-step"
-                      >
-                        Next <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* STEP 2: Write (Main Content) */}
-              {currentStep === 2 && (
-                <Card data-testid="card-step-write">
-                  <CardHeader>
-                    <CardTitle>What's on your mind?</CardTitle>
-                    <CardDescription>Tell your story or ask your question</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
                     {/* Title */}
                     <FormField
                       control={form.control}
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Title</FormLabel>
+                          <FormLabel className="flex items-center justify-between">
+                            <span>Title</span>
+                            <CharacterCounter current={titleLength} min={15} max={90} />
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="What's your topic? e.g., 'XAUUSD M5 scalping rules that worked for me'"
+                              placeholder="What's your XAUUSD scalping rule that actually works?"
+                              className="text-lg"
                               data-testid="input-title"
                             />
                           </FormControl>
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Short and clear works best</span>
-                            <span data-testid="text-char-count">{titleCharCount} characters (15-90 required)</span>
-                          </div>
+                          {titleLength > 0 && titleLength < 15 && (
+                            <p className="text-xs text-muted-foreground">
+                              Add {15 - titleLength} more characters...
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -592,647 +618,309 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
                       name="body"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Body</FormLabel>
+                          <FormLabel className="flex items-center justify-between">
+                            <span>Your story or question</span>
+                            <CharacterCounter current={bodyLength} min={150} max={50000} />
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              rows={10}
-                              placeholder="Tell your story. What pair? timeframe? broker? results? What do you need help with?"
+                              rows={8}
+                              placeholder="I've been trading XAUUSD on M5 for 3 months now. Here's what I learned...
+
+• Which pair and timeframe?
+• What's your entry/exit strategy?
+• What broker are you using?
+• What are your results so far?
+• What specific help do you need?"
+                              className="resize-none"
                               data-testid="textarea-body"
                             />
                           </FormControl>
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Share the basics: pair, timeframe, broker, your rules/results, and what you need</span>
-                            <span data-testid="text-body-char-count">{bodyCharCount} characters (150-50,000 required)</span>
-                          </div>
+                          {bodyLength > 0 && bodyLength < 150 && (
+                            <p className="text-xs text-muted-foreground">
+                              Add {150 - bodyLength} more characters for a complete post...
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {/* Auto-suggested Tags */}
+                    {/* Quick tips */}
+                    <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-900">
+                      <Sparkles className="h-4 w-4 text-blue-600" />
+                      <AlertTitle className="text-blue-900 dark:text-blue-100">
+                        Quick tips for great threads
+                      </AlertTitle>
+                      <AlertDescription className="text-blue-800 dark:text-blue-200">
+                        <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
+                          <li>Be specific: Include pair, timeframe, and broker</li>
+                          <li>Show results: Share your win rate or P&L if relevant</li>
+                          <li>Ask clear questions: What exactly do you need help with?</li>
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Navigation */}
+                    <div className="flex justify-between items-center pt-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => router.back()}
+                        data-testid="button-cancel"
+                      >
+                        Cancel
+                      </Button>
+                      
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            if (canProceedStep1) {
+                              setCurrentStep(3);
+                            }
+                          }}
+                          disabled={!canProceedStep1}
+                          data-testid="button-quick-post"
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          Quick Post
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => setCurrentStep(2)}
+                          disabled={!canProceedStep1}
+                          data-testid="button-next"
+                        >
+                          Next
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* STEP 2: Smart Tags (Optional) */}
+              {currentStep === 2 && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="w-5 h-5" />
+                      Add context (optional)
+                    </CardTitle>
+                    <CardDescription>
+                      Help others find your thread with relevant tags
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Auto-suggested tags */}
                     {suggestedTags.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-sm">Looks right?</Label>
+                      <div>
+                        <Label className="text-sm mb-2 block">
+                          Suggested tags from your content
+                        </Label>
                         <div className="flex flex-wrap gap-2">
                           {suggestedTags.map((tag) => {
-                            const isInstrument = INSTRUMENTS.some(i => i.value.toLowerCase() === tag);
-                            const isTimeframe = TIMEFRAMES.some(t => t.value.toLowerCase() === tag);
-                            const isStrategy = STRATEGIES.some(s => s.value.toLowerCase() === tag);
+                            const isInstrument = INSTRUMENTS.some(i => i.value === tag);
+                            const isTimeframe = TIMEFRAMES.some(t => t.value === tag);
+                            const isStrategy = STRATEGIES.some(s => s.value === tag);
                             
-                            let field: "instruments" | "timeframes" | "strategies" = "instruments";
-                            if (isTimeframe) field = "timeframes";
-                            else if (isStrategy) field = "strategies";
+                            let field: "instruments" | "timeframes" | "strategies" | null = null;
+                            let icon = null;
+                            
+                            if (isInstrument) {
+                              field = "instruments";
+                              icon = <DollarSign className="w-3 h-3" />;
+                            } else if (isTimeframe) {
+                              field = "timeframes";
+                              icon = <Clock className="w-3 h-3" />;
+                            } else if (isStrategy) {
+                              field = "strategies";
+                              icon = <TrendingUp className="w-3 h-3" />;
+                            }
+                            
+                            if (!field) return null;
                             
                             const isSelected = (form.getValues(field) || []).includes(tag);
                             
                             return (
-                              <Badge
+                              <TagChip
                                 key={tag}
-                                variant={isSelected ? "default" : "outline"}
-                                className="cursor-pointer hover-elevate"
-                                onClick={() => toggleTag(field, tag)}
-                                data-testid={`badge-suggested-tag-${tag}`}
-                              >
-                                {tag.toUpperCase()}
-                              </Badge>
+                                label={tag.toUpperCase()}
+                                isSelected={isSelected}
+                                onClick={() => toggleTag(field!, tag)}
+                                icon={icon}
+                              />
                             );
                           })}
                         </div>
                       </div>
                     )}
 
-                    {/* Optional Details Accordion */}
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="details">
-                        <AccordionTrigger data-testid="button-toggle-details">
-                          Add details (optional)
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-4 pt-4">
-                          {/* Instruments */}
-                          <FormField
-                            control={form.control}
-                            name="instruments"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Instruments</FormLabel>
-                                <div className="flex flex-wrap gap-2">
-                                  {INSTRUMENTS.slice(0, 15).map((inst) => (
-                                    <Badge
-                                      key={inst.value}
-                                      variant={(field.value || []).includes(inst.value) ? "default" : "outline"}
-                                      className="cursor-pointer hover-elevate"
-                                      onClick={() => toggleTag("instruments", inst.value)}
-                                      data-testid={`badge-instrument-${inst.value}`}
-                                    >
-                                      {inst.label}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Timeframes */}
-                          <FormField
-                            control={form.control}
-                            name="timeframes"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Timeframes</FormLabel>
-                                <div className="flex flex-wrap gap-2">
-                                  {TIMEFRAMES.map((tf) => (
-                                    <Badge
-                                      key={tf.value}
-                                      variant={(field.value || []).includes(tf.value) ? "default" : "outline"}
-                                      className="cursor-pointer hover-elevate"
-                                      onClick={() => toggleTag("timeframes", tf.value)}
-                                      data-testid={`badge-timeframe-${tf.value}`}
-                                    >
-                                      {tf.label}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Strategies */}
-                          <FormField
-                            control={form.control}
-                            name="strategies"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Strategies</FormLabel>
-                                <div className="flex flex-wrap gap-2">
-                                  {STRATEGIES.slice(0, 12).map((strat) => (
-                                    <Badge
-                                      key={strat.value}
-                                      variant={(field.value || []).includes(strat.value) ? "default" : "outline"}
-                                      className="cursor-pointer hover-elevate"
-                                      onClick={() => toggleTag("strategies", strat.value)}
-                                      data-testid={`badge-strategy-${strat.value}`}
-                                    >
-                                      {strat.label}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Platform */}
-                          <FormField
-                            control={form.control}
-                            name="platform"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Platform</FormLabel>
-                                <Select 
-                                  onValueChange={(value) => {
-                                    if (value === "Other") {
-                                      setShowCustomPlatform(true);
-                                      field.onChange("");
-                                    } else {
-                                      setShowCustomPlatform(false);
-                                      field.onChange(value);
-                                    }
-                                  }} 
-                                  value={showCustomPlatform ? "Other" : field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger data-testid="select-platform">
-                                      <SelectValue placeholder="Select platform" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {PLATFORMS.map((plat) => (
-                                      <SelectItem key={plat.value} value={plat.value}>
-                                        {plat.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {showCustomPlatform && (
-                                  <FormControl>
-                                    <Input
-                                      value={field.value}
-                                      onChange={(e) => {
-                                        field.onChange(e.target.value);
-                                      }}
-                                      placeholder="Enter platform name manually"
-                                      data-testid="input-custom-platform"
-                                      className="mt-2"
-                                    />
-                                  </FormControl>
-                                )}
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Broker */}
-                          <FormField
-                            control={form.control}
-                            name="broker"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Broker</FormLabel>
-                                {brokersLoading ? (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading brokers...
-                                  </div>
-                                ) : (
-                                  <>
-                                    <Select 
-                                      onValueChange={(value) => {
-                                        if (value === "other") {
-                                          setShowCustomBroker(true);
-                                          field.onChange("");
-                                        } else {
-                                          setShowCustomBroker(false);
-                                          field.onChange(value);
-                                        }
-                                      }} 
-                                      value={showCustomBroker ? "other" : field.value}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger data-testid="select-broker">
-                                          <SelectValue placeholder="Select broker" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {brokers && brokers.length > 0 ? (
-                                          <>
-                                            {brokers.map((broker) => (
-                                              <SelectItem key={broker.id} value={broker.name}>
-                                                {broker.name}
-                                              </SelectItem>
-                                            ))}
-                                            <SelectItem value="other">Other</SelectItem>
-                                          </>
-                                        ) : (
-                                          <SelectItem value="other">Other</SelectItem>
-                                        )}
-                                      </SelectContent>
-                                    </Select>
-                                    {showCustomBroker && (
-                                      <FormControl>
-                                        <Input
-                                          value={field.value}
-                                          onChange={(e) => {
-                                            field.onChange(e.target.value);
-                                          }}
-                                          placeholder="Enter broker name manually"
-                                          data-testid="input-custom-broker"
-                                          className="mt-2"
-                                        />
-                                      </FormControl>
-                                    )}
-                                  </>
-                                )}
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Risk Note */}
-                          <FormField
-                            control={form.control}
-                            name="riskNote"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Risk Note</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder="e.g., risk 1% per trade"
-                                    data-testid="input-risk-note"
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-
-                    <div className="flex justify-between">
-                      {subcategories.length > 0 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setCurrentStep(1)}
-                          data-testid="button-back"
-                        >
-                          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        onClick={() => setCurrentStep(3)}
-                        className="ml-auto"
-                        data-testid="button-next-step"
-                      >
-                        Next <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
+                    {/* Instruments */}
+                    <div>
+                      <Label className="text-sm mb-2 block">
+                        <DollarSign className="w-4 h-4 inline mr-1" />
+                        Trading Pairs
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {INSTRUMENTS.slice(0, 8).map((instrument) => {
+                          const isSelected = watchedValues.instruments?.includes(instrument.value);
+                          return (
+                            <TagChip
+                              key={instrument.value}
+                              label={instrument.label}
+                              isSelected={isSelected}
+                              onClick={() => toggleTag("instruments", instrument.value)}
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* STEP 3: Finish (Thread Type, Conditional Fields, SEO, Hashtags) */}
-              {currentStep === 3 && (
-                <Card data-testid="card-step-finish">
-                  <CardHeader>
-                    <CardTitle>Finish up</CardTitle>
-                    <CardDescription>Choose thread type and add final details</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Thread Type Selection */}
+                    {/* Timeframes */}
+                    <div>
+                      <Label className="text-sm mb-2 block">
+                        <Clock className="w-4 h-4 inline mr-1" />
+                        Timeframes
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {TIMEFRAMES.map((timeframe) => {
+                          const isSelected = watchedValues.timeframes?.includes(timeframe.value);
+                          return (
+                            <TagChip
+                              key={timeframe.value}
+                              label={timeframe.label}
+                              isSelected={isSelected}
+                              onClick={() => toggleTag("timeframes", timeframe.value)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Strategies */}
+                    <div>
+                      <Label className="text-sm mb-2 block">
+                        <TrendingUp className="w-4 h-4 inline mr-1" />
+                        Trading Strategies
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {STRATEGIES.slice(0, 8).map((strategy) => {
+                          const isSelected = watchedValues.strategies?.includes(strategy.value);
+                          return (
+                            <TagChip
+                              key={strategy.value}
+                              label={strategy.label}
+                              isSelected={isSelected}
+                              onClick={() => toggleTag("strategies", strategy.value)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Platform */}
                     <FormField
                       control={form.control}
-                      name="threadType"
+                      name="platform"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Thread Type</FormLabel>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {THREAD_TYPES.map((type) => {
-                              const Icon = threadTypeIcon[type.value as keyof typeof threadTypeIcon];
-                              return (
-                                <Button
-                                  key={type.value}
-                                  type="button"
-                                  variant={field.value === type.value ? "default" : "outline"}
-                                  className="h-auto py-4 px-4 flex-col items-center gap-2"
-                                  onClick={() => field.onChange(type.value)}
-                                  data-testid={`button-thread-type-${type.value}`}
-                                >
-                                  <Icon className="h-6 w-6" />
-                                  <span className="font-semibold text-sm">{type.label}</span>
-                                  <span className="text-xs opacity-80 text-center">{type.description}</span>
-                                </Button>
-                              );
-                            })}
-                          </div>
-                          <FormMessage />
+                          <FormLabel>Platform (optional)</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-platform">
+                                <SelectValue placeholder="Select trading platform" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {PLATFORMS.map((platform) => (
+                                <SelectItem key={platform.value} value={platform.value}>
+                                  {platform.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </FormItem>
                       )}
                     />
-
-                    {/* Conditional: Question Summary */}
-                    {watchedThreadType === "question" && (
-                      <FormField
-                        control={form.control}
-                        name="questionSummary"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>What do you want solved?</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                {...field}
-                                rows={2}
-                                placeholder="Summarize your question in 1-2 sentences"
-                                data-testid="textarea-question-summary"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {/* Conditional: Review Fields */}
-                    {watchedThreadType === "review" && (
-                      <div className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="reviewTarget"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>What are you reviewing? *</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder="EA/Indicator/Broker name"
-                                  data-testid="input-review-target"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="reviewVersion"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Version (optional)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder="e.g., v2.3"
-                                  data-testid="input-review-version"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="reviewRating"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Rating (1-5 stars) *</FormLabel>
-                              <div className="flex gap-2">
-                                {[1, 2, 3, 4, 5].map((rating) => (
-                                  <Button
-                                    key={rating}
-                                    type="button"
-                                    variant={field.value === rating ? "default" : "outline"}
-                                    size="icon"
-                                    onClick={() => field.onChange(rating)}
-                                    data-testid={`button-rating-${rating}`}
-                                  >
-                                    <Star className={`h-4 w-4 ${field.value && field.value >= rating ? "fill-current" : ""}`} />
-                                  </Button>
-                                ))}
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Pros */}
-                        <FormField
-                          control={form.control}
-                          name="reviewPros"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Pros (optional)</FormLabel>
-                              <div className="space-y-2">
-                                <div className="flex gap-2">
-                                  <Input
-                                    value={proInput}
-                                    onChange={(e) => setProInput(e.target.value)}
-                                    placeholder="Add a pro"
-                                    data-testid="input-pro"
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        addPro();
-                                      }
-                                    }}
-                                  />
-                                  <Button type="button" onClick={addPro} data-testid="button-add-pro">
-                                    Add
-                                  </Button>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {(field.value || []).map((pro, idx) => (
-                                    <Badge key={idx} variant="default" className="gap-1">
-                                      ✓ {pro}
-                                      <X
-                                        className="h-3 w-3 cursor-pointer"
-                                        onClick={() => {
-                                          form.setValue("reviewPros", (field.value || []).filter((_, i) => i !== idx));
-                                        }}
-                                      />
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Cons */}
-                        <FormField
-                          control={form.control}
-                          name="reviewCons"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Cons (optional)</FormLabel>
-                              <div className="space-y-2">
-                                <div className="flex gap-2">
-                                  <Input
-                                    value={conInput}
-                                    onChange={(e) => setConInput(e.target.value)}
-                                    placeholder="Add a con"
-                                    data-testid="input-con"
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        addCon();
-                                      }
-                                    }}
-                                  />
-                                  <Button type="button" onClick={addCon} data-testid="button-add-con">
-                                    Add
-                                  </Button>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {(field.value || []).map((con, idx) => (
-                                    <Badge key={idx} variant="destructive" className="gap-1">
-                                      ✗ {con}
-                                      <X
-                                        className="h-3 w-3 cursor-pointer"
-                                        onClick={() => {
-                                          form.setValue("reviewCons", (field.value || []).filter((_, i) => i !== idx));
-                                        }}
-                                      />
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    )}
-
-                    {/* Optional SEO Section */}
-                    <Accordion type="single" collapsible defaultValue="seo">
-                      <AccordionItem value="seo">
-                        <AccordionTrigger data-testid="button-toggle-seo">
-                          Help others find this (optional)
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-4 pt-4">
-                          <FormField
-                            control={form.control}
-                            name="primaryKeyword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Primary Keyword (1-6 words)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder="e.g., xauusd m5 scalping"
-                                    data-testid="input-primary-keyword"
-                                  />
-                                </FormControl>
-                                <FormDescription>Short phrase that describes your topic</FormDescription>
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="seoExcerpt"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>SEO Excerpt (120-160 chars)</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    {...field}
-                                    rows={2}
-                                    placeholder="One sentence summary for search engines"
-                                    data-testid="textarea-seo-excerpt"
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  {((field.value || "").length)}/160 chars
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* SEO Preview Component */}
-                          <SEOPreview
-                            title={watchedValues.title || ""}
-                            seoExcerpt={watchedValues.seoExcerpt || ""}
-                            primaryKeyword={watchedValues.primaryKeyword || ""}
-                            body={watchedValues.body || ""}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
 
                     {/* Hashtags */}
-                    <FormField
-                      control={form.control}
-                      name="hashtags"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Hashtags (max 10)</FormLabel>
-                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                              <Input
-                                value={hashtagInput}
-                                onChange={(e) => setHashtagInput(e.target.value)}
-                                placeholder="#xauusd #m5 #scalping"
-                                data-testid="input-hashtag"
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addHashtag();
-                                  }
-                                }}
-                              />
-                              <Button type="button" onClick={addHashtag} data-testid="button-add-hashtag">
-                                Add
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {(field.value || []).map((tag, idx) => (
-                                <Badge key={idx} variant="secondary" className="gap-1" data-testid={`badge-hashtag-${tag}`}>
-                                  #{tag}
-                                  <X
-                                    className="h-3 w-3 cursor-pointer"
-                                    onClick={() => removeHashtag(tag)}
-                                  />
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* File Attachments */}
-                    <div className="space-y-3">
-                      <FormLabel>Attachments (optional)</FormLabel>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="file"
-                            multiple
-                            accept=".jpg,.jpeg,.png,.webp,.pdf,.set,.csv"
-                            onChange={handleFileUpload}
-                            disabled={isUploading || uploadedFiles.length >= 10}
-                            className="flex-1"
-                            data-testid="input-file-upload"
-                          />
-                          {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    <div>
+                      <Label className="text-sm mb-2 block">
+                        <Hash className="w-4 h-4 inline mr-1" />
+                        Hashtags
+                      </Label>
+                      <div className="flex gap-2 mb-2">
+                        <Input
+                          placeholder="Add hashtag..."
+                          value={hashtagInput}
+                          onChange={(e) => setHashtagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addHashtag();
+                            }
+                          }}
+                          className="flex-1"
+                          data-testid="input-hashtag"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={addHashtag}
+                          disabled={!hashtagInput.trim() || watchedValues.hashtags?.length >= 10}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      {watchedValues.hashtags && watchedValues.hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {watchedValues.hashtags.map((tag) => (
+                            <Badge
+                              key={tag}
+                              variant="secondary"
+                              className="cursor-pointer"
+                              onClick={() => removeHashtag(tag)}
+                            >
+                              #{tag}
+                              <X className="w-3 h-3 ml-1" />
+                            </Badge>
+                          ))}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Screenshots, PDFs, SET files, CSV. Max 5MB each, 10 files total.
-                        </p>
-                        
+                      )}
+                    </div>
+
+                    {/* File attachments */}
+                    <div>
+                      <Label className="text-sm mb-2 block">
+                        <Upload className="w-4 h-4 inline mr-1" />
+                        Attachments (optional)
+                      </Label>
+                      <div className="space-y-2">
+                        <Input
+                          type="file"
+                          multiple
+                          accept="image/*,.pdf,.txt,.mq4,.mq5,.ex4,.ex5"
+                          onChange={handleFileUpload}
+                          disabled={isUploading || uploadedFiles.length >= 5}
+                          data-testid="input-file-upload"
+                        />
                         {uploadedFiles.length > 0 && (
-                          <div className="space-y-2">
-                            {uploadedFiles.map((file, idx) => (
-                              <div 
-                                key={idx} 
-                                className="flex items-center justify-between p-3 rounded-md border bg-card"
-                                data-testid={`uploaded-file-${idx}`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm">{file.name}</span>
-                                  <Check className="h-4 w-4 text-green-500" />
-                                </div>
+                          <div className="space-y-1">
+                            {uploadedFiles.map((file, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <span className="truncate flex-1">{file.name}</span>
                                 <Button
                                   type="button"
+                                  size="sm"
                                   variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeUploadedFile(idx)}
-                                  data-testid={`button-remove-file-${idx}`}
+                                  onClick={() => setUploadedFiles(files => files.filter((_, i) => i !== index))}
                                 >
-                                  <X className="h-4 w-4" />
+                                  <X className="w-3 h-3" />
                                 </Button>
                               </div>
                             ))}
@@ -1241,37 +929,154 @@ export default function ThreadComposeClient({ categories }: ThreadComposeClientP
                       </div>
                     </div>
 
-                    {/* Tag Count Warning */}
-                    {totalTags > 12 && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          You have {totalTags} tags. Maximum is 12. Please remove {totalTags - 12} tags.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {totalTags > 0 && totalTags <= 12 && (
-                      <div className="text-sm text-muted-foreground" data-testid="text-tag-count">
-                        Total tags: {totalTags}/12
-                      </div>
-                    )}
-
-                    <div className="flex justify-between pt-4">
+                    {/* Navigation */}
+                    <div className="flex justify-between items-center pt-4">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
+                        onClick={() => setCurrentStep(1)}
+                        data-testid="button-back"
+                      >
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        Back
+                      </Button>
+                      
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentStep(3)}
+                        data-testid="button-next"
+                      >
+                        Next
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* STEP 3: Preview & Post */}
+              {currentStep === 3 && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      Review & Post
+                    </CardTitle>
+                    <CardDescription>
+                      Everything look good? Let's publish your thread!
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Preview */}
+                    <div className="rounded-lg border bg-card p-4 space-y-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Title</p>
+                        <h3 className="text-xl font-semibold">{watchedValues.title || "No title yet"}</h3>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Content</p>
+                        <p className="whitespace-pre-wrap text-sm">
+                          {watchedValues.body ? 
+                            (watchedValues.body.length > 300 ? 
+                              watchedValues.body.substring(0, 300) + "..." : 
+                              watchedValues.body
+                            ) : "No content yet"}
+                        </p>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCategory && (
+                          <Badge variant="outline">
+                            📁 {categories.find(c => c.slug === selectedCategory)?.name}
+                          </Badge>
+                        )}
+                        {watchedValues.instruments?.map(i => (
+                          <Badge key={i} variant="secondary">
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            {i}
+                          </Badge>
+                        ))}
+                        {watchedValues.timeframes?.map(t => (
+                          <Badge key={t} variant="secondary">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {t}
+                          </Badge>
+                        ))}
+                        {watchedValues.strategies?.map(s => (
+                          <Badge key={s} variant="secondary">
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            {s}
+                          </Badge>
+                        ))}
+                        {watchedValues.hashtags?.map(h => (
+                          <Badge key={h} variant="outline">#{h}</Badge>
+                        ))}
+                        {uploadedFiles.length > 0 && (
+                          <Badge variant="outline">
+                            <Upload className="w-3 h-3 mr-1" />
+                            {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Coin reward info */}
+                    <Alert className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-900">
+                      <Coins className="h-4 w-4 text-green-600" />
+                      <AlertTitle className="text-green-900 dark:text-green-100">
+                        Earn coins for posting!
+                      </AlertTitle>
+                      <AlertDescription className="text-green-800 dark:text-green-200">
+                        You'll earn <strong>10 coins</strong> for posting this thread. 
+                        Quality threads that get engagement earn even more!
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Community guidelines */}
+                    <Alert>
+                      <Shield className="h-4 w-4" />
+                      <AlertTitle>Community Guidelines</AlertTitle>
+                      <AlertDescription className="text-sm space-y-1">
+                        <p>✓ Be respectful and constructive</p>
+                        <p>✓ No spam or promotional content</p>
+                        <p>✓ Share real experiences, not financial advice</p>
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Navigation */}
+                    <div className="flex justify-between items-center pt-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
                         onClick={() => setCurrentStep(2)}
                         data-testid="button-back"
                       >
-                        <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        Back
                       </Button>
+                      
                       <Button
                         type="submit"
-                        disabled={createThreadMutation.isPending || totalTags > 12}
+                        size="lg"
+                        disabled={!isFormValid || createThreadMutation.isPending}
                         data-testid="button-submit"
                       >
-                        {createThreadMutation.isPending ? "Posting..." : "Post Thread"}
+                        {createThreadMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                            Posting...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="mr-2 h-4 w-4" />
+                            Post Thread
+                          </>
+                        )}
                       </Button>
                     </div>
                   </CardContent>
