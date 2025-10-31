@@ -247,11 +247,20 @@ export async function getBot(botId: string) {
  * @returns Updated bot
  */
 export async function updateBot(botId: string, updates: Partial<InsertBot>) {
+  const { personaProfile, ...restUpdates } = updates;
+  
+  const updateData: any = {
+    ...restUpdates,
+    updatedAt: new Date()
+  };
+  
+  // Handle personaProfile separately to ensure proper typing
+  if (personaProfile !== undefined) {
+    updateData.personaProfile = personaProfile as any;
+  }
+  
   const result = await db.update(bots)
-    .set({
-      ...updates,
-      updatedAt: new Date()
-    })
+    .set(updateData)
     .where(eq(bots.id, botId))
     .returning();
   

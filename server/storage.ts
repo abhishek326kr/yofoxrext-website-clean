@@ -2423,6 +2423,7 @@ export class MemStorage implements IStorage {
       description: insertTransaction.description,
       status: (insertTransaction.status || "completed") as "completed" | "pending" | "failed",
       createdAt: new Date(),
+      botId: null, // Add botId field with null default
     };
     this.transactions.set(id, transaction);
     

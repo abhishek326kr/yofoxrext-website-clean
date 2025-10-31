@@ -46,7 +46,7 @@ const NUDGE_RULES: NudgeRule[] = [
         .where(
           and(
             eq(activityFeed.userId, userId),
-            eq(activityFeed.activityType, 'reply_created'),
+            eq(activityFeed.activityType, 'reply_posted'),
             gte(activityFeed.createdAt, threeDaysAgo)
           )
         );
