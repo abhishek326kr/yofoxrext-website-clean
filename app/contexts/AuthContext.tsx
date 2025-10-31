@@ -43,13 +43,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     try {
-      await fetch("/api/logout", {
+      // Use new auth logout endpoint
+      await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
       window.location.href = "/";
     } catch (error) {
       console.error("Logout failed:", error);
+      // Fallback to old endpoint if new one fails
+      try {
+        await fetch("/api/logout", {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch (fallbackError) {
+        console.error("Fallback logout also failed:", fallbackError);
+      }
       window.location.href = "/";
     }
   };

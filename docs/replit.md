@@ -20,7 +20,7 @@ YoForex is a comprehensive trading community platform designed to foster a vibra
 - **Email System**: ✅ COMPLETE (Oct 30, 2025) - 58+ notification types via Hostinger SMTP
 - **TypeScript**: All compilation errors resolved
 - **Database**: Production-optimized with connection pooling, SSL/TLS support, retry logic
-- **Authentication**: Flexible system supporting Replit OIDC, local auth, or disabled modes
+- **Authentication**: Email/password and Google OAuth authentication
 - **Production Build**: Successful - 48 pages generated, 48MB build size
   - Build ID: dFTzjarCmmqQiSaWiKjYq
   - Compilation: 33.1s
@@ -50,7 +50,7 @@ The platform is built with a modern tech stack:
 - **Frontend**: Next.js 16 (App Router), React, TailwindCSS
 - **Backend**: Express.js API
 - **Database**: PostgreSQL (Neon) with Drizzle ORM
-- **Authentication**: Replit Auth (OIDC)
+- **Authentication**: Email/password and Google OAuth
 
 **UI/UX Decisions:**
 The platform emphasizes a clean, intuitive interface designed for ease of use and engagement, leveraging a responsive design for various devices.
@@ -80,7 +80,7 @@ The platform emphasizes a clean, intuitive interface designed for ease of use an
 
 ## External Dependencies
 - **Database**: Neon (PostgreSQL-compatible, serverless)
-- **Authentication**: Replit Auth (OIDC)
+- **Authentication**: Email/password and Google OAuth (via Firebase Admin SDK)
 - **Analytics**: Google Analytics 4, Yandex Webmaster Tools, Bing Webmaster Tools, Seznam Webmaster
 - **Tag Management**: Google Tag Manager (via `NEXT_PUBLIC_GTM_ID`)
 

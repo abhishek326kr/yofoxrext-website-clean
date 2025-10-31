@@ -23,10 +23,17 @@ export const users = pgTable("users", {
   
   // Legacy fields (kept for backward compatibility, will be deprecated)
   username: text("username").notNull().unique(),
-  password: text("password"), // Now optional - Replit Auth handles authentication
+  password: text("password"), // DEPRECATED - use password_hash instead
   
-  // Replit Auth fields (added for OIDC integration)
-  email: varchar("email").unique(),
+  // New Authentication System fields
+  email: varchar("email").unique(), // Nullable for backward compatibility with existing users
+  password_hash: varchar("password_hash"), // For email/password authentication (nullable)
+  google_uid: varchar("google_uid").unique(), // For Google OAuth (nullable)
+  auth_provider: varchar("auth_provider", { length: 20 }).default("replit"), // 'email', 'google', 'replit'
+  is_email_verified: boolean("is_email_verified").default(false),
+  last_login_at: timestamp("last_login_at"),
+  
+  // Replit Auth fields (kept for backward compatibility during migration)
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -93,6 +100,8 @@ export const users = pgTable("users", {
 }, (table) => ({
   usernameIdx: index("idx_users_username").on(table.username),
   emailIdx: index("idx_users_email").on(table.email),
+  googleUidIdx: index("idx_users_google_uid").on(table.google_uid),
+  authProviderIdx: index("idx_users_auth_provider").on(table.auth_provider),
   reputationIdx: index("idx_users_reputation").on(table.reputationScore),
   levelIdx: index("idx_users_level").on(table.level),
   coinsIdx: index("idx_users_coins").on(table.totalCoins),

@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage/index.js";
 import { setupAuth, isAuthenticated } from "./flexibleAuth.js";
+import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -82,21 +83,35 @@ import { SitemapSubmissionService } from './services/sitemap-submission.js';
 
 // Helper function to get authenticated user ID from session
 function getAuthenticatedUserId(req: any): string {
-  const claims = req.user?.claims;
-  if (!claims?.sub) {
+  const user = req.user;
+  if (!user?.id) {
     throw new Error("No authenticated user");
   }
-  return claims.sub;
+  return user.id;
 }
 
 // Helper function to check if user is admin
 function isAdmin(user: any): boolean {
   if (!user) return false;
-  const claims = user?.claims;
-  if (!claims) return false;
   // Check if user has admin role
-  return claims.role === 'admin' || claims.role === 'moderator' || claims.role === 'superadmin';
+  return user.role === 'admin' || user.role === 'moderator' || user.role === 'superadmin';
 }
+
+// Middleware to check if user is admin
+const isAdminMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  
+  const user = req.user as any;
+  const userRole = user?.role;
+  
+  if (userRole !== "admin" && userRole !== "superadmin") {
+    return res.status(403).json({ error: "Insufficient permissions. Admins only." });
+  }
+  
+  next();
+};
 
 // Middleware to check if user is moderator or admin
 const isModOrAdmin = (req: Request, res: Response, next: NextFunction) => {
@@ -104,12 +119,9 @@ const isModOrAdmin = (req: Request, res: Response, next: NextFunction) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
   
-  const claims = (req.user as any)?.claims;
-  if (!claims) {
-    return res.status(401).json({ error: "Invalid session" });
-  }
+  const user = req.user as any;
+  const userRole = user?.role;
   
-  const userRole = claims.role;
   if (userRole !== "moderator" && userRole !== "admin" && userRole !== "superadmin") {
     return res.status(403).json({ error: "Insufficient permissions. Moderators or admins only." });
   }
@@ -174,8 +186,216 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth (OIDC) - must be called before any routes
+  // Setup authentication (email/password and Google OAuth)
   await setupAuth(app);
+
+  // Import auth functions from server/auth.ts
+  const { 
+    hashPassword, 
+    verifyGoogleToken, 
+    findOrCreateGoogleUser,
+    isAuthenticated: isAuthenticatedMiddleware,
+    isAdmin: isAdminMiddleware
+  } = await import('./auth.js');
+  
+  // Import passport for session management
+  const passport = (await import('passport')).default;
+
+  // ===== AUTHENTICATION API ROUTES =====
+  
+  // POST /api/auth/register - Email/password registration
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, password, username } = req.body;
+
+      // Validate inputs
+      if (!email || !password || !username) {
+        return res.status(400).json({ error: "Email, password, and username are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      // Validate password strength (min 8 chars)
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      // Check if user already exists
+      const existingUsers = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.email, email), eq(users.username, username)))
+        .limit(1);
+
+      if (existingUsers.length > 0) {
+        const existingUser = existingUsers[0];
+        if (existingUser.email === email) {
+          return res.status(409).json({ error: "Email already registered" });
+        }
+        if (existingUser.username === username) {
+          return res.status(409).json({ error: "Username already taken" });
+        }
+      }
+
+      // Hash password
+      const password_hash = await hashPassword(password);
+
+      // Create user
+      const newUserResults = await db
+        .insert(users)
+        .values({
+          email,
+          password_hash,
+          username,
+          auth_provider: "email",
+          is_email_verified: false,
+          role: "member",
+          status: "active",
+          totalCoins: 0,
+          weeklyEarned: 0,
+          reputationScore: 0,
+          level: 0,
+          emailNotifications: true,
+          isVerifiedTrader: false,
+          hasYoutubeReward: false,
+          hasMyfxbookReward: false,
+          hasInvestorReward: false,
+          emailBounceCount: 0,
+          onboardingCompleted: false,
+          onboardingDismissed: false,
+          last_login_at: new Date(),
+        })
+        .returning();
+
+      const newUser = newUserResults[0];
+
+      // Log in the user automatically
+      req.login(newUser, (err) => {
+        if (err) {
+          console.error("Auto-login failed after registration:", err);
+          return res.status(500).json({ error: "Registration successful but login failed" });
+        }
+
+        res.status(201).json({
+          message: "Registration successful",
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            username: newUser.username,
+            role: newUser.role,
+          },
+        });
+      });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      res.status(500).json({ error: error.message || "Registration failed" });
+    }
+  });
+
+  // POST /api/auth/login - Email/password login
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ error: "Login failed" });
+      }
+
+      if (!user) {
+        return res.status(401).json({ error: info?.message || "Invalid credentials" });
+      }
+
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Session creation error:", loginErr);
+          return res.status(500).json({ error: "Session creation failed" });
+        }
+
+        res.json({
+          message: "Login successful",
+          user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+          },
+        });
+      });
+    })(req, res, next);
+  });
+
+  // POST /api/auth/logout - Clear session
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ error: "Logout failed" });
+      }
+
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Session destroy error:", destroyErr);
+        }
+        res.json({ message: "Logout successful" });
+      });
+    });
+  });
+
+  // POST /api/auth/google - Google OAuth authentication
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      // Check if Firebase Admin SDK is initialized
+      const { isFirebaseInitialized } = await import('./auth.js');
+      
+      if (!isFirebaseInitialized()) {
+        return res.status(400).json({ 
+          error: "Google OAuth is not configured on this server. Please use email/password authentication." 
+        });
+      }
+
+      const { idToken } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      // Verify Google ID token
+      const googleUser = await verifyGoogleToken(idToken);
+
+      // Find or create user
+      const user = await findOrCreateGoogleUser(googleUser);
+
+      // Create session
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Google login session creation error:", err);
+          return res.status(500).json({ error: "Session creation failed" });
+        }
+
+        res.json({
+          message: "Google login successful",
+          user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+          },
+        });
+      });
+    } catch (error: any) {
+      console.error("Google authentication error:", error);
+      
+      // Return 400 for configuration errors, 401 for authentication errors
+      if (error.message.includes("not initialized") || error.message.includes("not configured")) {
+        return res.status(400).json({ error: error.message });
+      }
+      
+      res.status(401).json({ error: error.message || "Google authentication failed" });
+    }
+  });
 
   // HEALTH CHECK ENDPOINTS
   // Database health check endpoint for monitoring and load balancers
@@ -1325,7 +1545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== LEDGER SYSTEM ENDPOINTS =====
   
   // Admin-only endpoint to backfill opening balances (run once)
-  app.post("/api/admin/backfill-wallets", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/backfill-wallets", isAdminMiddleware, async (req, res) => {
     const userId = getAuthenticatedUserId(req);
     
     // Get user from database to check admin status
@@ -2685,7 +2905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/verify-scam-report/:reviewId - Verify scam report and award coins
-  app.post("/api/admin/verify-scam-report/:reviewId", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/verify-scam-report/:reviewId", isAdminMiddleware, async (req, res) => {
     // TODO: Add proper admin check here
     // For now, we'll block this endpoint entirely for security
     return res.status(403).json({
@@ -5746,6 +5966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     search: z.string().optional(),
     role: z.enum(['member', 'moderator', 'admin']).optional(),
     status: z.enum(['active', 'suspended', 'banned']).optional(),
+    authProvider: z.enum(['email', 'google', 'replit']).optional(),
     sortBy: z.string().optional(),
     sortOrder: z.enum(['asc', 'desc']).optional()
   });
@@ -5802,6 +6023,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const removeBadgeSchema = z.object({
     badge: z.string().min(1),
     removedBy: z.string().optional()
+  });
+
+  const createModeratorSchema = z.object({
+    email: z.string().email(),
+    username: z.string().min(3).max(50),
+    password: z.string().min(6)
   });
 
   // Broker Admin Zod Schemas
@@ -6074,7 +6301,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 11. GET /api/admin/users/export/csv - Export users to CSV
+  // 11. POST /api/admin/moderators - Create a new moderator account
+  app.post('/api/admin/moderators', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
+    try {
+      const validated = createModeratorSchema.parse(req.body);
+      
+      // Check if user with email already exists
+      const existingUser = await storage.findUserByEmail(validated.email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+
+      // Check if username already exists
+      const existingUsername = await storage.findUserByUsername(validated.username);
+      if (existingUsername) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
+      
+      // Create the moderator account
+      const newUser = await storage.createUser({
+        username: validated.username,
+        email: validated.email,
+        passwordHash: await bcrypt.hash(validated.password, 10),
+        role: 'moderator',
+        status: 'active',
+        auth_provider: 'email',
+        reputationScore: 100,
+        totalCoins: 1000,
+        level: 1
+      });
+      
+      res.json({ 
+        success: true, 
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role
+        }
+      });
+    } catch (error: any) {
+      console.error('Error creating moderator:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create moderator' });
+    }
+  });
+
+  // 12. GET /api/admin/users/export/csv - Export users to CSV
   app.get('/api/admin/users/export/csv', isAuthenticated, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
@@ -6332,7 +6608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { search, role, status } = req.query;
+      const { search, role, status, authProvider } = req.query;
 
       // Build WHERE conditions based on filters
       const conditions = [];
@@ -6352,6 +6628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (status && typeof status === 'string') {
         conditions.push(eq(users.status, status));
+      }
+      
+      if (authProvider && typeof authProvider === 'string') {
+        conditions.push(eq(users.auth_provider, authProvider));
       }
 
       // Build the WHERE clause
@@ -6887,7 +7167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===================================
 
   // 1. GET /api/admin/brokers - List all brokers with filters/pagination
-  app.get("/api/admin/brokers", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.get("/api/admin/brokers", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const filters = {
@@ -6910,7 +7190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 2. GET /api/admin/brokers/stats - Get broker statistics
-  app.get("/api/admin/brokers/stats", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.get("/api/admin/brokers/stats", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const stats = await storage.getBrokerStats();
@@ -6922,7 +7202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 3. GET /api/admin/brokers/pending - Get pending broker submissions
-  app.get("/api/admin/brokers/pending", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.get("/api/admin/brokers/pending", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const pendingBrokers = await storage.getPendingBrokers();
@@ -6934,7 +7214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 4. PATCH /api/admin/brokers/:id - Update broker
-  app.patch("/api/admin/brokers/:id", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.patch("/api/admin/brokers/:id", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -6957,7 +7237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 5. DELETE /api/admin/brokers/:id - Delete (soft delete) broker
-  app.delete("/api/admin/brokers/:id", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.delete("/api/admin/brokers/:id", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -6975,7 +7255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 6. POST /api/admin/brokers/:id/verify - Verify broker
-  app.post("/api/admin/brokers/:id/verify", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.post("/api/admin/brokers/:id/verify", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -6993,7 +7273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 7. POST /api/admin/brokers/:id/unverify - Unverify broker
-  app.post("/api/admin/brokers/:id/unverify", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.post("/api/admin/brokers/:id/unverify", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -7011,7 +7291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 8. POST /api/admin/brokers/:id/scam-warning - Toggle scam warning
-  app.post("/api/admin/brokers/:id/scam-warning", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.post("/api/admin/brokers/:id/scam-warning", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -7048,7 +7328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===================================
 
   // 9. GET /api/admin/scam-reports - List all scam reports
-  app.get("/api/admin/scam-reports", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.get("/api/admin/scam-reports", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const filters = {
@@ -7068,7 +7348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 10. GET /api/admin/scam-reports/:id - Get single scam report details
-  app.get("/api/admin/scam-reports/:id", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.get("/api/admin/scam-reports/:id", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const reportId = req.params.id;
@@ -7089,7 +7369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 11. POST /api/admin/scam-reports/:id/resolve - Resolve scam report
-  app.post("/api/admin/scam-reports/:id/resolve", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.post("/api/admin/scam-reports/:id/resolve", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -7120,7 +7400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===================================
 
   // 12. GET /api/admin/broker-reviews - List all broker reviews
-  app.get("/api/admin/broker-reviews", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.get("/api/admin/broker-reviews", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -7155,7 +7435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 13. POST /api/admin/broker-reviews/:id/approve - Approve broker review
-  app.post("/api/admin/broker-reviews/:id/approve", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.post("/api/admin/broker-reviews/:id/approve", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);
@@ -7173,7 +7453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 14. POST /api/admin/broker-reviews/:id/reject - Reject broker review
-  app.post("/api/admin/broker-reviews/:id/reject", isAuthenticated, adminOperationLimiter, async (req, res) => {
+  app.post("/api/admin/broker-reviews/:id/reject", isAdminMiddleware, adminOperationLimiter, async (req, res) => {
     if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
     try {
       const authenticatedUserId = getAuthenticatedUserId(req);

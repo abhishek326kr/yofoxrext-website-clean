@@ -2,27 +2,8 @@ import type { Express, Request, Response, NextFunction, RequestHandler } from "e
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import passport from "passport";
-import { storage } from "./storage";
 
-// Determine authentication type from environment
-export function getAuthType(): "replit" | "local" | "disabled" {
-  const authType = process.env.AUTH_TYPE?.toLowerCase();
-  
-  // If explicitly set, use that
-  if (authType === "replit" || authType === "local" || authType === "disabled") {
-    return authType;
-  }
-  
-  // Auto-detect based on environment
-  if (process.env.REPLIT_DOMAINS) {
-    return "replit";
-  }
-  
-  // Default to local auth for non-Replit environments
-  return "local";
-}
-
-// Session configuration that works for all environments
+// Session configuration for email/password and Google OAuth
 export function getSession() {
   const sessionTtl = parseInt(process.env.SESSION_TTL || String(7 * 24 * 60 * 60 * 1000)); // Default 1 week
   const pgStore = connectPg(session);
@@ -33,7 +14,6 @@ export function getSession() {
     createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions",
-    // Don't use Neon-specific features
     pruneSessionInterval: false, // Disable automatic pruning for compatibility
   });
   
@@ -42,11 +22,7 @@ export function getSession() {
   const forceSecureCookies = process.env.FORCE_SECURE_COOKIES === "true";
   const isHTTPS = process.env.USE_HTTPS === "true" || process.env.SSL_ENABLED === "true";
   
-  // Only use secure cookies if:
-  // 1. Explicitly forced via env var, OR
-  // 2. In production AND using HTTPS, OR  
-  // 3. On Replit (always HTTPS)
-  const secureCookies = forceSecureCookies || (isProduction && isHTTPS) || !!process.env.REPLIT_DOMAINS;
+  const secureCookies = forceSecureCookies || (isProduction && isHTTPS);
   
   return session({
     secret: process.env.SESSION_SECRET || generateDefaultSecret(),
@@ -57,9 +33,9 @@ export function getSession() {
       httpOnly: true,
       secure: secureCookies,
       maxAge: sessionTtl,
-      sameSite: secureCookies ? "lax" : "lax", // Use lax for better compatibility
+      sameSite: "lax",
     },
-    name: "yoforex.sid", // Custom session name to avoid conflicts
+    name: "yoforex.sid",
   });
 }
 
@@ -70,87 +46,30 @@ function generateDefaultSecret(): string {
   return defaultSecret;
 }
 
-// Main authentication setup
+// Main authentication setup - email/password and Google OAuth only
 export async function setupAuth(app: Express) {
-  const authType = getAuthType();
+  console.log(`🔐 Setting up authentication system with email/password and Google OAuth`);
   
-  console.log(`🔐 Setting up authentication: ${authType.toUpperCase()}`);
-  
-  // Always setup session and passport
+  // Setup session and passport
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
   
-  // Setup serialization (same for all auth types)
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  // Setup email/password authentication
+  const { setupEmailAuth } = await import("./auth.js");
+  setupEmailAuth();
   
-  switch (authType) {
-    case "replit":
-      const { setupReplitAuth } = await import("./replitAuth");
-      await setupReplitAuth(app);
-      break;
-      
-    case "local":
-      const { setupLocalAuth } = await import("./localAuth");
-      await setupLocalAuth(app);
-      break;
-      
-    case "disabled":
-      console.warn("⚠️  Authentication is DISABLED - all requests will be unauthenticated");
-      setupDisabledAuth(app);
-      break;
-      
-    default:
-      throw new Error(`Unknown auth type: ${authType}`);
-  }
-  
-  console.log(`✅ Authentication setup complete (${authType})`);
+  console.log(`✅ Authentication setup complete`);
 }
 
-// Setup routes for disabled authentication (development/testing only)
-function setupDisabledAuth(app: Express) {
-  app.get("/api/login", (req, res) => {
-    res.status(503).json({ 
-      error: "Authentication is disabled",
-      message: "Set AUTH_TYPE environment variable to 'local' or 'replit'" 
-    });
-  });
-  
-  app.post("/api/logout", (req, res) => {
-    res.json({ message: "Authentication is disabled" });
-  });
-  
-  app.get("/api/callback", (req, res) => {
-    res.status(503).json({ error: "Authentication is disabled" });
-  });
-}
-
-// Flexible authentication middleware
+// Standard authentication middleware
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const authType = getAuthType();
-  
-  // If auth is disabled, reject all authenticated requests
-  if (authType === "disabled") {
-    return res.status(401).json({ 
-      error: "Authentication required",
-      message: "Authentication is currently disabled. Enable it by setting AUTH_TYPE." 
-    });
-  }
-  
-  // For Replit auth, use the original flow with token refresh
-  if (authType === "replit") {
-    const { isAuthenticatedReplit } = await import("./replitAuth");
-    return isAuthenticatedReplit(req, res, next);
-  }
-  
-  // For local auth, use standard passport authentication check
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
   }
   
-  // Check session expiry for local auth
+  // Check session expiry
   const user = req.user as any;
   if (user.sessionExpiry && new Date() > new Date(user.sessionExpiry)) {
     req.logout(() => {});
@@ -162,20 +81,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
 // Optional authentication middleware (doesn't fail if not authenticated)
 export const optionalAuth: RequestHandler = async (req, res, next) => {
-  const authType = getAuthType();
-  
-  if (authType === "disabled" || !req.isAuthenticated()) {
-    // Continue without authentication
+  if (!req.isAuthenticated()) {
     return next();
   }
-  
-  // Try to authenticate but don't fail if it doesn't work
-  if (authType === "replit") {
-    const { isAuthenticatedReplit } = await import("./replitAuth");
-    isAuthenticatedReplit(req, res, () => next());
-  } else {
-    next();
-  }
+  next();
 };
 
 // Helper to get current user from request
@@ -184,14 +93,7 @@ export function getCurrentUser(req: Request): any | null {
     return null;
   }
   
-  const authType = getAuthType();
-  const user = req.user as any;
-  
-  if (authType === "replit") {
-    return user?.claims || null;
-  }
-  
-  return user || null;
+  return req.user || null;
 }
 
 // Helper to get user ID from request
@@ -202,11 +104,5 @@ export function getUserId(req: Request): string | null {
     return null;
   }
   
-  // For Replit auth, ID is in claims.sub
-  if (user.sub) {
-    return user.sub;
-  }
-  
-  // For local auth, ID is directly on user object
   return user.id || null;
 }

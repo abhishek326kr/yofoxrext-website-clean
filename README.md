@@ -31,8 +31,8 @@ Just click "Import from GitHub" → Wait 30 seconds → Everything works!
 
 ### Prerequisites
 - Node.js 18+ installed
-- PostgreSQL database (or use Replit's built-in database)
-- Replit account (for authentication)
+- PostgreSQL database
+- Google Service Account (for Google OAuth, optional)
 
 ### Development Setup
 
@@ -84,7 +84,7 @@ npm run dev:hybrid
 
 ### Technical Highlights
 - **Hybrid Architecture**: Next.js 16 SSR + Express API
-- **Authentication**: Replit OIDC with PostgreSQL sessions
+- **Authentication**: Email/password and Google OAuth with PostgreSQL sessions
 - **State Management**: TanStack Query v5 with real-time polling
 - **UI Components**: shadcn/ui + Tailwind CSS
 - **Database**: Drizzle ORM with 25+ performance indexes
@@ -98,7 +98,7 @@ npm run dev:hybrid
 YoForex Platform
 │
 ├── Express Backend (Port 5000)
-│   ├── Authentication (Replit OIDC)
+│   ├── Authentication (Email/Password + Google OAuth)
 │   ├── REST API (60+ endpoints)
 │   ├── Background Jobs (node-cron)
 │   ├── React SPA (Vite)

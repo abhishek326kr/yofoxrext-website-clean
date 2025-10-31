@@ -1,0 +1,78 @@
+"use client";
+
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth";
+
+// Check if all required Firebase environment variables are present
+function checkFirebaseConfig(): boolean {
+  const requiredVars = [
+    'NEXT_PUBLIC_FIREBASE_API_KEY',
+    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+    'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+    'NEXT_PUBLIC_FIREBASE_APP_ID',
+  ];
+
+  return requiredVars.every(varName => {
+    const value = process.env[varName];
+    return value && value.trim() !== '';
+  });
+}
+
+// Export flag to indicate if Google OAuth is available
+export const isGoogleAuthEnabled = checkFirebaseConfig();
+
+// Firebase configuration - Use environment variables
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Initialize Firebase (only once) - Only if configured
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
+
+if (typeof window !== "undefined" && isGoogleAuthEnabled) {
+  // Only initialize on client side and when Firebase is configured
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+  
+  auth = getAuth(app);
+  
+  // Google Auth Provider
+  googleProvider = new GoogleAuthProvider();
+  googleProvider.setCustomParameters({
+    prompt: "select_account",
+  });
+  
+  console.log("✅ Firebase client initialized - Google OAuth is available");
+} else if (typeof window !== "undefined") {
+  console.log("⚠️  Firebase not configured - Google OAuth is disabled. Email/password authentication is still available.");
+}
+
+// Sign in with Google and return ID token
+export async function signInWithGoogle(): Promise<string> {
+  if (!isGoogleAuthEnabled || !auth || !googleProvider) {
+    throw new Error("Google OAuth is not configured. Please use email/password login.");
+  }
+
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const idToken = await result.user.getIdToken();
+    return idToken;
+  } catch (error: any) {
+    console.error("Google sign-in error:", error);
+    throw new Error(error.message || "Google sign-in failed");
+  }
+}
+
+export { auth, googleProvider };

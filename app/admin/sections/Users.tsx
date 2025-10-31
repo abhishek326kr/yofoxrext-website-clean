@@ -25,10 +25,12 @@ interface AdminUser {
   username: string;
   email: string;
   role: string;
+  auth_provider?: string;
   status: 'active' | 'suspended' | 'banned';
   coinBalance: number;
   createdAt: string;
   lastActive?: string;
+  last_login_at?: string;
   reputation: number;
   level?: number;
   suspendedUntil?: string;
@@ -74,6 +76,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [authProviderFilter, setAuthProviderFilter] = useState("all");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
@@ -88,7 +91,7 @@ export default function AdminUsers() {
   const { toast } = useToast();
 
   const { data: usersResponse, isLoading } = useQuery<{ users: AdminUser[]; totalPages: number; total: number }>({
-    queryKey: ["/api/admin/users", { search, role: roleFilter, status: statusFilter, sortBy, sortOrder, page, limit }]
+    queryKey: ["/api/admin/users", { search, role: roleFilter, status: statusFilter, authProvider: authProviderFilter, sortBy, sortOrder, page, limit }]
   });
 
   const users: AdminUser[] = usersResponse?.users || [];
@@ -96,12 +99,13 @@ export default function AdminUsers() {
   const totalUsers = usersResponse?.total || 0;
 
   const { data: statsRaw } = useQuery<UserStats>({
-    queryKey: ["/api/admin/users/stats", { search, role: roleFilter, status: statusFilter }],
+    queryKey: ["/api/admin/users/stats", { search, role: roleFilter, status: statusFilter, authProvider: authProviderFilter }],
     queryFn: () => {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (roleFilter !== 'all') params.append('role', roleFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (authProviderFilter !== 'all') params.append('authProvider', authProviderFilter);
       const queryString = params.toString();
       return fetch(`/api/admin/users/stats${queryString ? '?' + queryString : ''}`).then(r => r.json());
     },
@@ -380,6 +384,17 @@ export default function AdminUsers() {
                   <SelectItem value="banned">Banned</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={authProviderFilter} onValueChange={setAuthProviderFilter}>
+                <SelectTrigger className="w-full md:w-48" data-testid="select-auth-provider-filter">
+                  <SelectValue placeholder="Filter by auth" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Auth Methods</SelectItem>
+                  <SelectItem value="email">Email/Password</SelectItem>
+                  <SelectItem value="google">Google OAuth</SelectItem>
+                  <SelectItem value="replit">Replit Auth</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col md:flex-row gap-4">
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -422,9 +437,9 @@ export default function AdminUsers() {
                   <TableHead>User</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Auth</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Coins</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead>Last Login</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -440,15 +455,17 @@ export default function AdminUsers() {
                         <Badge variant="outline">{user.role}</Badge>
                       </TableCell>
                       <TableCell>
+                        <Badge variant="secondary" data-testid={`user-auth-${user.id}`}>
+                          {user.auth_provider || 'email'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
                           {user.status}
                         </Badge>
                       </TableCell>
-                      <TableCell data-testid={`user-coins-${user.id}`}>
-                        {user.coinBalance}
-                      </TableCell>
-                      <TableCell>
-                        {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })}
+                      <TableCell data-testid={`user-last-login-${user.id}`}>
+                        {user.last_login_at ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true }) : 'Never'}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">

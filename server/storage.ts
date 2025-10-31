@@ -488,6 +488,7 @@ export interface IStorage {
     search?: string;
     role?: string;
     status?: string;
+    authProvider?: string;
     registrationStart?: Date;
     registrationEnd?: Date;
     reputationMin?: number;
@@ -8094,6 +8095,7 @@ export class DrizzleStorage implements IStorage {
     search?: string;
     role?: string;
     status?: string;
+    authProvider?: string;
     registrationStart?: Date;
     registrationEnd?: Date;
     reputationMin?: number;
@@ -8102,7 +8104,7 @@ export class DrizzleStorage implements IStorage {
     offset?: number;
   }): Promise<{users: User[]; total: number}> {
     try {
-      const { search, role, status, registrationStart, registrationEnd, reputationMin, reputationMax, limit = 50, offset = 0 } = filters;
+      const { search, role, status, authProvider, registrationStart, registrationEnd, reputationMin, reputationMax, limit = 50, offset = 0 } = filters;
       
       const conditions = [];
       
@@ -8113,6 +8115,18 @@ export class DrizzleStorage implements IStorage {
             ilike(users.email, `%${search}%`)
           )
         );
+      }
+      
+      if (role) {
+        conditions.push(eq(users.role, role));
+      }
+      
+      if (status) {
+        conditions.push(eq(users.status, status));
+      }
+      
+      if (authProvider) {
+        conditions.push(eq(users.auth_provider, authProvider));
       }
       
       if (registrationStart) {

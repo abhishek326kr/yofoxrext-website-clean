@@ -72,10 +72,10 @@ export async function setupLocalAuth(app: Express) {
             user = userByEmail;
           }
           
-          // Check if user has a password (for backward compatibility with Replit-only users)
+          // Check if user has a password
           if (!user.password) {
             return done(null, false, { 
-              message: "This account uses Replit authentication. Please use the Replit login." 
+              message: "This account does not have a password set. Please use Google Sign-In or reset your password." 
             });
           }
           
