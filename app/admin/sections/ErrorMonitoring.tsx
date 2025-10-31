@@ -143,7 +143,7 @@ export default function ErrorMonitoring() {
       params.append('sortBy', filters.sortBy);
       params.append('sortOrder', filters.sortOrder);
       
-      return apiRequest(`/api/admin/errors/groups?${params}`);
+      return apiRequest('GET', `/api/admin/errors/groups?${params}`);
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
@@ -152,7 +152,7 @@ export default function ErrorMonitoring() {
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ['/api/admin/errors/stats', statsPeriod],
     queryFn: async () => {
-      return apiRequest(`/api/admin/errors/stats?period=${statsPeriod}`);
+      return apiRequest('GET', `/api/admin/errors/stats?period=${statsPeriod}`);
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
@@ -162,7 +162,7 @@ export default function ErrorMonitoring() {
     queryKey: ['/api/admin/errors/groups', selectedGroup],
     queryFn: async () => {
       if (!selectedGroup) return null;
-      return apiRequest(`/api/admin/errors/groups/${selectedGroup}`);
+      return apiRequest('GET', `/api/admin/errors/groups/${selectedGroup}`);
     },
     enabled: !!selectedGroup,
   });
@@ -170,10 +170,7 @@ export default function ErrorMonitoring() {
   // Update error status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ groupId, status, reason }: { groupId: string; status: string; reason: string }) => {
-      return apiRequest(`/api/admin/errors/groups/${groupId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status, reason }),
-      });
+      return apiRequest('PATCH', `/api/admin/errors/groups/${groupId}/status`, { status, reason });
     },
     onSuccess: () => {
       toast({ title: 'Status updated successfully' });
@@ -195,7 +192,7 @@ export default function ErrorMonitoring() {
   // Cleanup mutation
   const cleanupMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/admin/errors/cleanup', { method: 'POST' });
+      return apiRequest('POST', '/api/admin/errors/cleanup');
     },
     onSuccess: (data) => {
       toast({ 
