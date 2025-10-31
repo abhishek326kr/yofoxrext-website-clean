@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ChevronRight, 
   ChevronLeft, 
@@ -48,8 +49,22 @@ import {
   List,
   ListOrdered,
   Code,
-  Coins
+  Coins,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Lightbulb
 } from "lucide-react";
+import {
+  extractPrimaryKeyword,
+  generateSeoExcerpt,
+  extractHashtags,
+  generateUrlSlug,
+  calculateKeywordDensity,
+  generateImageAltText,
+  analyzeTitle,
+  suggestInternalLinks
+} from "@/lib/seo-utils";
 
 // Dynamic import for markdown editor to avoid SSR issues
 const MDEditor = dynamic(
