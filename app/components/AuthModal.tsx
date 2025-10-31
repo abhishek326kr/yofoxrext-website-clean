@@ -151,78 +151,89 @@ export default function AuthModal({
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-chart-3 to-chart-4 rounded-full blur-xl opacity-50 animate-pulse"></div>
-              <Sparkles className="h-12 w-12 text-primary relative z-10" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
+              <Sparkles className="h-14 w-14 text-primary relative z-10" />
             </div>
           </div>
           
-          <DialogTitle className="text-2xl text-center mb-2">
-            {mode === "login" ? "Welcome Back!" : "Join YoForex"}
+          <DialogTitle className="text-2xl font-bold text-center mb-2">
+            {mode === "login" ? "Welcome Back to YoForex!" : "Create Your Account"}
           </DialogTitle>
           
-          <DialogDescription className="text-center">
+          <DialogDescription className="text-center text-muted-foreground">
             {mode === "login" 
-              ? "Sign in to access your account and continue trading" 
-              : "Create an account to start earning coins and sharing strategies"}
+              ? "Sign in to access exclusive trading tools and community features" 
+              : "Join thousands of traders sharing strategies and earning rewards"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Google Sign-In Button - Only show if Firebase is configured */}
-          {isGoogleAuthEnabled && (
-            <>
-              <Button
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                variant="outline"
-                className="w-full gap-2 border-2"
-                data-testid="button-google-signin"
-              >
-                <SiGoogle className="h-5 w-5 text-red-500" />
-                Continue with Google
-              </Button>
-
-              <div className="relative">
-                <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                  OR
-                </span>
+        <div className="space-y-5 mt-4">
+          {/* Google Sign-In Section - Always show button for better UX */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleGoogleSignIn}
+              disabled={isLoading || !isGoogleAuthEnabled}
+              variant="outline"
+              className={`w-full h-12 gap-3 font-medium transition-all ${
+                isGoogleAuthEnabled 
+                  ? 'border-2 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700' 
+                  : 'opacity-50 cursor-not-allowed border-muted'
+              }`}
+              data-testid="button-google-signin"
+            >
+              <div className="bg-white rounded-full p-1">
+                <SiGoogle className="h-5 w-5" style={{ color: '#4285F4' }} />
               </div>
-            </>
-          )}
+              <span className="text-base">
+                {isGoogleAuthEnabled ? "Continue with Google" : "Google Sign-In (Coming Soon)"}
+              </span>
+            </Button>
+            
+            {!isGoogleAuthEnabled && (
+              <p className="text-xs text-center text-muted-foreground italic">
+                Google Sign-In is currently being set up
+              </p>
+            )}
+          </div>
 
-          {/* Helpful message if only email/password is available */}
-          {!isGoogleAuthEnabled && (
-            <div className="text-center text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
-              Sign in with your email and password
+          {/* Divider - Always show for consistency */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <Separator className="w-full" />
             </div>
-          )}
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-4 text-muted-foreground font-medium">
+                {isGoogleAuthEnabled ? "Or continue with email" : "Sign in with email"}
+              </span>
+            </div>
+          </div>
 
           {/* Email/Password Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
-                <Label htmlFor="username" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
+                <Label htmlFor="username" className="flex items-center gap-2 text-sm font-medium">
+                  <User className="h-4 w-4 text-muted-foreground" />
                   Username
                 </Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Choose a username"
+                  placeholder="Choose a unique username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
+                  className="h-11"
                   data-testid="input-username"
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email
+              <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                Email Address
               </Label>
               <Input
                 id="email"
@@ -232,37 +243,58 @@ export default function AuthModal({
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                className="h-11"
                 data-testid="input-email"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
+              <Label htmlFor="password" className="flex items-center gap-2 text-sm font-medium">
+                <Lock className="h-4 w-4 text-muted-foreground" />
                 Password
+                {mode === "signup" && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Min. 8 characters
+                  </span>
+                )}
               </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder={mode === "signup" ? "Minimum 8 characters" : "Enter your password"}
+                placeholder={mode === "signup" ? "Create a strong password" : "Enter your password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
                 minLength={8}
+                className="h-11"
                 data-testid="input-password"
               />
+              {mode === "login" && (
+                <p className="text-xs text-muted-foreground text-right mt-1">
+                  <button 
+                    type="button" 
+                    className="hover:underline"
+                    onClick={() => toast({
+                      title: "Password Reset",
+                      description: "Password reset feature coming soon!",
+                    })}
+                  >
+                    Forgot password?
+                  </button>
+                </p>
+              )}
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-primary to-chart-4 hover:opacity-90"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
               disabled={isLoading}
               data-testid={mode === "login" ? "button-login" : "button-signup"}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                   {mode === "login" ? "Signing in..." : "Creating account..."}
                 </span>
               ) : (

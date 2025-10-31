@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { generalApiLimiter } from "./rateLimiting";
@@ -12,13 +13,14 @@ const app = express();
 // Trust first proxy - required for correct rate limiting behind load balancers/proxies
 app.set("trust proxy", 1);
 
-// Apply security headers to all requests
+// Apply security headers to all requests (before CORS)
 setupSecurityHeaders(app);
 
 // Apply category redirect middleware early in the stack
 app.use(categoryRedirectMiddleware);
 app.use(trackCategoryViews);
 
+// Body parsing middleware MUST come before session middleware
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
@@ -30,6 +32,53 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// Configure CORS for cross-origin requests with credentials
+// CORS must come AFTER body parsing but can be before or after sessions
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (e.g., mobile apps, Postman)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow localhost on different ports
+    if (process.env.NODE_ENV !== "production") {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "http://localhost:5000", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5000",
+        /^https?:\/\/[^.]+\.replit\.dev$/,  // Allow Replit domains
+        /^https?:\/\/[^.]+\.repl\.co$/,      // Allow Replit domains
+      ];
+      
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (allowed instanceof RegExp) {
+          return allowed.test(origin);
+        }
+        return allowed === origin;
+      });
+      
+      if (isAllowed) {
+        return callback(null, true);
+      }
+    }
+    
+    // In production, use environment variable or default to the same origin
+    const allowedProductionOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+    if (allowedProductionOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Default: deny
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true, // Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
+};
+
+app.use(cors(corsOptions));
 
 // Apply general rate limiting to all API routes
 app.use("/api/", generalApiLimiter);
@@ -65,6 +114,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Session middleware MUST be set up BEFORE routes
+  // Import and setup authentication middleware first
+  const { setupAuth } = await import('./flexibleAuth');
+  await setupAuth(app);
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

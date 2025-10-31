@@ -186,8 +186,8 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication (email/password and Google OAuth)
-  await setupAuth(app);
+  // Authentication is now set up in server/index.ts before routes
+  // This ensures session middleware runs before route handlers
 
   // Import auth functions from server/auth.ts
   const { 
@@ -280,14 +280,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: "Registration successful but login failed" });
         }
 
-        res.status(201).json({
-          message: "Registration successful",
-          user: {
-            id: newUser.id,
-            email: newUser.email,
-            username: newUser.username,
-            role: newUser.role,
-          },
+        // Explicitly save the session to ensure cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+
+          res.status(201).json({
+            message: "Registration successful",
+            user: {
+              id: newUser.id,
+              email: newUser.email,
+              username: newUser.username,
+              role: newUser.role,
+            },
+          });
         });
       });
     } catch (error: any) {
@@ -314,14 +321,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: "Session creation failed" });
         }
 
-        res.json({
-          message: "Login successful",
-          user: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            role: user.role,
-          },
+        // Explicitly save the session to ensure cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+
+          res.json({
+            message: "Login successful",
+            user: {
+              id: user.id,
+              email: user.email,
+              username: user.username,
+              role: user.role,
+            },
+          });
         });
       });
     })(req, res, next);
@@ -375,14 +389,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: "Session creation failed" });
         }
 
-        res.json({
-          message: "Google login successful",
-          user: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            role: user.role,
-          },
+        // Explicitly save the session to ensure cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+
+          res.json({
+            message: "Google login successful",
+            user: {
+              id: user.id,
+              email: user.email,
+              username: user.username,
+              role: user.role,
+            },
+          });
         });
       });
     } catch (error: any) {

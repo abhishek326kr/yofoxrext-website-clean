@@ -22,7 +22,15 @@ export function getSession() {
   const forceSecureCookies = process.env.FORCE_SECURE_COOKIES === "true";
   const isHTTPS = process.env.USE_HTTPS === "true" || process.env.SSL_ENABLED === "true";
   
-  const secureCookies = forceSecureCookies || (isProduction && isHTTPS);
+  // In development, we need secure: true for sameSite: "none" to work
+  // In production, use secure cookies based on HTTPS
+  const secureCookies = forceSecureCookies || (isProduction && isHTTPS) || !isProduction;
+  
+  // For cross-origin requests (Next.js on 5000, Express on 3001), we need sameSite: "none"
+  // In production with a single domain, we can use "lax" for better security
+  const sameSiteValue = isProduction && !process.env.CROSS_ORIGIN_COOKIES ? "lax" : "none";
+  
+  console.log(`🍪 Cookie config: secure=${secureCookies}, sameSite=${sameSiteValue}, httpOnly=true`);
   
   return session({
     secret: process.env.SESSION_SECRET || generateDefaultSecret(),
@@ -31,9 +39,11 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: secureCookies,
+      secure: secureCookies, // Must be true when sameSite is "none"
       maxAge: sessionTtl,
-      sameSite: "lax",
+      sameSite: sameSiteValue as any, // "none" allows cross-origin cookies
+      domain: process.env.COOKIE_DOMAIN || undefined, // Allow setting a specific domain if needed
+      path: "/", // Make cookie available for all paths
     },
     name: "yoforex.sid",
   });
