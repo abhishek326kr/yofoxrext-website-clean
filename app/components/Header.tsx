@@ -74,6 +74,7 @@ export default function Header() {
   const { data: coinsData } = useQuery<{ totalCoins: number; weeklyEarned: number; rank: number | null }>({
     queryKey: ["/api/user", user?.id, "coins"],
     queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
       const res = await fetch(`/api/user/${user.id}/coins`, {
         credentials: 'include',
       });

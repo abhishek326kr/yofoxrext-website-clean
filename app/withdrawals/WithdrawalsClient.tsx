@@ -49,6 +49,7 @@ export default function WithdrawalsClient({ initialUserCoins }: WithdrawalsClien
   const { data: userCoins } = useQuery({
     queryKey: user ? ['/api/user', user.id, 'coins'] : [],
     queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
       const res = await fetch(`/api/user/${user.id}/coins`, {
         credentials: 'include',
       });

@@ -84,6 +84,7 @@ export default function ContentDetailClient({
   const { data: author } = useQuery<UserType>({
     queryKey: ["/api/user", content?.authorId],
     queryFn: async () => {
+      if (!content?.authorId) throw new Error('No author ID available');
       const res = await fetch(`/api/user/${content.authorId}`, {
         credentials: 'include',
       });
@@ -98,6 +99,7 @@ export default function ContentDetailClient({
   const { data: userCoins } = useQuery<{ totalCoins: number; weeklyEarned: number; rank: number | null }>({
     queryKey: ["/api/user", user?.id, "coins"],
     queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
       const res = await fetch(`/api/user/${user.id}/coins`, {
         credentials: 'include',
       });
@@ -126,6 +128,7 @@ export default function ContentDetailClient({
   const { data: authorReleases } = useQuery<Content[]>({
     queryKey: ["/api/user", content?.authorId, "content"],
     queryFn: async () => {
+      if (!content?.authorId) throw new Error('No author ID available');
       const res = await fetch(`/api/user/${content.authorId}/content`, {
         credentials: 'include',
       });

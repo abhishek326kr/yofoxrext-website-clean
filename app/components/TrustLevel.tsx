@@ -42,6 +42,7 @@ export default function TrustLevel({
   const { data: userStats, isLoading } = useQuery<UserStatsResponse>({
     queryKey: ['/api/users', user?.id, 'stats'],
     queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
       const res = await fetch(`/api/users/${user.id}/stats`, {
         credentials: 'include',
       });

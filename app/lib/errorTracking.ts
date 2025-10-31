@@ -538,7 +538,7 @@ export class ErrorTracker {
 
   // Method to integrate with fetch API
   public wrapFetch(originalFetch: typeof fetch): typeof fetch {
-    return async (input: RequestInfo | URL, init?: RequestInit) => {
+    return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
       let url: string;
       if (typeof input === 'string') {
         url = input;
@@ -869,8 +869,10 @@ if (typeof window !== 'undefined') {
   const tracker = ErrorTracker.getInstance();
   
   // Wrap global fetch
-  const originalFetch = window.fetch;
-  window.fetch = tracker.wrapFetch(originalFetch);
+  if (tracker) {
+    const originalFetch = window.fetch;
+    window.fetch = tracker.wrapFetch(originalFetch);
+  }
 }
 
 export default ErrorTracker;

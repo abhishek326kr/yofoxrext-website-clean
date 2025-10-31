@@ -5570,6 +5570,166 @@ export class MemStorage implements IStorage {
     // No-op for MemStorage
     console.log(`Resending email ${notificationId} for user ${userId}`);
   }
+
+  // ============================================================================
+  // ERROR TRACKING SYSTEM - Stub implementations for MemStorage
+  // ============================================================================
+  
+  async createErrorGroup(data: {
+    fingerprint: string;
+    message: string;
+    component?: string;
+    severity?: "critical" | "error" | "warning" | "info";
+    metadata?: any;
+  }): Promise<ErrorGroup> {
+    // Stub implementation - return a mock error group
+    return {
+      id: randomUUID(),
+      fingerprint: data.fingerprint,
+      message: data.message,
+      component: data.component || null,
+      severity: data.severity || 'error',
+      firstSeen: new Date(),
+      lastSeen: new Date(),
+      occurrenceCount: 1,
+      status: 'active',
+      affectedUsers: 0,
+      metadata: data.metadata || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      resolvedAt: null,
+      resolvedBy: null,
+      resolutionReason: null
+    } as any as ErrorGroup;
+  }
+
+  async createErrorEvent(data: {
+    fingerprint: string;
+    message: string;
+    component?: string;
+    severity?: "critical" | "error" | "warning" | "info";
+    userId?: string;
+    sessionId?: string;
+    stackTrace?: string;
+    context?: any;
+    browserInfo?: any;
+    requestInfo?: any;
+    userDescription?: string;
+  }): Promise<ErrorEvent> {
+    // Stub implementation - return a mock error event
+    return {
+      id: randomUUID(),
+      groupId: randomUUID(),
+      message: data.message,
+      component: data.component || null,
+      severity: data.severity || 'error',
+      userId: data.userId || null,
+      sessionId: data.sessionId || null,
+      stackTrace: data.stackTrace || null,
+      context: data.context || null,
+      browserInfo: data.browserInfo || null,
+      requestInfo: data.requestInfo || null,
+      userDescription: data.userDescription || null,
+      createdAt: new Date()
+    } as any as ErrorEvent;
+  }
+
+  async getErrorGroups(filters?: {
+    severity?: "critical" | "error" | "warning" | "info";
+    status?: "active" | "resolved" | "ignored";
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: "occurrences" | "last_seen" | "first_seen";
+    sortOrder?: "asc" | "desc";
+  }): Promise<{ groups: ErrorGroup[]; total: number }> {
+    return { groups: [], total: 0 };
+  }
+
+  async getErrorEventsByGroup(groupId: string, limit?: number, offset?: number): Promise<{
+    events: ErrorEvent[];
+    total: number;
+  }> {
+    return { events: [], total: 0 };
+  }
+
+  async updateErrorGroupStatus(groupId: string, data: {
+    status: "active" | "resolved" | "ignored";
+    resolvedBy?: string;
+    reason?: string;
+  }): Promise<ErrorGroup> {
+    // Return a mock updated error group
+    return {
+      id: groupId,
+      fingerprint: 'mock',
+      message: 'Mock error',
+      component: null,
+      severity: 'error',
+      firstSeen: new Date(),
+      lastSeen: new Date(),
+      occurrenceCount: 1,
+      status: data.status,
+      affectedUsers: 0,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      resolvedAt: data.status === 'resolved' ? new Date() : null,
+      resolvedBy: data.resolvedBy || null,
+      resolutionReason: data.reason || null
+    } as any as ErrorGroup;
+  }
+
+  async getErrorStats(period?: "24h" | "7d" | "30d"): Promise<{
+    totalErrors: number;
+    uniqueErrors: number;
+    criticalErrors: number;
+    activeErrors: number;
+    resolvedErrors: number;
+    errorsByHour: Array<{ hour: string; count: number }>;
+    topErrors: Array<{ groupId: string; message: string; count: number }>;
+    errorsBySeverity: Array<{ severity: string; count: number }>;
+    errorsByBrowser: Array<{ browser: string; count: number }>;
+    recentResolutions: Array<{ groupId: string; message: string; resolvedAt: Date; resolvedBy: string }>;
+  }> {
+    return {
+      totalErrors: 0,
+      uniqueErrors: 0,
+      criticalErrors: 0,
+      activeErrors: 0,
+      resolvedErrors: 0,
+      errorsByHour: [],
+      topErrors: [],
+      errorsBySeverity: [],
+      errorsByBrowser: [],
+      recentResolutions: []
+    };
+  }
+
+  async cleanupOldErrors(daysOld: number): Promise<{ deletedGroups: number; deletedEvents: number }> {
+    return { deletedGroups: 0, deletedEvents: 0 };
+  }
+
+  async autoResolveInactiveErrors(daysInactive: number): Promise<{ resolvedCount: number }> {
+    return { resolvedCount: 0 };
+  }
+
+  async getErrorGroupDetails(groupId: string): Promise<{
+    group: ErrorGroup | null;
+    recentEvents: ErrorEvent[];
+    affectedUsers: number;
+    browsers: Array<{ name: string; count: number }>;
+    timeline: Array<{ date: string; count: number }>;
+  }> {
+    return {
+      group: null,
+      recentEvents: [],
+      affectedUsers: 0,
+      browsers: [],
+      timeline: []
+    };
+  }
 }
 
 export class DrizzleStorage implements IStorage {
@@ -14916,19 +15076,19 @@ export class DrizzleStorage implements IStorage {
 
       // Get total errors in period
       const [{ totalErrors }] = await db
-        .select({ totalErrors: sql`COALESCE(SUM(${errorGroups.occurrenceCount}), 0)::int` })
+        .select({ totalErrors: sql<number>`COALESCE(SUM(${errorGroups.occurrenceCount}), 0)::int` })
         .from(errorGroups)
         .where(gte(errorGroups.lastSeen, periodDate));
 
       // Get unique error count
       const [{ uniqueErrors }] = await db
-        .select({ uniqueErrors: count() })
+        .select({ uniqueErrors: sql<number>`COUNT(*)` })
         .from(errorGroups)
         .where(gte(errorGroups.lastSeen, periodDate));
 
       // Get critical errors
       const [{ criticalErrors }] = await db
-        .select({ criticalErrors: count() })
+        .select({ criticalErrors: sql<number>`COUNT(*)` })
         .from(errorGroups)
         .where(
           and(
@@ -14939,12 +15099,12 @@ export class DrizzleStorage implements IStorage {
 
       // Get active and resolved counts
       const [{ activeErrors }] = await db
-        .select({ activeErrors: count() })
+        .select({ activeErrors: sql<number>`COUNT(*)` })
         .from(errorGroups)
         .where(eq(errorGroups.status, 'active'));
 
       const [{ resolvedErrors }] = await db
-        .select({ resolvedErrors: count() })
+        .select({ resolvedErrors: sql<number>`COUNT(*)` })
         .from(errorGroups)
         .where(eq(errorGroups.status, 'resolved'));
 
@@ -14964,7 +15124,7 @@ export class DrizzleStorage implements IStorage {
       const errorsBySeverity = await db
         .select({
           severity: errorGroups.severity,
-          count: count(),
+          count: sql<number>`COUNT(*)`,
         })
         .from(errorGroups)
         .where(gte(errorGroups.lastSeen, periodDate))
@@ -14974,7 +15134,7 @@ export class DrizzleStorage implements IStorage {
       const errorsByBrowser = await db
         .select({
           browser: sql<string>`${errorGroups.metadata}->>'browser'`,
-          count: count(),
+          count: sql<number>`COUNT(*)`,
         })
         .from(errorGroups)
         .where(
