@@ -9,6 +9,7 @@ echo "🚀 Starting Optimized Production Build..."
 
 # Set environment variables for build
 export EXPRESS_URL=${EXPRESS_URL:-http://127.0.0.1:3001}
+export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://$REPL_SLUG.$REPL_OWNER.repl.co}
 export NODE_ENV=production
 export NODE_OPTIONS="--max-old-space-size=3072"  # Increase memory for build
 
@@ -31,20 +32,22 @@ echo "📦 Building Next.js frontend with optimizations..."
 # Skip linting and type checking for faster builds
 export NEXT_TELEMETRY_DISABLED=1
 
-# Try to build with Next.js
-npx next build || {
-  echo "⚠️  Next.js build encountered issues, checking for errors..."
+# Ensure Express URL is set for Next.js build
+echo "   EXPRESS_URL=$EXPRESS_URL"
+echo "   NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL"
+
+# Build Next.js with proper error handling
+npm run build:next || {
+  echo "❌ Next.js build failed"
+  echo "Checking for common issues..."
   
-  # If build fails, show the error and try to continue
-  echo "Note: Build warnings can be ignored for deployment"
-  
-  # Check if .next directory was at least partially created
-  if [ -d ".next" ]; then
-    echo "✅ Next.js build partially successful, continuing..."
-  else
-    echo "❌ Next.js build completely failed"
+  # Check if .next directory was created
+  if [ ! -d ".next" ]; then
+    echo "❌ .next directory not created - build completely failed"
     exit 1
   fi
+  
+  echo "⚠️  Next.js build had warnings but .next directory exists, continuing..."
 }
 
 if [ ! -d ".next" ]; then

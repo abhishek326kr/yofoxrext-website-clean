@@ -5,6 +5,11 @@
 
 echo "🚀 Starting YoForex in Production Mode..."
 
+# Set environment variables
+export EXPRESS_URL=${EXPRESS_URL:-http://127.0.0.1:3001}
+export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://$REPL_SLUG.$REPL_OWNER.repl.co}
+export NODE_ENV=production
+
 # Build Express if dist doesn't exist
 if [ ! -f "dist/index.js" ]; then
   echo "📦 Building Express API (first run)..."
@@ -14,17 +19,28 @@ fi
 # Build Next.js if .next doesn't exist
 if [ ! -d ".next" ]; then
   echo "📦 Building Next.js (first run)..."
-  EXPRESS_URL=http://127.0.0.1:3001 npm run build:next
+  npm run build:next
+fi
+
+# Verify builds exist
+if [ ! -f "dist/index.js" ]; then
+  echo "❌ Express build missing - running build..."
+  npm run build:express || exit 1
+fi
+
+if [ ! -d ".next" ]; then
+  echo "❌ Next.js build missing - running build..."
+  npm run build:next || exit 1
 fi
 
 # Start Express API server on port 3001 in background
 echo "📦 Starting Express API server (port 3001)..."
-API_PORT=3001 NODE_ENV=production DEFER_BACKGROUND_JOBS=true node dist/index.js &
+API_PORT=3001 DEFER_BACKGROUND_JOBS=true node dist/index.js &
 EXPRESS_PID=$!
 
 # Wait for Express to be ready (increased delay for health checks)
 echo "⏳ Waiting for Express API to be ready..."
-sleep 3
+sleep 5
 
 # Check if Express is running
 if ! kill -0 $EXPRESS_PID 2>/dev/null; then
@@ -32,10 +48,18 @@ if ! kill -0 $EXPRESS_PID 2>/dev/null; then
   exit 1
 fi
 
-# Start Next.js server on port 5000 (bind to 0.0.0.0 for health checks)
-# Use NODE_ENV=production for faster startup
+# Verify Express health
+curl -f http://127.0.0.1:3001/api/health || {
+  echo "❌ Express health check failed"
+  kill $EXPRESS_PID
+  exit 1
+}
+echo "✅ Express API is healthy"
+
+# Start Next.js server on port 5000 (bind to 0.0.0.0 for Autoscale Deployments)
 echo "⚡ Starting Next.js frontend (port 5000)..."
-NODE_ENV=production EXPRESS_URL=http://127.0.0.1:3001 npx next start -p 5000 -H 0.0.0.0 &
+echo "   Binding to 0.0.0.0:5000 for external access"
+npx next start -p 5000 -H 0.0.0.0 &
 NEXTJS_PID=$!
 
 echo "✅ Production servers started:"
