@@ -58,6 +58,16 @@ YoForex is a comprehensive trading community platform designed for forex traders
 
 ## Recent Changes
 
+### Error Tracking & Monitoring System (October 31, 2025)
+
+- **Comprehensive Error Capture:** Tracks all frontend (React errors, console errors, unhandled promises) and backend errors
+- **Smart Error Grouping:** Uses fingerprint hashing to group similar errors and prevent duplicate alerts
+- **Admin Dashboard:** Error monitoring section with filters, severity badges, occurrence counts, and resolution workflow
+- **Automatic Cleanup:** Background jobs auto-resolve inactive errors after 7 days, clean up old data after 30 days
+- **Rate Limiting:** Prevents spam with 100 errors/min per IP limit and client-side batching
+- **Test Infrastructure:** Dedicated test page at /test-errors for verifying error capture
+- **Storage Layer:** Three new tables (errorGroups, errorEvents, errorStatusChanges) with full audit trail
+
 ### Production Deployment Ready (October 31, 2025)
 
 - **TypeScript Build Fixed:** Resolved all compilation errors in botProfileService, aiNudgeService, and storage interfaces
