@@ -15,10 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { 
   Mail,
   Lock,
-  User,
   Sparkles,
   LogIn,
-  UserPlus,
 } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,10 +35,9 @@ export default function AuthModal({
   onOpenChange,
   action = "continue"
 }: AuthModalProps) {
-  const mode: "login" | "signup" = "login"; // Signup disabled - admins only
+  // Signup disabled - admins only
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -108,7 +105,6 @@ export default function AuthModal({
     if (!open) {
       setEmail("");
       setPassword("");
-      setUsername("");
     }
   }, [open]);
 
@@ -117,16 +113,11 @@ export default function AuthModal({
     setIsLoading(true);
 
     try {
-      const endpoint = mode === "login" ? "/api/login" : "/api/register";
-      const payload = mode === "login" 
-        ? { email, password }
-        : { email, password, username };
-
-      const response = await apiRequest("POST", endpoint, payload);
+      const response = await apiRequest("POST", "/api/login", { email, password });
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `${mode === "login" ? "Login" : "Registration"} failed`);
+        throw new Error(data.error || "Login failed");
       }
 
       // Refresh user data
@@ -134,17 +125,15 @@ export default function AuthModal({
       await queryClient.refetchQueries({ queryKey: ["/api/me"] });
 
       toast({
-        title: mode === "login" ? "Login Successful" : "Account Created",
-        description: mode === "login" 
-          ? "Welcome back to YoForex!" 
-          : "Your account has been created successfully!",
+        title: "Login Successful",
+        description: "Welcome back to YoForex!",
       });
 
       onOpenChange(false);
     } catch (error: any) {
       console.error("Auth error:", error);
       toast({
-        title: mode === "login" ? "Login Failed" : "Registration Failed",
+        title: "Login Failed",
         description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
@@ -202,13 +191,11 @@ export default function AuthModal({
           </div>
           
           <DialogTitle className="text-2xl font-bold text-center mb-2">
-            {mode === "login" ? "Welcome Back to YoForex!" : "Create Your Account"}
+            Welcome Back to YoForex!
           </DialogTitle>
           
           <DialogDescription className="text-center text-muted-foreground">
-            {mode === "login" 
-              ? "Sign in to access exclusive trading tools and community features" 
-              : "Join thousands of traders sharing strategies and earning rewards"}
+            Sign in to access exclusive trading tools and community features
           </DialogDescription>
         </DialogHeader>
 
@@ -255,26 +242,6 @@ export default function AuthModal({
 
           {/* Email/Password Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="username" className="flex items-center gap-2 text-sm font-medium">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Choose a unique username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  className="h-11"
-                  data-testid="input-username"
-                />
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
                 <Mail className="h-4 w-4 text-muted-foreground" />
@@ -297,16 +264,11 @@ export default function AuthModal({
               <Label htmlFor="password" className="flex items-center gap-2 text-sm font-medium">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 Password
-                {mode === "signup" && (
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    Min. 8 characters
-                  </span>
-                )}
               </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder={mode === "signup" ? "Create a strong password" : "Enter your password"}
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -315,37 +277,35 @@ export default function AuthModal({
                 className="h-11"
                 data-testid="input-password"
               />
-              {mode === "login" && (
-                <p className="text-xs text-muted-foreground text-right mt-1">
-                  <button 
-                    type="button" 
-                    className="hover:underline"
-                    onClick={() => toast({
-                      title: "Password Reset",
-                      description: "Password reset feature coming soon!",
-                    })}
-                  >
-                    Forgot password?
-                  </button>
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground text-right mt-1">
+                <button 
+                  type="button" 
+                  className="hover:underline"
+                  onClick={() => toast({
+                    title: "Password Reset",
+                    description: "Password reset feature coming soon!",
+                  })}
+                >
+                  Forgot password?
+                </button>
+              </p>
             </div>
 
             <Button
               type="submit"
               className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
               disabled={isLoading}
-              data-testid={mode === "login" ? "button-login" : "button-signup"}
+              data-testid="button-login"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  {mode === "login" ? "Signing in..." : "Creating account..."}
+                  Signing in...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  {mode === "login" ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-                  {mode === "login" ? "Sign In" : "Create Account"}
+                  <LogIn className="h-4 w-4" />
+                  Sign In
                 </span>
               )}
             </Button>
