@@ -16,10 +16,15 @@ YoForex is a comprehensive trading community platform designed for forex traders
 **When starting ANY new work session:**
 
 1. **Error Dashboard Check (MANDATORY FIRST STEP)**
-   - Check error monitoring dashboard for any captured errors
-   - Fix all critical and high-severity errors before proceeding
-   - Document fixes in the task list
-   - This ensures system stability before adding new features
+   - **ALWAYS** check error monitoring dashboard at `/admin/errors` BEFORE starting ANY new task
+   - Review all unsolved/active errors first (check database and admin panel)
+   - Fix ALL critical and high-severity errors before proceeding with new work
+   - Verify no TypeScript errors, routing errors, API errors, database errors, or connection issues
+   - Check ALL logs: frontend console logs, backend Express logs, Next.js build logs
+   - Review error categories: Unsolved, Solved, To-Be-Solved
+   - Document all fixes in the task list
+   - **This ensures system stability before adding new features or making changes**
+   - **NEVER skip this step - ALL errors must be resolved first before starting new work**
 
 **When receiving a new task:**
 
