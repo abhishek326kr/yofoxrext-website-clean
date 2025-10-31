@@ -1,4 +1,4 @@
-import crypto from 'crypto-js';
+// Using simple browser-compatible hash function instead of crypto-js
 
 export interface ErrorContext {
   userId?: string;
@@ -81,8 +81,16 @@ export class ErrorTracker {
     // Create a unique fingerprint using message, component, and top stack frames
     const fingerprintData = `${message}|${component || 'unknown'}|${stackFrames}`;
     
-    // Hash using SHA256
-    return crypto.SHA256(fingerprintData).toString();
+    // Simple hash function for browser compatibility
+    let hash = 0;
+    for (let i = 0; i < fingerprintData.length; i++) {
+      const char = fingerprintData.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    // Convert to hex string
+    return Math.abs(hash).toString(16).padStart(8, '0');
   }
 
   private getBrowserInfo(): BrowserInfo {
