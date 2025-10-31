@@ -445,8 +445,8 @@ export default function EmailDashboard() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <div className="text-2xl font-bold">{queue?.length || 0}</div>
-                    <Badge variant={queue?.length > 100 ? "destructive" : "default"}>
+                    <div className="text-2xl font-bold">{Array.isArray(queue) ? queue.length : 0}</div>
+                    <Badge variant={Array.isArray(queue) && queue.length > 100 ? "destructive" : "default"}>
                       {queuePaused ? "Paused" : "Active"}
                     </Badge>
                   </div>
@@ -547,14 +547,14 @@ export default function EmailDashboard() {
                         <Skeleton key={i} className="h-16 w-full" />
                       ))}
                     </div>
-                  ) : queue?.length === 0 ? (
+                  ) : Array.isArray(queue) && queue.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
                       <Mail className="h-12 w-12 mb-2" />
                       <p>Email queue is empty</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {queue?.map((email: any) => (
+                      {Array.isArray(queue) && queue.map((email: any) => (
                         <div
                           key={email.id}
                           className="border rounded-lg p-3 space-y-2"
@@ -562,7 +562,7 @@ export default function EmailDashboard() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Badge className={PRIORITY_COLORS[email.priority || "medium"]}>
+                              <Badge className={PRIORITY_COLORS[(email.priority || "medium") as keyof typeof PRIORITY_COLORS]}>
                                 {email.priority || "medium"}
                               </Badge>
                               <span className="text-sm font-medium">{email.recipientEmail}</span>
@@ -614,7 +614,7 @@ export default function EmailDashboard() {
                     <Skeleton className="h-[300px] w-full" />
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={analytics?.volumeData || []}>
+                      <LineChart data={(analytics as any)?.volumeData || []}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
@@ -656,7 +656,7 @@ export default function EmailDashboard() {
                     <ResponsiveContainer width="100%" height={300}>
                       <RechartsPieChart>
                         <Pie
-                          data={analytics?.categoryData || []}
+                          data={(analytics as any)?.categoryData || []}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
@@ -665,7 +665,7 @@ export default function EmailDashboard() {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {analytics?.categoryData?.map((entry: any, index: number) => (
+                          {(analytics as any)?.categoryData?.map((entry: any, index: number) => (
                             <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
