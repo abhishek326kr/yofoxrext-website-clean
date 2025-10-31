@@ -115,7 +115,7 @@ interface ErrorStats {
   recentResolutions: Array<{ groupId: string; message: string; resolvedAt: string; resolvedBy: string }>;
 }
 
-export function ErrorMonitoring() {
+export default function ErrorMonitoring() {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [statusModal, setStatusModal] = useState<{ groupId: string; currentStatus: string } | null>(null);
