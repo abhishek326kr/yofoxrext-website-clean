@@ -61,7 +61,7 @@ import {
 } from "./rateLimiting.js";
 import { generateSlug, generateFocusKeyword, generateMetaDescription as generateMetaDescriptionOld, generateImageAltTexts } from './seo.js';
 import { emailService } from './services/emailService.js';
-import { emailQueueService, EmailPriority } from './services/emailQueue.js';
+import { emailQueueService, EmailPriority, EmailGroupType } from './services/emailQueue.js';
 import { fetchBrokerLogo, getPlaceholderLogo } from './services/brokerLogoService.js';
 import { 
   RECHARGE_PACKAGES, 
@@ -1763,7 +1763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   totalMinutes: result.totalMinutes
                 },
                 priority: EmailPriority.LOW,
-                groupType: 'coins'
+                groupType: EmailGroupType.COINS
               });
             }
           } catch (emailError) {
@@ -2236,7 +2236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 itemType: item.type
               },
               priority: EmailPriority.MEDIUM,
-              groupType: 'sales'
+              groupType: EmailGroupType.SALES
             });
           }
         } catch (emailError) {
@@ -2442,7 +2442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   contentUrl
                 },
                 priority: EmailPriority.LOW,
-                groupType: 'likes'
+                groupType: EmailGroupType.LIKES
               });
             }
           }
@@ -3611,7 +3611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       threadUrl: `/threads/${thread.slug}`
                     },
                     priority: EmailPriority.MEDIUM,
-                    groupType: 'comments'
+                    groupType: EmailGroupType.COMMENTS
                   });
                 }
               }
@@ -4131,7 +4131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 followerProfileUrl: `/user/${follower.username}`
               },
               priority: EmailPriority.LOW,
-              groupType: 'follows'
+              groupType: EmailGroupType.FOLLOWS
             });
           }
         } catch (emailError) {
@@ -6328,28 +6328,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validated = createModeratorSchema.parse(req.body);
       
-      // Check if user with email already exists
-      const existingUser = await storage.findUserByEmail(validated.email);
-      if (existingUser) {
-        return res.status(400).json({ message: 'User with this email already exists' });
-      }
+      // Check if user with email or username already exists
+      const existingUsers = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.email, validated.email), eq(users.username, validated.username)))
+        .limit(1);
 
-      // Check if username already exists
-      const existingUsername = await storage.findUserByUsername(validated.username);
-      if (existingUsername) {
-        return res.status(400).json({ message: 'Username already taken' });
+      if (existingUsers.length > 0) {
+        const existingUser = existingUsers[0];
+        if (existingUser.email === validated.email) {
+          return res.status(400).json({ message: 'User with this email already exists' });
+        }
+        if (existingUser.username === validated.username) {
+          return res.status(400).json({ message: 'Username already taken' });
+        }
       }
       
       // Create the moderator account
       const newUser = await storage.createUser({
         username: validated.username,
         email: validated.email,
-        passwordHash: await bcrypt.hash(validated.password, 10),
+        password_hash: await bcrypt.hash(validated.password, 10),
         role: 'moderator',
         status: 'active',
         auth_provider: 'email',
-        reputationScore: 100,
-        totalCoins: 1000,
+        reputation_score: 100,
+        total_coins: 1000,
         level: 1
       });
       
