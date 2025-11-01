@@ -33,6 +33,7 @@ import {
   Upload, 
   X, 
   CheckCircle, 
+  CheckCircle2,
   AlertCircle, 
   Eye, 
   FileCode,
@@ -43,13 +44,18 @@ import {
   Italic,
   Underline as UnderlineIcon,
   List,
-  ListOrdered
+  ListOrdered,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  Lightbulb
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthPrompt } from "@/hooks/useAuthPrompt";
 import { EA_CATEGORY_OPTIONS } from "@shared/schema";
 import { sanitizeRichTextHTML, countTextCharacters, extractTextExcerpt } from "@shared/sanitize";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // Category emoji mapping
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -560,6 +566,165 @@ function formatFileSize(bytes: number): string {
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
+interface ProTipsProps {
+  title: string;
+  tips: string[];
+  defaultOpen?: boolean;
+}
+
+function ProTips({ title, tips, defaultOpen = false }: ProTipsProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-6">
+      <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100 text-base">
+                <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                {title}
+              </CardTitle>
+              {isOpen ? (
+                <ChevronUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              )}
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0 pb-4">
+            <ul className="space-y-2 text-sm text-blue-900 dark:text-blue-100">
+              {tips.map((tip, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
+
+interface ProgressTrackerProps {
+  formData: {
+    title: string;
+    tags: string[];
+    description: string;
+    priceCoins: number;
+    eaFileUrl: string;
+    imageUrls: string[];
+    primaryKeyword: string;
+    seoExcerpt: string;
+  };
+}
+
+function ProgressTracker({ formData }: ProgressTrackerProps) {
+  const { title, tags, description, priceCoins, eaFileUrl, imageUrls, primaryKeyword, seoExcerpt } = formData;
+  
+  const descriptionLength = countTextCharacters(description);
+  
+  const eaDetailsComplete = [
+    title.length >= 30 && title.length <= 60,
+    tags.length >= 1 && tags.length <= 5,
+    descriptionLength >= 200 && descriptionLength <= 2000,
+    priceCoins >= 20 && priceCoins <= 1000
+  ];
+  
+  const filesMediaComplete = [
+    eaFileUrl.length > 0,
+    imageUrls.length >= 1
+  ];
+  
+  const seoComplete = [
+    primaryKeyword.length > 0
+  ];
+  
+  const eaDetailsCount = eaDetailsComplete.filter(Boolean).length;
+  const filesMediaCount = filesMediaComplete.filter(Boolean).length;
+  const seoCount = seoComplete.filter(Boolean).length;
+  
+  const totalCompleted = eaDetailsCount + filesMediaCount + seoCount;
+  const totalRequired = 7;
+  const percentComplete = Math.round((totalCompleted / totalRequired) * 100);
+  
+  const allRequiredComplete = eaDetailsCount === 4 && filesMediaCount === 2 && seoCount === 1;
+
+  return (
+    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b shadow-sm mb-6 animate-in slide-in-from-top duration-300">
+      <div className="container max-w-4xl mx-auto px-4 py-4">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                {allRequiredComplete ? (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-700 dark:text-green-300">Form Complete - Ready to Publish!</span>
+                  </>
+                ) : (
+                  <>
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <span>Publication Progress</span>
+                  </>
+                )}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {totalCompleted} of {totalRequired} required fields completed
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary">{percentComplete}%</div>
+              <p className="text-xs text-muted-foreground">Complete</p>
+            </div>
+          </div>
+          
+          <Progress value={percentComplete} className="h-2" data-testid="progress-tracker" />
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div className={`flex items-center gap-1.5 p-2 rounded-md ${eaDetailsCount === 4 ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300' : 'bg-muted'}`}>
+              {eaDetailsCount === 4 ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <div className="h-4 w-4 rounded-full border-2 border-current flex items-center justify-center text-[10px] font-bold">
+                  {eaDetailsCount}
+                </div>
+              )}
+              <span className="font-medium">EA Details: {eaDetailsCount}/4</span>
+            </div>
+            
+            <div className={`flex items-center gap-1.5 p-2 rounded-md ${filesMediaCount === 2 ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300' : 'bg-muted'}`}>
+              {filesMediaCount === 2 ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <div className="h-4 w-4 rounded-full border-2 border-current flex items-center justify-center text-[10px] font-bold">
+                  {filesMediaCount}
+                </div>
+              )}
+              <span className="font-medium">Files & Media: {filesMediaCount}/2</span>
+            </div>
+            
+            <div className={`flex items-center gap-1.5 p-2 rounded-md ${seoCount === 1 ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300' : 'bg-muted'}`}>
+              {seoCount === 1 ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <div className="h-4 w-4 rounded-full border-2 border-current flex items-center justify-center text-[10px] font-bold">
+                  {seoCount}
+                </div>
+              )}
+              <span className="font-medium">SEO: {seoCount}/1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PublishEAFormClient() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -912,18 +1077,23 @@ export default function PublishEAFormClient() {
         autoImageAltTexts: imageUrls.map((url, i) => `${title} - Screenshot ${i + 1}`)
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "EA submitted for review",
-        description: "Your EA will be published after admin approval",
+        title: "Success! 🎉",
+        description: "Your EA is now pending approval. Redirecting...",
+        duration: 5000,
       });
-      router.push('/publish-ea');
+      
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
     },
     onError: (error) => {
       toast({
         title: "Failed to publish",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: error instanceof Error ? error.message : "Failed to publish. Please try again.",
         variant: "destructive",
+        duration: Infinity,
       });
     }
   });
@@ -999,6 +1169,20 @@ export default function PublishEAFormClient() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Progress Tracker */}
+              <ProgressTracker
+                formData={{
+                  title,
+                  tags,
+                  description,
+                  priceCoins,
+                  eaFileUrl,
+                  imageUrls,
+                  primaryKeyword: seoData?.primaryKeyword || "",
+                  seoExcerpt: seoData?.seoExcerpt || ""
+                }}
+              />
+
               <Tabs defaultValue="details" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="details">EA Details</TabsTrigger>
@@ -1008,6 +1192,17 @@ export default function PublishEAFormClient() {
 
                 {/* Tab 1: EA Details */}
                 <TabsContent value="details" className="space-y-6 mt-6">
+                  <ProTips
+                    title="💡 Pro Tips for EA Details"
+                    tips={[
+                      "Include strategy type in title for better searchability (e.g., 'Scalping', 'Grid', 'Martingale')",
+                      "Add backtest results and performance metrics in description to build trust",
+                      "Select accurate categories - buyers filter by these to find EAs",
+                      "Price competitively: research similar EAs to find the sweet spot"
+                    ]}
+                    defaultOpen={true}
+                  />
+
                   <Card>
                     <CardHeader>
                       <CardTitle>Basic Information</CardTitle>
@@ -1050,7 +1245,19 @@ export default function PublishEAFormClient() {
                         render={({ field }) => (
                           <FormItem>
                             <div className="flex items-center justify-between">
-                              <FormLabel>Categories * (Select 1-5)</FormLabel>
+                              <div className="flex items-center gap-2">
+                                <FormLabel>Categories * (Select 1-5)</FormLabel>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="max-w-xs">Select 1-5 categories that best describe your EA's trading strategy</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
                               <span className="text-sm text-muted-foreground">
                                 {tags.length}/5 selected
                               </span>
@@ -1222,7 +1429,19 @@ export default function PublishEAFormClient() {
                         name="description"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Description *</FormLabel>
+                            <div className="flex items-center gap-2">
+                              <FormLabel>Description *</FormLabel>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">Include key features, strategy type, and performance metrics to attract buyers</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                             <FormControl>
                               <RichTextEditor
                                 value={field.value}
@@ -1244,7 +1463,19 @@ export default function PublishEAFormClient() {
                         name="priceCoins"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Price (Gold Coins) *</FormLabel>
+                            <div className="flex items-center gap-2">
+                              <FormLabel>Price (Gold Coins) *</FormLabel>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">Minimum 20 coins - price based on features, performance, and competition</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1268,6 +1499,16 @@ export default function PublishEAFormClient() {
 
                 {/* Tab 2: Files & Media */}
                 <TabsContent value="files" className="space-y-6 mt-6">
+                  <ProTips
+                    title="💡 Pro Tips for Files & Media"
+                    tips={[
+                      "First screenshot will be the cover image - make it eye-catching!",
+                      "Include MT4/MT5 trading results and backtest reports for credibility",
+                      "Show strategy performance charts and profit curves",
+                      "Drag to reorder screenshots - put your best ones first"
+                    ]}
+                  />
+
                   {/* Enhanced EA File Upload Zone */}
                   <Card>
                     <CardHeader>
@@ -1534,6 +1775,16 @@ export default function PublishEAFormClient() {
 
                 {/* Tab 3: SEO & Preview */}
                 <TabsContent value="seo" className="space-y-6 mt-6">
+                  <ProTips
+                    title="💡 Pro Tips for SEO & Preview"
+                    tips={[
+                      "Use keywords buyers search for: 'scalping', 'grid', 'martingale', 'low drawdown'",
+                      "SEO excerpt appears in search results - make it compelling",
+                      "Preview shows how your EA looks to buyers - check it carefully",
+                      "Good SEO helps your EA rank higher in marketplace search"
+                    ]}
+                  />
+
                   {/* Split-screen layout: AutoSEOPanel on left, LivePreview on right (desktop) */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left Column: SEO Panel */}
