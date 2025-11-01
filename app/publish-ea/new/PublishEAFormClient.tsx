@@ -547,7 +547,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
         </TooltipProvider>
       </div>
 
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} immediatelyRender={false} />
 
       <div className={`px-4 py-2 bg-muted/30 border-t text-sm ${getCharCountColor()}`} data-testid="character-counter">
         {textLength} / 2000 characters (min 200)
