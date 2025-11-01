@@ -3355,6 +3355,27 @@ export const seoFixJobs = pgTable("seo_fix_jobs", {
   issueIdIdx: index("seo_fix_jobs_issue_id_idx").on(table.issueId),
 }));
 
+// SEO Scan History - Track last scan time per URL for delta scans
+export const seoScanHistory = pgTable("seo_scan_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  url: varchar("url", { length: 1000 }).notNull(),
+  lastScanAt: timestamp("last_scan_at").notNull().defaultNow(),
+  lastScannedBy: varchar("last_scanned_by", { length: 20 }).notNull().$type<"cron" | "manual" | "post-publish">(),
+  scanId: varchar("scan_id").references(() => seoScans.id, { onDelete: "set null" }),
+  issuesFound: integer("issues_found").notNull().default(0),
+  metadata: jsonb("metadata").$type<{
+    scanDuration?: number;
+    scanStatus?: string;
+    errorMessage?: string;
+  }>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  urlIdx: uniqueIndex("idx_seo_scan_history_url").on(table.url),
+  lastScanAtIdx: index("idx_seo_scan_history_last_scan_at").on(table.lastScanAt),
+  scanIdIdx: index("idx_seo_scan_history_scan_id").on(table.scanId),
+}));
+
 // ============================================================================
 // SEO MONITORING SYSTEM SCHEMAS AND TYPES
 // ============================================================================
@@ -3476,3 +3497,18 @@ export const insertSeoFixJobSchema = createInsertSchema(seoFixJobs).omit({
 });
 export type InsertSeoFixJob = z.infer<typeof insertSeoFixJobSchema>;
 export type SeoFixJob = typeof seoFixJobs.$inferSelect;
+
+// SEO Scan History
+export const insertSeoScanHistorySchema = createInsertSchema(seoScanHistory).omit({
+  id: true,
+  lastScanAt: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  url: z.string().min(1).max(1000),
+  lastScannedBy: z.enum(["cron", "manual", "post-publish"]),
+  scanId: z.string().uuid().optional(),
+  issuesFound: z.number().int().min(0).default(0),
+});
+export type InsertSeoScanHistory = z.infer<typeof insertSeoScanHistorySchema>;
+export type SeoScanHistory = typeof seoScanHistory.$inferSelect;

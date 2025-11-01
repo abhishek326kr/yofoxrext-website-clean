@@ -122,6 +122,68 @@ export function startBackgroundJobs(storage: IStorage) {
   console.log('[JOBS] Bot purchase refunds scheduled (runs daily at 3 AM)');
   
   // ============================================
+  // SEO SCAN BACKGROUND JOBS
+  // ============================================
+  
+  // Nightly full SEO scan - Runs at 1 AM daily
+  cron.schedule('0 1 * * *', async () => {
+    try {
+      console.log('[SEO SCAN] Starting nightly full SEO scan...');
+      
+      const { seoScanner } = await import('../services/seo-scanner.js');
+      
+      if (seoScanner.isScanRunning()) {
+        console.log('[SEO SCAN] Skipping nightly scan - another scan is already in progress');
+        return;
+      }
+      
+      const scanId = await seoScanner.startScan({
+        scanType: 'full',
+        triggeredBy: 'cron',
+      });
+      
+      if (scanId) {
+        console.log(`[SEO SCAN] Nightly full scan started successfully (ID: ${scanId})`);
+      } else {
+        console.log('[SEO SCAN] Failed to start nightly scan - mutex locked');
+      }
+    } catch (error: any) {
+      console.error('[SEO SCAN] Error during nightly full scan:', error);
+    }
+  });
+  
+  console.log('[JOBS] Nightly SEO full scan scheduled (runs daily at 1 AM)');
+  
+  // Hourly delta SEO scan - Runs at :15 past every hour
+  cron.schedule('15 * * * *', async () => {
+    try {
+      console.log('[SEO SCAN] Starting hourly delta SEO scan...');
+      
+      const { seoScanner } = await import('../services/seo-scanner.js');
+      
+      if (seoScanner.isScanRunning()) {
+        console.log('[SEO SCAN] Skipping hourly delta scan - another scan is already in progress');
+        return;
+      }
+      
+      const scanId = await seoScanner.startScan({
+        scanType: 'delta',
+        triggeredBy: 'cron',
+      });
+      
+      if (scanId) {
+        console.log(`[SEO SCAN] Hourly delta scan started successfully (ID: ${scanId})`);
+      } else {
+        console.log('[SEO SCAN] Hourly delta scan skipped - no URLs need scanning or mutex locked');
+      }
+    } catch (error: any) {
+      console.error('[SEO SCAN] Error during hourly delta scan:', error);
+    }
+  });
+  
+  console.log('[JOBS] Hourly SEO delta scan scheduled (runs at :15 past each hour)');
+  
+  // ============================================
   // ERROR TRACKING BACKGROUND JOBS
   // ============================================
   
