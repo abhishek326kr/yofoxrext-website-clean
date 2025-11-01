@@ -10604,6 +10604,208 @@ export async function registerRoutes(app: Express): Promise<Express> {
   // TODO: Queue reinstatement notifications with EmailPriority.HIGH
   // TODO: Queue warning notifications with EmailPriority.MEDIUM
 
+  // ============================================================================
+  // SEO MONITORING API ENDPOINTS
+  // ============================================================================
+
+  const { seoScanner } = await import('./services/seo-scanner');
+  const { seoScans, seoIssues, seoFixes, seoMetrics } = await import('../shared/schema');
+  const { and, inArray, sql: sqlDrizzle } = await import('drizzle-orm');
+
+  // GET /api/admin/seo/health - Get overall SEO health score
+  app.get('/api/admin/seo/health', isAuthenticated, async (req, res) => {
+    try {
+      const latestMetric = await db.select()
+        .from(seoMetrics)
+        .orderBy(desc(seoMetrics.recordedAt))
+        .limit(1);
+
+      if (!latestMetric.length) {
+        return res.json({
+          overallScore: 0,
+          technicalScore: 0,
+          contentScore: 0,
+          performanceScore: 0,
+          totalIssues: 0,
+          criticalIssues: 0,
+          highIssues: 0,
+          mediumIssues: 0,
+          lowIssues: 0,
+          lastUpdated: null,
+        });
+      }
+
+      res.json(latestMetric[0]);
+    } catch (error) {
+      console.error('Failed to get SEO health:', error);
+      res.status(500).json({ error: 'Failed to get SEO health' });
+    }
+  });
+
+  // GET /api/admin/seo/issues - List all SEO issues
+  app.get('/api/admin/seo/issues', isAuthenticated, async (req, res) => {
+    try {
+      const { category, severity, status } = req.query;
+
+      let query = db.select().from(seoIssues);
+      const conditions = [];
+
+      if (category) conditions.push(eq(seoIssues.category, category as any));
+      if (severity) conditions.push(eq(seoIssues.severity, severity as any));
+      if (status) conditions.push(eq(seoIssues.status, status as any));
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+
+      const issues = await query.orderBy(desc(seoIssues.createdAt));
+
+      res.json({ issues });
+    } catch (error) {
+      console.error('Failed to get SEO issues:', error);
+      res.status(500).json({ error: 'Failed to get SEO issues' });
+    }
+  });
+
+  // POST /api/admin/seo/scan - Trigger new SEO scan
+  app.post('/api/admin/seo/scan', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      const { scanType = 'full', urls } = req.body;
+
+      const scanId = await seoScanner.startScan({
+        scanType: scanType as 'full' | 'delta' | 'single-page',
+        urls,
+        triggeredBy: 'manual',
+      });
+
+      res.json({
+        success: true,
+        scanId,
+        message: 'SEO scan started',
+      });
+    } catch (error) {
+      console.error('Failed to start SEO scan:', error);
+      res.status(500).json({ error: 'Failed to start SEO scan' });
+    }
+  });
+
+  // PATCH /api/admin/seo/issues/:id/fix - Fix an SEO issue
+  app.patch('/api/admin/seo/issues/:id/fix', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { fixType = 'manual', action, newValue } = req.body;
+
+      const issue = await db.select()
+        .from(seoIssues)
+        .where(eq(seoIssues.id, id))
+        .limit(1);
+
+      if (!issue.length) {
+        return res.status(404).json({ error: 'Issue not found' });
+      }
+
+      await db.update(seoIssues)
+        .set({
+          status: 'fixed',
+          fixedAt: new Date(),
+          fixedBy: req.user?.id || 'manual',
+          updatedAt: new Date(),
+        })
+        .where(eq(seoIssues.id, id));
+
+      await db.insert(seoFixes).values({
+        issueId: id,
+        fixType: fixType as 'auto' | 'ai-generated' | 'manual',
+        action: action || 'manually_fixed',
+        newValue,
+        appliedBy: req.user?.id || 'system',
+        success: true,
+      });
+
+      res.json({
+        success: true,
+        message: 'Issue fixed successfully',
+      });
+    } catch (error) {
+      console.error('Failed to fix SEO issue:', error);
+      res.status(500).json({ error: 'Failed to fix issue' });
+    }
+  });
+
+  // GET /api/admin/seo/scans - List scan history
+  app.get('/api/admin/seo/scans', isAuthenticated, async (req, res) => {
+    try {
+      const scans = await db.select()
+        .from(seoScans)
+        .orderBy(desc(seoScans.startedAt))
+        .limit(50);
+
+      res.json({ scans });
+    } catch (error) {
+      console.error('Failed to get scan history:', error);
+      res.status(500).json({ error: 'Failed to get scan history' });
+    }
+  });
+
+  // GET /api/admin/seo/metrics - Historical metrics and trends
+  app.get('/api/admin/seo/metrics', isAuthenticated, async (req, res) => {
+    try {
+      const metrics = await db.select()
+        .from(seoMetrics)
+        .orderBy(desc(seoMetrics.recordedAt))
+        .limit(30);
+
+      res.json({ metrics });
+    } catch (error) {
+      console.error('Failed to get SEO metrics:', error);
+      res.status(500).json({ error: 'Failed to get SEO metrics' });
+    }
+  });
+
+  // POST /api/admin/seo/auto-fix - Bulk auto-fix all fixable issues
+  app.post('/api/admin/seo/auto-fix', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      const fixableIssues = await db.select()
+        .from(seoIssues)
+        .where(and(
+          eq(seoIssues.status, 'active'),
+          eq(seoIssues.autoFixable, true)
+        ));
+
+      let fixedCount = 0;
+
+      for (const issue of fixableIssues) {
+        await db.update(seoIssues)
+          .set({
+            status: 'fixed',
+            fixedAt: new Date(),
+            fixedBy: 'auto',
+            updatedAt: new Date(),
+          })
+          .where(eq(seoIssues.id, issue.id));
+
+        await db.insert(seoFixes).values({
+          issueId: issue.id,
+          fixType: 'auto',
+          action: 'auto_fixed',
+          appliedBy: 'system',
+          success: true,
+        });
+
+        fixedCount++;
+      }
+
+      res.json({
+        success: true,
+        fixedCount,
+        message: `Auto-fixed ${fixedCount} issues`,
+      });
+    } catch (error) {
+      console.error('Failed to auto-fix issues:', error);
+      res.status(500).json({ error: 'Failed to auto-fix issues' });
+    }
+  });
+
   // Return the Express app with all routes registered
   // Server creation happens in index.ts
   return app;

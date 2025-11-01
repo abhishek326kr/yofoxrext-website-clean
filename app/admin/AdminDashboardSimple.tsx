@@ -47,6 +47,7 @@ import Logs from "./sections/Logs";
 import AIAutomation from "./sections/AIAutomation";
 import Gamification from "./sections/Gamification";
 import SEOMarketing from "./sections/SEOMarketing";
+import SeoMonitoring from "./sections/SeoMonitoring";
 import Integrations from "./sections/Integrations";
 import Mobile from "./sections/Mobile";
 import Performance from "./sections/Performance";
@@ -70,6 +71,7 @@ const sections = [
   { id: "analytics", icon: TrendingUp, label: "Analytics", path: "/admin/analytics" },
   { id: "ai-automation", icon: Bot, label: "AI & Automation", path: "/admin/ai-automation" },
   { id: "gamification", icon: Trophy, label: "Gamification", path: "/admin/gamification" },
+  { id: "seo-health", icon: Activity, label: "SEO Health", path: "/admin/seo" },
   { id: "seo-marketing", icon: Search, label: "SEO & Marketing", path: "/admin/seo-marketing" },
   { id: "sitemap", icon: FileText, label: "Sitemap", path: "/admin/sitemap" },
   { id: "schema-validation", icon: Code, label: "Schema Validation", path: "/admin/schema-validation" },
@@ -108,6 +110,8 @@ export function AdminDashboardClient() {
         return <AIAutomation />;
       case "/admin/gamification":
         return <Gamification />;
+      case "/admin/seo":
+        return <SeoMonitoring />;
       case "/admin/seo-marketing":
         return <SEOMarketing />;
       case "/admin/sitemap":

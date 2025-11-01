@@ -3181,3 +3181,167 @@ export const insertErrorStatusChangeSchema = createInsertSchema(errorStatusChang
 });
 export type InsertErrorStatusChange = z.infer<typeof insertErrorStatusChangeSchema>;
 export type ErrorStatusChange = typeof errorStatusChanges.$inferSelect;
+
+// ============================================================================
+// SEO MONITORING SYSTEM TABLES
+// ============================================================================
+
+// SEO Scans
+export const seoScans = pgTable("seo_scans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scanType: varchar("scan_type", { length: 20 }).notNull().$type<"full" | "delta" | "single-page">(),
+  status: varchar("status", { length: 20 }).notNull().$type<"running" | "completed" | "failed">().default("running"),
+  pagesScanned: integer("pages_scanned").notNull().default(0),
+  issuesFound: integer("issues_found").notNull().default(0),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  triggeredBy: varchar("triggered_by", { length: 20 }).notNull().$type<"cron" | "manual" | "post-publish">(),
+  metadata: jsonb("metadata").$type<{
+    urlList?: string[];
+    filters?: Record<string, any>;
+    options?: Record<string, any>;
+  }>(),
+}, (table) => ({
+  statusIdx: index("idx_seo_scans_status").on(table.status),
+  startedAtIdx: index("idx_seo_scans_started_at").on(table.startedAt),
+}));
+
+// SEO Issues
+export const seoIssues = pgTable("seo_issues", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scanId: varchar("scan_id").notNull().references(() => seoScans.id, { onDelete: "cascade" }),
+  category: varchar("category", { length: 20 }).notNull().$type<"technical" | "content" | "performance">(),
+  issueType: varchar("issue_type", { length: 100 }).notNull(),
+  severity: varchar("severity", { length: 20 }).notNull().$type<"critical" | "high" | "medium" | "low">(),
+  status: varchar("status", { length: 20 }).notNull().$type<"active" | "fixed" | "ignored">().default("active"),
+  pageUrl: text("page_url").notNull(),
+  pageTitle: text("page_title"),
+  description: text("description").notNull(),
+  autoFixable: boolean("auto_fixable").notNull().default(false),
+  fixedAt: timestamp("fixed_at"),
+  fixedBy: varchar("fixed_by"),
+  metadata: jsonb("metadata").$type<{
+    suggestion?: string;
+    oldValue?: string;
+    newValue?: string;
+    context?: Record<string, any>;
+  }>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  scanIdIdx: index("idx_seo_issues_scan_id").on(table.scanId),
+  categoryIdx: index("idx_seo_issues_category").on(table.category),
+  severityIdx: index("idx_seo_issues_severity").on(table.severity),
+  statusIdx: index("idx_seo_issues_status").on(table.status),
+  pageUrlIdx: index("idx_seo_issues_page_url").on(table.pageUrl),
+  createdAtIdx: index("idx_seo_issues_created_at").on(table.createdAt),
+}));
+
+// SEO Fixes
+export const seoFixes = pgTable("seo_fixes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issueId: varchar("issue_id").notNull().references(() => seoIssues.id, { onDelete: "cascade" }),
+  fixType: varchar("fix_type", { length: 20 }).notNull().$type<"auto" | "ai-generated" | "manual">(),
+  action: varchar("action", { length: 100 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  appliedAt: timestamp("applied_at").notNull().defaultNow(),
+  appliedBy: varchar("applied_by").notNull(),
+  success: boolean("success").notNull().default(true),
+  errorMessage: text("error_message"),
+}, (table) => ({
+  issueIdIdx: index("idx_seo_fixes_issue_id").on(table.issueId),
+  appliedAtIdx: index("idx_seo_fixes_applied_at").on(table.appliedAt),
+}));
+
+// SEO Metrics
+export const seoMetrics = pgTable("seo_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+  overallScore: integer("overall_score").notNull().default(0),
+  technicalScore: integer("technical_score").notNull().default(0),
+  contentScore: integer("content_score").notNull().default(0),
+  performanceScore: integer("performance_score").notNull().default(0),
+  totalIssues: integer("total_issues").notNull().default(0),
+  criticalIssues: integer("critical_issues").notNull().default(0),
+  highIssues: integer("high_issues").notNull().default(0),
+  mediumIssues: integer("medium_issues").notNull().default(0),
+  lowIssues: integer("low_issues").notNull().default(0),
+  metadata: jsonb("metadata").$type<{
+    topIssues?: string[];
+    improvements?: string[];
+    regressions?: string[];
+  }>(),
+}, (table) => ({
+  recordedAtIdx: index("idx_seo_metrics_recorded_at").on(table.recordedAt),
+  overallScoreIdx: index("idx_seo_metrics_overall_score").on(table.overallScore),
+}));
+
+// ============================================================================
+// SEO MONITORING SYSTEM SCHEMAS AND TYPES
+// ============================================================================
+
+// SEO Scans
+export const insertSeoScanSchema = createInsertSchema(seoScans).omit({
+  id: true,
+  pagesScanned: true,
+  issuesFound: true,
+  startedAt: true,
+  completedAt: true,
+}).extend({
+  scanType: z.enum(["full", "delta", "single-page"]),
+  triggeredBy: z.enum(["cron", "manual", "post-publish"]),
+});
+export type InsertSeoScan = z.infer<typeof insertSeoScanSchema>;
+export type SeoScan = typeof seoScans.$inferSelect;
+
+// SEO Issues
+export const insertSeoIssueSchema = createInsertSchema(seoIssues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  fixedAt: true,
+}).extend({
+  scanId: z.string().uuid(),
+  category: z.enum(["technical", "content", "performance"]),
+  issueType: z.string().min(1).max(100),
+  severity: z.enum(["critical", "high", "medium", "low"]),
+  status: z.enum(["active", "fixed", "ignored"]).default("active"),
+  pageUrl: z.string().url(),
+  description: z.string().min(1),
+  autoFixable: z.boolean().default(false),
+});
+export type InsertSeoIssue = z.infer<typeof insertSeoIssueSchema>;
+export type SeoIssue = typeof seoIssues.$inferSelect;
+
+// SEO Fixes
+export const insertSeoFixSchema = createInsertSchema(seoFixes).omit({
+  id: true,
+  appliedAt: true,
+}).extend({
+  issueId: z.string().uuid(),
+  fixType: z.enum(["auto", "ai-generated", "manual"]),
+  action: z.string().min(1).max(100),
+  appliedBy: z.string().min(1),
+  success: z.boolean().default(true),
+});
+export type InsertSeoFix = z.infer<typeof insertSeoFixSchema>;
+export type SeoFix = typeof seoFixes.$inferSelect;
+
+// SEO Metrics
+export const insertSeoMetricSchema = createInsertSchema(seoMetrics).omit({
+  id: true,
+  recordedAt: true,
+}).extend({
+  overallScore: z.number().int().min(0).max(100),
+  technicalScore: z.number().int().min(0).max(100),
+  contentScore: z.number().int().min(0).max(100),
+  performanceScore: z.number().int().min(0).max(100),
+  totalIssues: z.number().int().min(0),
+  criticalIssues: z.number().int().min(0),
+  highIssues: z.number().int().min(0),
+  mediumIssues: z.number().int().min(0),
+  lowIssues: z.number().int().min(0),
+});
+export type InsertSeoMetric = z.infer<typeof insertSeoMetricSchema>;
+export type SeoMetric = typeof seoMetrics.$inferSelect;
