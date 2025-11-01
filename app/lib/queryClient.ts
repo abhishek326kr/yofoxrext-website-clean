@@ -28,6 +28,8 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
+// Export getQueryFn for components that need custom 401 handling
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
   baseUrl?: string;

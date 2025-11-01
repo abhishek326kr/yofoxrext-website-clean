@@ -151,7 +151,7 @@ export function GrowthVaultRing() {
             <div className="absolute inset-0 flex items-center justify-center flex-col" data-testid="vault-amount">
               <Coins className="h-6 w-6 text-emerald-600 dark:text-emerald-400 mb-1" />
               <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                {data?.totalLocked.toLocaleString() || 0}
+                {data?.totalLocked?.toLocaleString() || '0'}
               </div>
               <div className="text-xs text-muted-foreground">locked</div>
             </div>
@@ -189,13 +189,13 @@ export function GrowthVaultRing() {
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded">
             <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-              {data?.totalLocked || 0}
+              {data?.totalLocked?.toLocaleString() || '0'}
             </div>
             <div className="text-xs text-muted-foreground">Total Locked</div>
           </div>
           <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded">
             <div className="text-lg font-bold text-yellow-700 dark:text-yellow-300">
-              {data?.availableToClaim || 0}
+              {data?.availableToClaim?.toLocaleString() || '0'}
             </div>
             <div className="text-xs text-muted-foreground">Available</div>
           </div>

@@ -982,6 +982,52 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // PATCH /api/user/notifications - Update user notification preferences
+  app.patch("/api/user/notifications", isAuthenticated, async (req, res) => {
+    const userId = getAuthenticatedUserId(req);
+    
+    try {
+      // Validate notification preferences schema
+      const notificationSchema = z.object({
+        emailNotifications: z.boolean().optional(),
+        newReplies: z.boolean().optional(),
+        newFollowers: z.boolean().optional(),
+        mentions: z.boolean().optional(),
+        contentLikes: z.boolean().optional(),
+        contentPurchases: z.boolean().optional(),
+        weeklyDigest: z.boolean().optional(),
+        marketingEmails: z.boolean().optional(),
+        pushNotifications: z.boolean().optional(),
+        threadUpdates: z.boolean().optional(),
+        achievementUnlocked: z.boolean().optional(),
+        coinEarnings: z.boolean().optional(),
+      });
+
+      const validated = notificationSchema.parse(req.body);
+      
+      // Update user notification preferences
+      // For now, we only store emailNotifications in the database
+      // Other preferences can be stored in a future notification_preferences table
+      const updates: Partial<User> = {};
+      if (validated.emailNotifications !== undefined) {
+        updates.emailNotifications = validated.emailNotifications;
+      }
+      
+      const updatedUser = await storage.updateUserProfile(userId, updates);
+      
+      res.json({ 
+        success: true, 
+        message: "Notification preferences updated",
+        preferences: validated 
+      });
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid notification preferences", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/me/content - Get current user's published content
   app.get("/api/me/content", isAuthenticated, async (req, res) => {
     try {
@@ -10106,8 +10152,25 @@ export async function registerRoutes(app: Express): Promise<Express> {
         groupId: event.groupId 
       });
     } catch (error: any) {
-      console.error("[Telemetry] Error ingesting error event:", error);
-      res.status(500).json({ error: "Failed to ingest error event" });
+      // Enhanced error logging for debugging 500 errors
+      console.error("[Telemetry] Error ingesting error event:", {
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+        detail: error.detail,
+        requestBody: {
+          fingerprint: req.body?.fingerprint,
+          message: req.body?.message?.substring(0, 100),
+          component: req.body?.component,
+          severity: req.body?.severity,
+        }
+      });
+      
+      // Return more helpful error message
+      res.status(500).json({ 
+        error: "Failed to ingest error event",
+        detail: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
