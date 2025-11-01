@@ -223,7 +223,7 @@ export default function ThreadCreationWizard({ categorySlug = "general" }: Threa
 
     try {
       // For file uploads, use fetch directly since apiRequest expects JSON
-      const response = await fetch("/api/upload/images", {
+      const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
         credentials: "include"
