@@ -84,15 +84,16 @@ export async function setupLocalAuth(app: Express) {
             user = userByEmail;
           }
           
-          // Check if user has a password
-          if (!user.password) {
+          // Check if user has a password (check both legacy and new fields)
+          const passwordHash = user.password_hash || user.password;
+          if (!passwordHash) {
             return done(null, false, { 
               message: "This account does not have a password set. Please use Google Sign-In or reset your password." 
             });
           }
           
           // Verify password
-          const isValidPassword = await verifyPassword(password, user.password);
+          const isValidPassword = await verifyPassword(password, passwordHash);
           if (!isValidPassword) {
             return done(null, false, { message: "Invalid username or password" });
           }
