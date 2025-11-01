@@ -49,7 +49,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthPrompt } from "@/hooks/useAuthPrompt";
 import { EA_CATEGORY_OPTIONS } from "@shared/schema";
-import { sanitizeRichTextHTML, countTextCharacters } from "@shared/sanitize";
+import { sanitizeRichTextHTML, countTextCharacters, extractTextExcerpt } from "@shared/sanitize";
 
 // Category emoji mapping
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -65,6 +65,156 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   "Neural networks": "🧠",
   "Multicurrency": "🌍"
 };
+
+// LivePreview Component
+interface LivePreviewProps {
+  title: string;
+  tags: string[];
+  priceCoins: number;
+  description: string;
+  imageUrls: string[];
+}
+
+function LivePreview({ title, tags, priceCoins, description, imageUrls }: LivePreviewProps) {
+  // Extract first 200 characters for description preview
+  const descriptionPreview = description ? extractTextExcerpt(description, 200) : "";
+  const hasContent = title || tags.length > 0 || description || imageUrls.length > 0;
+
+  return (
+    <Card data-testid="live-preview-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Eye className="h-5 w-5" />
+          Preview - How Your EA Will Look
+        </CardTitle>
+        <CardDescription>
+          This is how your EA will appear to buyers
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="border rounded-lg p-6 space-y-6 bg-muted/20" data-testid="preview-content">
+          {/* Title Section */}
+          <div className="space-y-3">
+            {title ? (
+              <h1 className="text-3xl font-bold tracking-tight" data-testid="preview-title">
+                {title}
+              </h1>
+            ) : (
+              <div className="text-muted-foreground italic" data-testid="preview-title-empty">
+                No title yet. Add a title in the EA Details tab.
+              </div>
+            )}
+
+            {/* Category Badges */}
+            {tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2" data-testid="preview-category-badges">
+                {tags.map((tag, index) => {
+                  const emoji = CATEGORY_EMOJIS[tag] || "🏷️";
+                  return (
+                    <Badge 
+                      key={index} 
+                      variant="secondary" 
+                      className="text-sm"
+                      data-testid={`preview-badge-${index}`}
+                    >
+                      {emoji} {tag}
+                    </Badge>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-muted-foreground italic text-sm" data-testid="preview-categories-empty">
+                No categories selected. Choose categories in the EA Details tab.
+              </div>
+            )}
+          </div>
+
+          {/* Price Badge */}
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="default" 
+              className="text-lg px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white"
+              data-testid="preview-price-badge"
+            >
+              💰 {priceCoins} Gold Coins
+            </Badge>
+          </div>
+
+          {/* Image Gallery */}
+          {imageUrls.length > 0 ? (
+            <div className="space-y-2" data-testid="preview-image-gallery">
+              <p className="text-sm font-medium text-muted-foreground">Screenshots</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {imageUrls.map((url, index) => (
+                  <div 
+                    key={index} 
+                    className="relative aspect-video rounded-lg overflow-hidden border bg-muted"
+                    data-testid={`preview-image-${index}`}
+                  >
+                    <img
+                      src={url}
+                      alt={`Screenshot ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {index === 0 && (
+                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
+                        COVER
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg" data-testid="preview-images-empty">
+              <ImageIcon className="h-12 w-12 text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">
+                No images uploaded yet. Add screenshots in Files & Media tab.
+              </p>
+            </div>
+          )}
+
+          {/* Description Preview */}
+          {description ? (
+            <div className="space-y-2" data-testid="preview-description">
+              <p className="text-sm font-medium text-muted-foreground">Description Preview</p>
+              <div 
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ 
+                  __html: sanitizeRichTextHTML(descriptionPreview) 
+                }}
+              />
+              {countTextCharacters(description) > 200 && (
+                <p className="text-xs text-muted-foreground italic">
+                  ... (Full description will be shown on EA detail page)
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-muted-foreground italic py-4 text-center border-2 border-dashed rounded-lg" data-testid="preview-description-empty">
+              No description yet. Start typing in the EA Details tab.
+            </div>
+          )}
+
+          {/* Call to Action Preview */}
+          {hasContent && (
+            <div className="pt-4 border-t">
+              <Button 
+                className="w-full" 
+                size="lg" 
+                disabled
+                data-testid="preview-cta-button"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Purchase for {priceCoins} Gold Coins
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 // Form validation schema
 const eaFormSchema = z.object({
@@ -1384,21 +1534,37 @@ export default function PublishEAFormClient() {
 
                 {/* Tab 3: SEO & Preview */}
                 <TabsContent value="seo" className="space-y-6 mt-6">
-                  {/* SEO Panel */}
-                  <AutoSEOPanel
-                    title={title}
-                    body={description}
-                    imageUrls={imageUrls}
-                    onSEOUpdate={handleSEOUpdate}
-                  />
+                  {/* Split-screen layout: AutoSEOPanel on left, LivePreview on right (desktop) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column: SEO Panel */}
+                    <div className="space-y-6">
+                      <AutoSEOPanel
+                        title={title}
+                        body={description}
+                        imageUrls={imageUrls}
+                        onSEOUpdate={handleSEOUpdate}
+                      />
 
-                  {/* SEO Preview */}
-                  <SEOPreview
-                    title={title}
-                    seoExcerpt={seoData?.seoExcerpt || ""}
-                    primaryKeyword={seoData?.primaryKeyword || ""}
-                    body={description}
-                  />
+                      {/* SEO Preview */}
+                      <SEOPreview
+                        title={title}
+                        seoExcerpt={seoData?.seoExcerpt || ""}
+                        primaryKeyword={seoData?.primaryKeyword || ""}
+                        body={description}
+                      />
+                    </div>
+
+                    {/* Right Column: Live Preview */}
+                    <div className="lg:sticky lg:top-6 lg:self-start">
+                      <LivePreview
+                        title={title}
+                        tags={tags}
+                        priceCoins={priceCoins}
+                        description={description}
+                        imageUrls={imageUrls}
+                      />
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
 

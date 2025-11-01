@@ -10,7 +10,9 @@ import {
   calculateKeywordDensity,
   generateImageAltText,
   suggestInternalLinks,
-  analyzeTitle
+  analyzeTitle,
+  extractKeywordSuggestions,
+  generateMetaDescriptionPreview
 } from "@/lib/seo-utils";
 import {
   Card,
@@ -147,6 +149,17 @@ export default function AutoSEOPanel({
       internalLinks
     };
   }, [debouncedTitle, debouncedBody, imageUrls, categories]);
+
+  // Generate keyword suggestions
+  const keywordSuggestions = useMemo(() => {
+    if (!debouncedTitle && !debouncedBody) return [];
+    return extractKeywordSuggestions(debouncedTitle, debouncedBody);
+  }, [debouncedTitle, debouncedBody]);
+
+  // Generate meta description preview
+  const metaDescriptionPreview = useMemo(() => {
+    return generateMetaDescriptionPreview(debouncedBody, 155);
+  }, [debouncedBody]);
 
   // Title analysis
   const titleAnalysis = useMemo(() => {
@@ -369,9 +382,99 @@ export default function AutoSEOPanel({
                 />
               </div>
 
+              {/* Google SERP Preview */}
+              <div className="mb-6">
+                <h3 className="font-semibold flex items-center gap-2 mb-3">
+                  <Eye className="h-4 w-4" />
+                  Search Engine Preview
+                </h3>
+                <div className="border rounded-lg p-4 bg-white dark:bg-muted/20">
+                  {/* Google SERP style */}
+                  <div className="space-y-1">
+                    {/* Title */}
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <h3 
+                          className="text-[20px] text-[#1a0dab] dark:text-blue-400 font-normal leading-[1.3] cursor-pointer hover:underline"
+                          data-testid="serp-preview-title"
+                        >
+                          {debouncedTitle || "Your EA Title Will Appear Here"}
+                        </h3>
+                      </div>
+                    </div>
+                    
+                    {/* URL */}
+                    <div className="flex items-center gap-1 text-sm" data-testid="serp-preview-url">
+                      <span className="text-[#202124] dark:text-gray-400">yoforex.com</span>
+                      <span className="text-[#5f6368] dark:text-gray-500"> › ea › </span>
+                      <span className="text-[#5f6368] dark:text-gray-500">
+                        {currentSEOData.urlSlug || "your-ea-slug"}
+                      </span>
+                    </div>
+                    
+                    {/* Meta Description */}
+                    <p 
+                      className="text-sm text-[#4d5156] dark:text-gray-300 leading-[1.58]"
+                      data-testid="serp-preview-description"
+                    >
+                      {metaDescriptionPreview || currentSEOData.seoExcerpt || "Your EA description will appear here. Write a compelling description to attract more buyers."}
+                    </p>
+                    
+                    {/* Character count */}
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <span className={`text-xs ${
+                        metaDescriptionPreview.length >= 120 && metaDescriptionPreview.length <= 155
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`} data-testid="meta-char-count">
+                        Meta Description: {metaDescriptionPreview.length}/155 characters
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* SEO Fields */}
                 <div className="lg:col-span-2 space-y-4">
+                  {/* Keyword Suggestions */}
+                  {keywordSuggestions.length > 0 && (
+                    <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+                      <div className="flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Label className="text-blue-900 dark:text-blue-100">Suggested Keywords</Label>
+                      </div>
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        Based on your content. Click to use as primary keyword.
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {keywordSuggestions.map((keyword, index) => (
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors border-blue-300 dark:border-blue-700"
+                            onClick={() => {
+                              if (!autoOptimize) {
+                                handleManualFieldChange("primaryKeyword", keyword);
+                              }
+                            }}
+                            data-testid={`keyword-suggestion-${index}`}
+                          >
+                            <Search className="h-3 w-3 mr-1" />
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                      {autoOptimize && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-2">
+                          Turn off auto-optimize to select a keyword manually
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Primary Keyword */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">

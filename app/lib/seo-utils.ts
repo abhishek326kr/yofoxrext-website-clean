@@ -477,6 +477,95 @@ export function analyzeTitle(title: string): {
 }
 
 /**
+ * Extract multiple keyword suggestions from title and description
+ * @param title - The title text to analyze
+ * @param body - The body text to analyze (HTML will be stripped)
+ * @returns Array of 3-5 suggested keywords
+ */
+export function extractKeywordSuggestions(title: string, body: string): string[] {
+  // Strip HTML from body
+  const plainBody = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const combinedText = `${title} ${plainBody}`.toLowerCase();
+  
+  // Extract words
+  const words = combinedText
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length >= 4 && !STOP_WORDS.has(word));
+  
+  // Count word frequencies
+  const wordFreq = new Map<string, number>();
+  words.forEach(word => {
+    wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+  });
+  
+  // Extract 2-word phrases from title (prioritize title keywords)
+  const titleWords = title.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length >= 4 && !STOP_WORDS.has(word));
+  
+  const titlePhrases: string[] = [];
+  for (let i = 0; i < titleWords.length - 1; i++) {
+    titlePhrases.push(`${titleWords[i]} ${titleWords[i + 1]}`);
+  }
+  
+  // Sort by frequency and prioritize title words
+  const sortedWords = Array.from(wordFreq.entries())
+    .sort((a, b) => {
+      // Prioritize words that appear in title
+      const aInTitle = titleWords.includes(a[0]) ? 1000 : 0;
+      const bInTitle = titleWords.includes(b[0]) ? 1000 : 0;
+      return (b[1] + bInTitle) - (a[1] + aInTitle);
+    })
+    .map(([word]) => word);
+  
+  // Combine title phrases and top words
+  const suggestions = new Set<string>();
+  
+  // Add 2-word phrases from title first
+  titlePhrases.slice(0, 2).forEach(phrase => suggestions.add(phrase));
+  
+  // Add top individual words
+  sortedWords.slice(0, 5).forEach(word => {
+    if (suggestions.size < 5) {
+      suggestions.add(word);
+    }
+  });
+  
+  // Return 3-5 unique keywords
+  return Array.from(suggestions).slice(0, 5);
+}
+
+/**
+ * Generate meta description preview from HTML content
+ * @param html - The HTML content to extract from
+ * @param maxLength - Maximum length (default: 155)
+ * @returns Plain text meta description with ellipsis if needed
+ */
+export function generateMetaDescriptionPreview(html: string, maxLength: number = 155): string {
+  if (!html) return '';
+  
+  // Strip all HTML tags
+  const plainText = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  if (plainText.length <= maxLength) {
+    return plainText;
+  }
+  
+  // Truncate at last complete word before maxLength
+  const truncated = plainText.substring(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(' ');
+  
+  return lastSpace > 0
+    ? truncated.substring(0, lastSpace) + '...'
+    : truncated.substring(0, maxLength - 3) + '...';
+}
+
+/**
  * Extract trading-specific terms from text
  * @param text - The text to analyze
  * @returns Object containing categorized trading terms
