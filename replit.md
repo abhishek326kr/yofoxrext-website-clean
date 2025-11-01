@@ -91,6 +91,7 @@ YoForex uses a hybrid frontend and a robust backend for scalability and performa
 - **Retention Dashboard System:** Enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails, with dedicated backend services and API endpoints.
 - **Bot Economy System:** Automated bot system for natural engagement, including automated likes/follows/purchases, daily auto-refunds, and wallet cap enforcement, managed via admin API endpoints.
 - **Error Tracking & Monitoring System:** Comprehensive capture of frontend and backend errors, smart grouping via fingerprint hashing, and an admin dashboard (`/admin/errors`) for resolution workflow.
+- **AI-Powered SEO Content Suggestions (Added 2025-11-01):** Gemini AI integration for generating SEO-optimized meta descriptions, alt text, and H1 tags. Admin-only workflow with human approval, async job processing, and structured JSON response schemas. Uses gemini-2.5-flash model with generationConfig for reliable JSON parsing.
 
 ## External Dependencies
 
