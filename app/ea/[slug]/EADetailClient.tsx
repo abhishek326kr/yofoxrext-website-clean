@@ -95,9 +95,10 @@ export default function EADetailClient({ ea, similarEAs }: EADetailClientProps) 
       });
       
       // Trigger file download
-      if (data.downloadUrl || ea.fileUrl) {
+      const downloadUrl = data.downloadUrl || ea.fileUrl;
+      if (downloadUrl) {
         const link = document.createElement('a');
-        link.href = data.downloadUrl || ea.fileUrl;
+        link.href = downloadUrl;
         link.download = `${ea.title}.zip`;
         document.body.appendChild(link);
         link.click();

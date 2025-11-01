@@ -48,8 +48,8 @@ export default async function PublishEAPage() {
   // Calculate stats from the fetched data
   const stats = {
     totalEAs: initialEAs.length,
-    totalDownloads: initialEAs.reduce((sum, ea) => sum + (ea.downloads || 0), 0),
-    totalSellers: new Set(initialEAs.map(ea => ea.creatorId)).size
+    totalDownloads: initialEAs.reduce((sum: number, ea: any) => sum + (ea.downloads || 0), 0),
+    totalSellers: new Set(initialEAs.map((ea: any) => ea.creatorId)).size
   };
 
   return <PublishEAClient initialEAs={initialEAs} stats={stats} />;
