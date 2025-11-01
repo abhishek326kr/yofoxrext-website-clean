@@ -102,5 +102,5 @@ waitForPort = 5000
 outputType = "webview"
 
 [agent]
-integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_database:1.0.0", "javascript_object_storage:1.0.0"]
+integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_database:1.0.0", "javascript_object_storage:1.0.0", "javascript_gemini:1.0.0"]
 expertMode = true

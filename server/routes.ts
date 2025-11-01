@@ -10845,6 +10845,166 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // ============================================================================
+  // AI-POWERED SEO FIX ENDPOINTS
+  // ============================================================================
+
+  // POST /api/admin/seo/issues/:id/ai-job - Create AI fix job for an issue
+  app.post('/api/admin/seo/issues/:id/ai-job', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const issueId = req.params.id;
+      const [issue] = await db.select().from(seoIssues).where(eq(seoIssues.id, issueId));
+      
+      if (!issue) {
+        return res.status(404).json({ message: 'Issue not found' });
+      }
+
+      const aiHandler = await import('./services/seo-fixes/ai.js');
+      const canHandle = await aiHandler.canHandle(issue);
+      
+      if (!canHandle) {
+        return res.status(400).json({ message: 'This issue type does not support AI fixes' });
+      }
+
+      const result = await aiHandler.fix(issue);
+      
+      if (result.jobId) {
+        const { processAiFixJob } = await import('./services/ai-seo-worker.js');
+        processAiFixJob(result.jobId).catch(err => {
+          console.error('Failed to process AI job:', err);
+        });
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('Failed to create AI job:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/admin/seo/ai-jobs - List all AI fix jobs
+  app.get('/api/admin/seo/ai-jobs', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const jobs = await db.select().from(seoFixJobs).orderBy(desc(seoFixJobs.createdAt)).limit(100);
+      res.json(jobs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/admin/seo/ai-jobs/:id - Get single AI fix job
+  app.get('/api/admin/seo/ai-jobs/:id', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const [job] = await db.select().from(seoFixJobs).where(eq(seoFixJobs.id, jobId));
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+      
+      res.json(job);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/admin/seo/ai-jobs/:id/approve - Approve and apply AI fix job
+  app.post('/api/admin/seo/ai-jobs/:id/approve', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const userId = getAuthenticatedUserId(req);
+      const { applyAiFixJob } = await import('./services/ai-seo-worker.js');
+      
+      await db.update(seoFixJobs)
+        .set({
+          humanReviewedBy: userId,
+          humanReviewedAt: new Date(),
+          humanFeedback: req.body.feedback || 'Approved',
+          updatedAt: new Date(),
+        })
+        .where(eq(seoFixJobs.id, jobId));
+      
+      const result = await applyAiFixJob(jobId);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('Failed to approve AI job:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/admin/seo/ai-jobs/:id/reject - Reject AI fix job
+  app.post('/api/admin/seo/ai-jobs/:id/reject', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const userId = getAuthenticatedUserId(req);
+      
+      await db.update(seoFixJobs)
+        .set({
+          status: 'rejected',
+          humanReviewedBy: userId,
+          humanReviewedAt: new Date(),
+          humanFeedback: req.body.feedback || 'Rejected',
+          updatedAt: new Date(),
+        })
+        .where(eq(seoFixJobs.id, jobId));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/admin/seo/ai-jobs/:id/retry - Retry failed AI fix job
+  app.post('/api/admin/seo/ai-jobs/:id/retry', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const { processAiFixJob } = await import('./services/ai-seo-worker.js');
+      
+      await db.update(seoFixJobs)
+        .set({
+          status: 'pending',
+          updatedAt: new Date(),
+        })
+        .where(eq(seoFixJobs.id, jobId));
+      
+      processAiFixJob(jobId).catch(err => {
+        console.error('Failed to retry AI job:', err);
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/admin/seo/test-gemini - Test Gemini integration
+  app.get('/api/admin/seo/test-gemini', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: 'Say hello in JSON format with a greeting field',
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+      
+      res.json({ 
+        success: true, 
+        response: response.text,
+        message: 'Gemini integration working!' 
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
   // Return the Express app with all routes registered
   // Server creation happens in index.ts
   return app;

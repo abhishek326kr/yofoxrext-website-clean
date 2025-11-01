@@ -3305,14 +3305,25 @@ export const seoFixJobs = pgTable("seo_fix_jobs", {
   issueId: varchar("issue_id").references(() => seoIssues.id, { onDelete: "cascade" }),
   fixType: varchar("fix_type", { length: 100 }).notNull(),
   status: varchar("status", { length: 50 }).default("pending").notNull(),
-  aiPrompt: text("ai_prompt"),
+  aiModel: varchar("ai_model", { length: 100 }),
+  prompt: text("prompt"),
   aiResponse: text("ai_response"),
-  humanApprovalStatus: varchar("human_approval_status", { length: 50 }),
-  approvedBy: varchar("approved_by", { length: 36 }),
-  approvedAt: timestamp("approved_at"),
+  generatedContent: text("generated_content"),
+  metadata: jsonb("metadata").$type<{
+    pageUrl?: string;
+    issueType?: string;
+    issueDetails?: any;
+    queuedAt?: string;
+    error?: string;
+    failedAt?: string;
+  }>(),
+  humanReviewedBy: varchar("human_reviewed_by", { length: 36 }),
+  humanReviewedAt: timestamp("human_reviewed_at"),
+  humanFeedback: text("human_feedback"),
+  appliedAt: timestamp("applied_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
   completedAt: timestamp("completed_at"),
-  error: text("error"),
 }, (table) => ({
   statusIdx: index("seo_fix_jobs_status_idx").on(table.status),
   issueIdIdx: index("seo_fix_jobs_issue_id_idx").on(table.issueId),
