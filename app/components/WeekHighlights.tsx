@@ -13,6 +13,7 @@ import { RefreshButton } from "./RefreshButton";
 
 interface HighlightThread {
   id: string;
+  slug?: string;
   title: string;
   category: string;
   author: string;
@@ -34,6 +35,7 @@ const REFERENCE_DATE = new Date('2025-10-28T12:00:00Z');
 const defaultNewThreads: HighlightThread[] = [
   {
     id: "1",
+    slug: "xauusd-cpi-nfp-handling-disable-or-reduce-lots",
     title: "XAUUSD CPI/NFP handling: disable or reduce lots?",
     category: "Strategy Discussion",
     author: "NewsTrader",
@@ -44,6 +46,7 @@ const defaultNewThreads: HighlightThread[] = [
   },
   {
     id: "2",
+    slug: "btcusd-weekend-behavior-do-you-pause",
     title: "BTCUSD weekend behavior: do you pause?",
     category: "Performance Reports",
     author: "CryptoWeekend",
@@ -54,6 +57,7 @@ const defaultNewThreads: HighlightThread[] = [
   },
   {
     id: "3",
+    slug: "gold-trailing-at-1r-2r-3r-steps-best-size",
     title: "Gold trailing at 1R/2R/3R steps: best size?",
     category: "EA Development (MQL4/5)",
     author: "TrailMaster",
@@ -67,6 +71,7 @@ const defaultNewThreads: HighlightThread[] = [
 const defaultTrendingThreads: HighlightThread[] = [
   {
     id: "4",
+    slug: "eurusd-m5-london-session-stable-set-files",
     title: "EURUSD M5 London session: stable set-files",
     category: "EA Library",
     author: "LondonTrader",
@@ -78,6 +83,7 @@ const defaultTrendingThreads: HighlightThread[] = [
   },
   {
     id: "5",
+    slug: "gold-h1-swing-1-2-rrr-with-atr-stop",
     title: "Gold H1 swing: 1:2 RRR with ATR stop",
     category: "Performance Reports",
     author: "SwingMaster",
@@ -88,6 +94,7 @@ const defaultTrendingThreads: HighlightThread[] = [
   },
   {
     id: "6",
+    slug: "new-to-ea-trading-where-to-start",
     title: "New to EA trading - where to start?",
     category: "Beginner Questions",
     author: "NewbieTom",
@@ -102,6 +109,7 @@ const defaultTrendingThreads: HighlightThread[] = [
 const defaultSolvedThreads: HighlightThread[] = [
   {
     id: "7",
+    slug: "how-to-properly-backtest-an-ea-in-mt4",
     title: "How to properly backtest an EA in MT4?",
     category: "Technical Support",
     author: "LearningTrader",
@@ -113,6 +121,7 @@ const defaultSolvedThreads: HighlightThread[] = [
   },
   {
     id: "8",
+    slug: "symbol-suffix-issues-a-pro-ecn-fix",
     title: "Symbol suffix issues (.a, .pro, .ecn) fix?",
     category: "Technical Support",
     author: "SymbolFixer",
@@ -124,6 +133,7 @@ const defaultSolvedThreads: HighlightThread[] = [
   },
   {
     id: "9",
+    slug: "best-scalping-settings-for-eurusd-m5",
     title: "Best scalping settings for EURUSD M5",
     category: "Strategy Discussion",
     author: "ScalpGuru",
@@ -210,6 +220,7 @@ export default function WeekHighlights({
 
     return {
       id: thread.id,
+      slug: thread.slug, // ✅ Preserve slug for navigation
       title: thread.title,
       category: thread.categorySlug.split('-').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1)
@@ -229,15 +240,11 @@ export default function WeekHighlights({
   const displaySolvedThreads = solvedData && solvedData.length > 0 ? solvedData.map(convertToHighlightThread) : solvedThreads;
 
   const handleThreadClick = (thread: HighlightThread) => {
-    // Try to get the fullUrl or slug from the full thread data
-    const fullThread = threadsWithSlug.get(thread.id);
-    const fullUrl = (fullThread as any)?.fullUrl;
-    if (fullUrl) {
-      router.push(fullUrl);
-    } else if (fullThread?.slug) {
-      router.push(`/thread/${fullThread.slug}`);
+    // Use slug if available, otherwise fall back to ID
+    if (thread.slug) {
+      router.push(`/thread/${thread.slug}`);
     } else {
-      // Fallback to ID-based navigation (will need backend support)
+      // Fallback to ID-based navigation
       router.push(`/thread/${thread.id}`);
     }
   };
