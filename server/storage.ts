@@ -2066,7 +2066,7 @@ export interface IStorage {
    */
   getErrorGroups(filters?: {
     severity?: "critical" | "error" | "warning" | "info";
-    status?: "active" | "resolved" | "ignored";
+    status?: "active" | "resolved" | "solved";
     startDate?: Date;
     endDate?: Date;
     search?: string;
@@ -2091,7 +2091,7 @@ export interface IStorage {
    * Update error group status
    */
   updateErrorGroupStatus(groupId: string, data: {
-    status: "active" | "resolved" | "ignored";
+    status: "active" | "resolved" | "solved";
     resolvedBy?: string;
     reason?: string;
   }): Promise<ErrorGroup>;
@@ -5641,7 +5641,7 @@ export class MemStorage implements IStorage {
 
   async getErrorGroups(filters?: {
     severity?: "critical" | "error" | "warning" | "info";
-    status?: "active" | "resolved" | "ignored";
+    status?: "active" | "resolved" | "solved";
     startDate?: Date;
     endDate?: Date;
     search?: string;
@@ -5661,7 +5661,7 @@ export class MemStorage implements IStorage {
   }
 
   async updateErrorGroupStatus(groupId: string, data: {
-    status: "active" | "resolved" | "ignored";
+    status: "active" | "resolved" | "solved";
     resolvedBy?: string;
     reason?: string;
   }): Promise<ErrorGroup> {
@@ -14895,7 +14895,7 @@ export class DrizzleStorage implements IStorage {
    */
   async getErrorGroups(filters?: {
     severity?: "critical" | "error" | "warning" | "info";
-    status?: "active" | "resolved" | "ignored";
+    status?: "active" | "resolved" | "solved";
     startDate?: Date;
     endDate?: Date;
     search?: string;
@@ -15005,7 +15005,7 @@ export class DrizzleStorage implements IStorage {
   async updateErrorGroupStatus(
     groupId: string,
     data: {
-      status: "active" | "resolved" | "ignored";
+      status: "active" | "resolved" | "solved";
       resolvedBy?: string;
       reason?: string;
     }

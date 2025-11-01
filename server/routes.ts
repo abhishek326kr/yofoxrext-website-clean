@@ -10403,8 +10403,8 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const { status, reason } = req.body;
 
       // Validate status
-      if (!['active', 'resolved', 'ignored'].includes(status)) {
-        return res.status(400).json({ error: "Invalid status. Must be 'active', 'resolved', or 'ignored'" });
+      if (!['active', 'resolved', 'solved'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'active', 'resolved', or 'solved'" });
       }
 
       // Update error group status

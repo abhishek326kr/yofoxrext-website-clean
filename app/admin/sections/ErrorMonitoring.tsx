@@ -80,7 +80,7 @@ interface ErrorGroup {
   message: string;
   component?: string;
   severity: 'critical' | 'error' | 'warning' | 'info';
-  status: 'active' | 'resolved' | 'ignored';
+  status: 'active' | 'resolved' | 'solved';
   firstSeen: string;
   lastSeen: string;
   occurrenceCount: number;
@@ -275,8 +275,8 @@ export default function ErrorMonitoring() {
         return <Badge variant="destructive" data-testid={`badge-status-${status}`}>Active</Badge>;
       case 'resolved':
         return <Badge variant="outline" className="text-green-600" data-testid={`badge-status-${status}`}>Resolved</Badge>;
-      case 'ignored':
-        return <Badge variant="secondary" data-testid={`badge-status-${status}`}>Ignored</Badge>;
+      case 'solved':
+        return <Badge variant="secondary" data-testid={`badge-status-${status}`}>Solved</Badge>;
       default:
         return <Badge data-testid={`badge-status-${status}`}>{status}</Badge>;
     }
@@ -995,7 +995,7 @@ export default function ErrorMonitoring() {
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="ignored">Ignored</SelectItem>
+                      <SelectItem value="solved">Solved</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1326,7 +1326,7 @@ export default function ErrorMonitoring() {
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="ignored">Ignored</SelectItem>
+                  <SelectItem value="solved">Solved</SelectItem>
                 </SelectContent>
               </Select>
             </div>

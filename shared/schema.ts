@@ -3003,7 +3003,7 @@ export const errorGroups = pgTable("error_groups", {
   lastSeen: timestamp("last_seen").notNull().defaultNow(),
   occurrenceCount: integer("occurrence_count").notNull().default(1),
   severity: varchar("severity", { length: 20 }).notNull().$type<"critical" | "error" | "warning" | "info">().default("error"),
-  status: varchar("status", { length: 20 }).notNull().$type<"active" | "resolved" | "ignored">().default("active"),
+  status: varchar("status", { length: 20 }).notNull().$type<"active" | "resolved" | "solved">().default("active"),
   resolvedAt: timestamp("resolved_at"),
   resolvedBy: varchar("resolved_by").references(() => users.id),
   metadata: jsonb("metadata").$type<{
@@ -3080,8 +3080,8 @@ export const errorStatusChanges = pgTable("error_status_changes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   errorGroupId: varchar("error_group_id").notNull().references(() => errorGroups.id, { onDelete: "cascade" }),
   changedBy: varchar("changed_by").notNull().references(() => users.id),
-  oldStatus: varchar("old_status", { length: 20 }).notNull().$type<"active" | "resolved" | "ignored">(),
-  newStatus: varchar("new_status", { length: 20 }).notNull().$type<"active" | "resolved" | "ignored">(),
+  oldStatus: varchar("old_status", { length: 20 }).notNull().$type<"active" | "resolved" | "solved">(),
+  newStatus: varchar("new_status", { length: 20 }).notNull().$type<"active" | "resolved" | "solved">(),
   reason: text("reason"),
   changedAt: timestamp("changed_at").notNull().defaultNow(),
 }, (table) => ({
@@ -3149,7 +3149,7 @@ export const insertErrorGroupSchema = createInsertSchema(errorGroups).omit({
   message: z.string().min(1),
   component: z.string().optional(),
   severity: z.enum(["critical", "error", "warning", "info"]).default("error"),
-  status: z.enum(["active", "resolved", "ignored"]).default("active"),
+  status: z.enum(["active", "resolved", "solved"]).default("active"),
 });
 export type InsertErrorGroup = z.infer<typeof insertErrorGroupSchema>;
 export type ErrorGroup = typeof errorGroups.$inferSelect;
@@ -3175,8 +3175,8 @@ export const insertErrorStatusChangeSchema = createInsertSchema(errorStatusChang
 }).extend({
   errorGroupId: z.string().uuid(),
   changedBy: z.string().uuid(),
-  oldStatus: z.enum(["active", "resolved", "ignored"]),
-  newStatus: z.enum(["active", "resolved", "ignored"]),
+  oldStatus: z.enum(["active", "resolved", "solved"]),
+  newStatus: z.enum(["active", "resolved", "solved"]),
   reason: z.string().optional(),
 });
 export type InsertErrorStatusChange = z.infer<typeof insertErrorStatusChangeSchema>;
