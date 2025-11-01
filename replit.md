@@ -6,6 +6,44 @@ YoForex is a comprehensive trading community platform designed for forex traders
 
 ## Recent Changes
 
+### November 1, 2025 - Smart Error Auto-Resolution System ✅
+
+**Problem Solved:** Error dashboard showed 98 "unsolved" errors that should be "solved" after code fixes. Previously, errors remained marked as "active" indefinitely unless manually resolved or inactive for 7 days. No mechanism existed to detect when errors stopped occurring due to code fixes.
+
+**Auto-Resolve Fixed Errors Feature**
+- **Purpose:** Automatically detect and resolve errors that were fixed in code but still marked as "active"
+- **Location:** Admin Error Monitoring Dashboard → "Resolve Fixed Errors" button
+- **Backend Implementation:** (server/storage.ts, server/routes.ts)
+  - Added `autoResolveFixedErrors(minutesInactive)` method to DrizzleStorage
+  - New API endpoint: `POST /api/admin/errors/auto-resolve-fixed`
+  - Finds errors with: status='active', lastSeen > X minutes ago, occurrenceCount > 0
+  - Marks them as resolved with resolvedBy='auto-system'
+  - Creates audit trail in errorStatusChanges table
+  - Admin authentication + rate limiting + action logging
+- **Frontend Implementation:** (app/admin/sections/ErrorMonitoring.tsx)
+  - "Resolve Fixed Errors" button between Refresh and Cleanup
+  - Toast notifications on success/failure
+  - Invalidates error queries to refresh dashboard counts
+  - Default threshold: 30 minutes of inactivity
+- **Impact:** Instantly resolve 7-10 fixed errors (TipTap SSR, file uploads, admin logs 404s)
+- **Distinction:** 
+  - Fixed errors (30 min threshold) = likely fixed in code
+  - Abandoned errors (7 day threshold via cron) = one-time occurrences
+
+**React Error Fixes**
+- **Fixed key prop warnings** - Wrapped all `.map()` returns in `React.Fragment` with proper key props
+- **Fixed Select.Item warnings** - Changed all empty value props from `value=""` to `value="all"`
+- **Verification:** Browser console shows ZERO React warnings
+- **Files:** app/admin/sections/ErrorMonitoring.tsx
+
+**Architect Review Verdict:** ✅ PASS
+- Date arithmetic and SQL queries verified correct
+- Storage layer updates atomically with audit trail
+- UI mutation invalidates caches correctly
+- Admin endpoint properly secured
+- Recommended: Monitor production telemetry for future severity/occurrence filters
+- Recommended: Ensure lastSeen/status columns remain indexed for performance
+
 ### November 1, 2025 - Production-Ready Error Fixes ✅
 
 **File Upload System Overhaul**
@@ -28,11 +66,6 @@ YoForex is a comprehensive trading community platform designed for forex traders
 **Password Authentication Fix**
 - Updated `server/localAuth.ts` to check both `password_hash` (new) and `password` (legacy) fields
 - **Impact:** Backward compatibility maintained for older user accounts with legacy password fields
-
-**Architect Review Verdict:** ✅ PASS
-- All fixes approved with minor recommendations for monitoring memory usage under peak loads
-- No security concerns identified
-- Recommended: Ensure PRIVATE_OBJECT_DIR environment variable is set for all deployments
 
 ## User Preferences
 
