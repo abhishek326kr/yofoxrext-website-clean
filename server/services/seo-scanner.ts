@@ -133,7 +133,7 @@ class SeoScanner {
           const definition = getIssueDefinition(issue.issueType);
           if (!definition) continue;
 
-          await db.insert(seoIssues).values({
+          const [insertedIssue] = await db.insert(seoIssues).values({
             scanId,
             category: definition.category,
             issueType: issue.issueType,
@@ -144,9 +144,28 @@ class SeoScanner {
             description: issue.description,
             autoFixable: definition.autoFixable,
             metadata: issue.metadata,
-          });
+          }).returning();
 
           totalIssues++;
+
+          // Send critical alert immediately for critical severity issues
+          if (definition.severity === 'critical' && insertedIssue) {
+            try {
+              const { sendCriticalSeoAlert } = await import('./seo-alerts.js');
+              await sendCriticalSeoAlert(
+                insertedIssue.id,
+                insertedIssue.issueType,
+                insertedIssue.pageUrl,
+                insertedIssue.pageTitle,
+                insertedIssue.description,
+                insertedIssue.autoFixable,
+                insertedIssue.metadata as Record<string, any> | undefined
+              );
+              console.log(`[SEO SCANNER] Critical alert sent for issue: ${insertedIssue.issueType}`);
+            } catch (alertError) {
+              console.error('[SEO SCANNER] Failed to send critical alert:', alertError);
+            }
+          }
         }
         
         await this.recordScanHistory(url, scanId, options.triggeredBy, issues.length, Date.now() - urlStartTime);

@@ -3376,6 +3376,27 @@ export const seoScanHistory = pgTable("seo_scan_history", {
   scanIdIdx: index("idx_seo_scan_history_scan_id").on(table.scanId),
 }));
 
+// SEO Alert History - Track sent alerts for deduplication
+export const seoAlertHistory = pgTable("seo_alert_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issueId: varchar("issue_id").references(() => seoIssues.id, { onDelete: "cascade" }),
+  notificationType: varchar("notification_type", { length: 50 }).notNull().$type<"critical_alert" | "high_priority_digest">(),
+  recipients: text("recipients").array().notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  emailSubject: text("email_subject").notNull(),
+  metadata: jsonb("metadata").$type<{
+    issueType?: string;
+    pageUrl?: string;
+    severity?: string;
+    issueCount?: number;
+  }>(),
+}, (table) => ({
+  issueIdIdx: index("idx_seo_alert_history_issue_id").on(table.issueId),
+  notificationTypeIdx: index("idx_seo_alert_history_notification_type").on(table.notificationType),
+  sentAtIdx: index("idx_seo_alert_history_sent_at").on(table.sentAt),
+  issueIdSentAtIdx: index("idx_seo_alert_history_issue_sent").on(table.issueId, table.sentAt),
+}));
+
 // ============================================================================
 // SEO MONITORING SYSTEM SCHEMAS AND TYPES
 // ============================================================================
@@ -3512,3 +3533,16 @@ export const insertSeoScanHistorySchema = createInsertSchema(seoScanHistory).omi
 });
 export type InsertSeoScanHistory = z.infer<typeof insertSeoScanHistorySchema>;
 export type SeoScanHistory = typeof seoScanHistory.$inferSelect;
+
+// SEO Alert History
+export const insertSeoAlertHistorySchema = createInsertSchema(seoAlertHistory).omit({
+  id: true,
+  sentAt: true,
+}).extend({
+  issueId: z.string().uuid().optional(),
+  notificationType: z.enum(["critical_alert", "high_priority_digest"]),
+  recipients: z.array(z.string().email()),
+  emailSubject: z.string().min(1),
+});
+export type InsertSeoAlertHistory = z.infer<typeof insertSeoAlertHistorySchema>;
+export type SeoAlertHistory = typeof seoAlertHistory.$inferSelect;

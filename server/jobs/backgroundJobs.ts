@@ -183,6 +183,26 @@ export function startBackgroundJobs(storage: IStorage) {
   
   console.log('[JOBS] Hourly SEO delta scan scheduled (runs at :15 past each hour)');
   
+  // Hourly high-priority SEO digest - Runs at :30 past every hour
+  cron.schedule('30 * * * *', async () => {
+    try {
+      console.log('[SEO ALERTS] Starting hourly high-priority digest...');
+      
+      const { sendHighPriorityDigest } = await import('../services/seo-alerts.js');
+      const sent = await sendHighPriorityDigest();
+      
+      if (sent) {
+        console.log('[SEO ALERTS] High-priority digest sent successfully');
+      } else {
+        console.log('[SEO ALERTS] No high-priority digest sent (no issues or already sent)');
+      }
+    } catch (error: any) {
+      console.error('[SEO ALERTS] Error sending high-priority digest:', error);
+    }
+  });
+  
+  console.log('[JOBS] Hourly SEO high-priority digest scheduled (runs at :30 past each hour)');
+  
   // ============================================
   // ERROR TRACKING BACKGROUND JOBS
   // ============================================
