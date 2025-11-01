@@ -11,7 +11,7 @@ import crypto from "crypto";
 
 // Validation schemas
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().min(1, "Email is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -56,7 +56,7 @@ export async function setupLocalAuth(app: Express) {
   passport.use(
     new LocalStrategy(
       {
-        usernameField: "username",
+        usernameField: "email",
         passwordField: "password",
       },
       async (username, password, done) => {

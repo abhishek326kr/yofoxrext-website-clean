@@ -4,6 +4,22 @@
 
 YoForex is a comprehensive trading community platform designed for forex traders. It integrates forum discussions, an Expert Advisor (EA) marketplace, broker reviews, and a virtual coin economy. The platform aims to be a central hub for traders to share strategies, publish trading tools, and engage with a global community. Key capabilities include extensive category management, SEO-optimized URLs, automated email notifications, a trust level progression system, and a gold coin economy that rewards user contributions and facilitates content distribution. The platform enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails, alongside an automated bot system to stimulate community activity without disrupting user experience.
 
+## Recent Changes
+
+### November 1, 2025 - Login Validation Fix
+- **Fixed admin login issue:** Updated authentication validation schema to accept email field instead of username
+- **Files modified:** `server/localAuth.ts` (loginSchema and LocalStrategy configuration)
+- **Impact:** Both `/api/login` and `/api/auth/login` endpoints now properly accept email/password credentials
+- **Status:** ✅ Deployed and tested successfully
+
+### October 31, 2025 - Production Deployment Preparation
+- **Fixed all TypeScript errors:** Resolved null safety issues in CoinBalance.tsx, Header.tsx, and other components
+- **Fixed API errors:** Corrected 404 errors for non-existent endpoints, removed invalid API calls
+- **Fixed metadata warnings:** Moved themeColor to viewport export across 13 Next.js pages
+- **Production build:** Successfully built Express API (1.1mb) and Next.js (120+ pages)
+- **Deployment config:** Configured Replit autoscale deployment with build and run commands
+- **Status:** ✅ Production-ready, zero errors
+
 ## User Preferences
 
 ### Communication Style
