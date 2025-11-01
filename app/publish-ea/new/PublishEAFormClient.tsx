@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +9,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import Image from "@tiptap/extension-image";
 import Header from "@/components/Header";
 import EnhancedFooter from "@/components/EnhancedFooter";
 import AutoSEOPanel, { type SEOData } from "@/components/AutoSEOPanel";
@@ -21,9 +25,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Upload, 
   X, 
@@ -33,35 +38,68 @@ import {
   FileCode,
   Image as ImageIcon,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  Bold,
+  Italic,
+  Underline as UnderlineIcon,
+  List,
+  ListOrdered
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthPrompt } from "@/hooks/useAuthPrompt";
+import { EA_CATEGORY_OPTIONS } from "@shared/schema";
+import { sanitizeRichTextHTML, countTextCharacters } from "@shared/sanitize";
 
-// EA Categories
-const EA_CATEGORIES = [
-  "Scalping",
-  "Trend Following",
-  "Grid",
-  "Martingale",
-  "Breakout",
-  "News Trading",
-  "Multi-Timeframe"
-];
+// Category emoji mapping
+const CATEGORY_EMOJIS: Record<string, string> = {
+  "Expert Advisor type": "🤖",
+  "Martingale type": "🎲",
+  "Grid": "🔲",
+  "Arbitrage": "💹",
+  "Hedging": "🛡️",
+  "Scalping": "⚡",
+  "News": "📰",
+  "Trend": "📈",
+  "Level trading": "📊",
+  "Neural networks": "🧠",
+  "Multicurrency": "🌍"
+};
 
 // Form validation schema
 const eaFormSchema = z.object({
   title: z.string()
     .min(30, "Title must be at least 30 characters")
     .max(60, "Title must be at most 60 characters"),
-  category: z.enum(["Scalping", "Trend Following", "Grid", "Martingale", "Breakout", "News Trading", "Multi-Timeframe"] as const),
+  tags: z.array(z.string())
+    .min(1, "Select at least 1 category")
+    .max(5, "Maximum 5 categories allowed")
+    .refine(
+      (tags) => tags.every(tag => 
+        EA_CATEGORY_OPTIONS.includes(tag as any) || tag.startsWith('Custom:')
+      ),
+      "Invalid category selected"
+    ),
+  customCategory: z.string().optional(),
   description: z.string()
-    .min(200, "Description must be at least 200 characters")
-    .max(2000, "Description must be at most 2000 characters"),
+    .min(1, "Description is required")
+    .refine(
+      (html) => {
+        const textLength = countTextCharacters(html);
+        return textLength >= 200;
+      },
+      "Description must be at least 200 characters (excluding HTML tags)"
+    )
+    .refine(
+      (html) => {
+        const textLength = countTextCharacters(html);
+        return textLength <= 2000;
+      },
+      "Description must be at most 2000 characters (excluding HTML tags)"
+    ),
   priceCoins: z.number()
     .int("Price must be a whole number")
-    .min(1, "Price must be at least 1 coin")
+    .min(20, "Price must be at least 20 coins for EA content")
     .max(1000, "Price must be at most 1000 coins"),
   eaFileUrl: z.string().min(1, "EA file is required"),
   imageUrls: z.array(z.string()).max(5, "Maximum 5 images allowed").default([]),
@@ -75,11 +113,319 @@ const eaFormSchema = z.object({
 
 type EAFormData = z.infer<typeof eaFormSchema>;
 
+interface RichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageCount, setImageCount] = useState(0);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      Image.configure({
+        inline: true,
+        allowBase64: false,
+      }),
+    ],
+    content: value || '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      onChange(html);
+      
+      const images = editor.getJSON().content?.filter((node: any) => 
+        node.type === 'paragraph' && node.content?.some((child: any) => child.type === 'image')
+      ) || [];
+      const totalImages = images.reduce((count: number, node: any) => {
+        return count + (node.content?.filter((child: any) => child.type === 'image').length || 0);
+      }, 0);
+      setImageCount(totalImages);
+    },
+  });
+
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || '');
+    }
+  }, [editor, value]);
+
+  useEffect(() => {
+    if (editor) {
+      const updateImageCount = () => {
+        const json = editor.getJSON();
+        let count = 0;
+        
+        const countImages = (node: any) => {
+          if (node.type === 'image') {
+            count++;
+          }
+          if (node.content) {
+            node.content.forEach(countImages);
+          }
+        };
+        
+        if (json.content) {
+          json.content.forEach(countImages);
+        }
+        
+        setImageCount(count);
+      };
+      
+      updateImageCount();
+    }
+  }, [editor]);
+
+  const handleImageUpload = async (file: File) => {
+    if (imageCount >= 5) {
+      toast({
+        title: "Image limit reached",
+        description: "Maximum 5 inline images allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'ea-inline-image');
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const data = await response.json();
+      
+      if (editor) {
+        editor.chain().focus().setImage({ src: data.url }).run();
+        toast({
+          title: "Image inserted",
+          description: "Image added to description",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageButtonClick = () => {
+    if (imageCount >= 5) {
+      toast({
+        title: "Image limit reached",
+        description: "Maximum 5 inline images allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a PNG, JPG, or WEBP image",
+          variant: "destructive",
+        });
+        return;
+      }
+      handleImageUpload(file);
+    }
+    e.target.value = '';
+  };
+
+  if (!editor) {
+    return null;
+  }
+
+  const textLength = countTextCharacters(editor.getHTML());
+  const isImageLimitReached = imageCount >= 5;
+
+  const getCharCountColor = () => {
+    if (textLength < 200) return 'text-destructive';
+    if (textLength < 500) return 'text-yellow-600 dark:text-yellow-500';
+    return 'text-green-600 dark:text-green-500';
+  };
+
+  return (
+    <div className="border rounded-lg overflow-hidden" data-testid="rich-text-editor">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      
+      <div className="bg-muted/50 border-b p-2 flex flex-wrap gap-1" data-testid="editor-toolbar">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={editor.isActive('bold') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                className="min-w-[44px] min-h-[44px] md:min-w-[36px] md:min-h-[36px]"
+                data-testid="button-bold"
+              >
+                <Bold className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Bold (Ctrl+B)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={editor.isActive('italic') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                className="min-w-[44px] min-h-[44px] md:min-w-[36px] md:min-h-[36px]"
+                data-testid="button-italic"
+              >
+                <Italic className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Italic (Ctrl+I)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={editor.isActive('underline') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                className="min-w-[44px] min-h-[44px] md:min-w-[36px] md:min-h-[36px]"
+                data-testid="button-underline"
+              >
+                <UnderlineIcon className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Underline (Ctrl+U)</TooltipContent>
+          </Tooltip>
+
+          <div className="w-px bg-border mx-1" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={editor.isActive('bulletList') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                className="min-w-[44px] min-h-[44px] md:min-w-[36px] md:min-h-[36px]"
+                data-testid="button-bullet-list"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Bullet List</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={editor.isActive('orderedList') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                className="min-w-[44px] min-h-[44px] md:min-w-[36px] md:min-h-[36px]"
+                data-testid="button-ordered-list"
+              >
+                <ListOrdered className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Numbered List</TooltipContent>
+          </Tooltip>
+
+          <div className="w-px bg-border mx-1" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleImageButtonClick}
+                disabled={isImageLimitReached || uploadingImage}
+                className="min-w-[44px] min-h-[44px] md:min-w-[36px] md:min-h-[36px]"
+                data-testid="button-insert-image"
+              >
+                {uploadingImage ? (
+                  <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                ) : (
+                  <ImageIcon className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isImageLimitReached ? `${imageCount}/5 images used (limit reached)` : `Insert Image (${imageCount}/5)`}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      <EditorContent editor={editor} />
+
+      <div className={`px-4 py-2 bg-muted/30 border-t text-sm ${getCharCountColor()}`} data-testid="character-counter">
+        {textLength} / 2000 characters (min 200)
+        {textLength < 200 && <span className="ml-2 text-xs">• Need {200 - textLength} more</span>}
+      </div>
+    </div>
+  );
+}
+
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
 export default function PublishEAFormClient() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [seoData, setSeoData] = useState<SEOData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // Upload progress tracking
+  const [fileUploadProgress, setFileUploadProgress] = useState(0);
+  const [fileUploadSpeed, setFileUploadSpeed] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedFileSize, setUploadedFileSize] = useState(0);
+  const [imageUploadProgress, setImageUploadProgress] = useState<{ [key: number]: number }>({});
+  
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -90,9 +436,10 @@ export default function PublishEAFormClient() {
     resolver: zodResolver(eaFormSchema),
     defaultValues: {
       title: "",
-      category: "Trend Following",
+      tags: [],
+      customCategory: "",
       description: "",
-      priceCoins: 50,
+      priceCoins: 20,
       eaFileUrl: "",
       imageUrls: [],
       slug: "",
@@ -107,6 +454,8 @@ export default function PublishEAFormClient() {
   const priceCoins = form.watch("priceCoins");
   const imageUrls = form.watch("imageUrls");
   const eaFileUrl = form.watch("eaFileUrl");
+  const tags = form.watch("tags");
+  const customCategory = form.watch("customCategory");
 
   // Update SEO data when it changes
   const handleSEOUpdate = useCallback((data: SEOData) => {
@@ -117,7 +466,100 @@ export default function PublishEAFormClient() {
     form.setValue("hashtags", data.hashtags);
   }, [form]);
 
-  // EA File upload
+  // Enhanced EA File upload with progress tracking
+  const handleEAFileUpload = async (file: File) => {
+    // Validate file type
+    const validExtensions = ['.ex4', '.ex5', '.mq4', '.zip'];
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!validExtensions.includes(fileExtension)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload .ex4, .ex5, .mq4, or .zip files only",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "EA file must be less than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingFile(true);
+    setFileUploadProgress(0);
+    setFileUploadSpeed(0);
+    setUploadedFileName(file.name);
+    setUploadedFileSize(file.size);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'ea-file');
+
+    const xhr = new XMLHttpRequest();
+    let startTime = Date.now();
+    let lastLoaded = 0;
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        setFileUploadProgress(percentComplete);
+
+        // Calculate upload speed
+        const currentTime = Date.now();
+        const timeDiff = (currentTime - startTime) / 1000; // seconds
+        const loadedDiff = e.loaded - lastLoaded;
+        const speed = loadedDiff / timeDiff; // bytes per second
+        setFileUploadSpeed(speed);
+        
+        lastLoaded = e.loaded;
+        startTime = currentTime;
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          form.setValue("eaFileUrl", data.url);
+          toast({
+            title: "File uploaded successfully",
+            description: `${file.name} (${formatFileSize(file.size)})`,
+          });
+        } catch (error) {
+          toast({
+            title: "Upload failed",
+            description: "Failed to process response",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Upload failed",
+          description: "Server error occurred",
+          variant: "destructive",
+        });
+      }
+      setUploadingFile(false);
+    });
+
+    xhr.addEventListener('error', () => {
+      toast({
+        title: "Upload failed",
+        description: "Network error occurred",
+        variant: "destructive",
+      });
+      setUploadingFile(false);
+    });
+
+    xhr.open('POST', '/api/upload');
+    xhr.send(formData);
+  };
+
   const { getRootProps: getFileRootProps, getInputProps: getFileInputProps, isDragActive: isFileDragActive } = useDropzone({
     accept: {
       'application/octet-stream': ['.ex4', '.ex5', '.mq4'],
@@ -125,103 +567,196 @@ export default function PublishEAFormClient() {
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: false,
-    onDrop: async (acceptedFiles) => {
-      if (acceptedFiles.length === 0) return;
-      
-      setUploadingFile(true);
-      const formData = new FormData();
-      formData.append('file', acceptedFiles[0]);
-      formData.append('type', 'ea-file');
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      if (rejectedFiles.length > 0) {
+        const rejection = rejectedFiles[0];
+        if (rejection.errors[0]?.code === 'file-too-large') {
+          toast({
+            title: "File too large",
+            description: "EA file must be less than 10MB",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Invalid file",
+            description: "Please upload a valid EA file",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
-      try {
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error('Upload failed');
-
-        const data = await response.json();
-        form.setValue("eaFileUrl", data.url);
-        toast({
-          title: "File uploaded",
-          description: "EA file uploaded successfully",
-        });
-      } catch (error) {
-        toast({
-          title: "Upload failed",
-          description: "Failed to upload EA file",
-          variant: "destructive",
-        });
-      } finally {
-        setUploadingFile(false);
+      if (acceptedFiles.length > 0) {
+        handleEAFileUpload(acceptedFiles[0]);
       }
     }
   });
 
-  // Image upload
-  const { getRootProps: getImageRootProps, getInputProps: getImageInputProps, isDragActive: isImageDragActive } = useDropzone({
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.webp']
-    },
-    maxSize: 5 * 1024 * 1024, // 5MB per image
-    multiple: true,
-    maxFiles: 5,
-    onDrop: async (acceptedFiles) => {
-      if (acceptedFiles.length === 0) return;
-      
-      setUploadingImages(true);
-      const uploadPromises = acceptedFiles.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', 'ea-screenshot');
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error('Upload failed');
-        const data = await response.json();
-        return data.url;
+  // Individual screenshot upload for specific slot
+  const handleScreenshotUpload = async (file: File, slotIndex: number) => {
+    // Validate file type
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload PNG, JPG, or WEBP images only",
+        variant: "destructive",
       });
+      return;
+    }
 
-      try {
-        const urls = await Promise.all(uploadPromises);
-        const currentUrls = form.getValues("imageUrls");
-        const newUrls = [...currentUrls, ...urls].slice(0, 5);
-        form.setValue("imageUrls", newUrls);
-        toast({
-          title: "Images uploaded",
-          description: `${urls.length} image(s) uploaded successfully`,
-        });
-      } catch (error) {
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Images must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setImageUploadProgress(prev => ({ ...prev, [slotIndex]: 0 }));
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'ea-screenshot');
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        setImageUploadProgress(prev => ({ ...prev, [slotIndex]: percentComplete }));
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          const currentUrls = form.getValues("imageUrls");
+          const newUrls = [...currentUrls];
+          newUrls[slotIndex] = data.url;
+          form.setValue("imageUrls", newUrls);
+          toast({
+            title: "Screenshot uploaded",
+            description: `Slot ${slotIndex + 1} updated`,
+          });
+        } catch (error) {
+          toast({
+            title: "Upload failed",
+            description: "Failed to process response",
+            variant: "destructive",
+          });
+        }
+      } else {
         toast({
           title: "Upload failed",
-          description: "Failed to upload some images",
+          description: "Server error occurred",
           variant: "destructive",
         });
-      } finally {
-        setUploadingImages(false);
       }
-    }
-  });
+      setImageUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[slotIndex];
+        return newProgress;
+      });
+    });
 
-  // Remove image
+    xhr.addEventListener('error', () => {
+      toast({
+        title: "Upload failed",
+        description: "Network error occurred",
+        variant: "destructive",
+      });
+      setImageUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[slotIndex];
+        return newProgress;
+      });
+    });
+
+    xhr.open('POST', '/api/upload');
+    xhr.send(formData);
+  };
+
+  // Remove image from specific slot
   const removeImage = (index: number) => {
     const currentUrls = form.getValues("imageUrls");
     const newUrls = currentUrls.filter((_, i) => i !== index);
     form.setValue("imageUrls", newUrls);
+    toast({
+      title: "Screenshot removed",
+      description: `Slot ${index + 1} cleared`,
+    });
+  };
+
+  // Drag and drop handlers for reordering
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const currentUrls = form.getValues("imageUrls");
+    const newUrls = [...currentUrls];
+    
+    // Swap images
+    const temp = newUrls[draggedIndex];
+    newUrls[draggedIndex] = newUrls[dropIndex];
+    newUrls[dropIndex] = temp;
+    
+    form.setValue("imageUrls", newUrls);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    
+    toast({
+      title: "Screenshots reordered",
+      description: `Moved from slot ${draggedIndex + 1} to slot ${dropIndex + 1}`,
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   // Submit mutation
   const publishMutation = useMutation({
     mutationFn: async (data: EAFormData) => {
+      // Use the first tag as the main category for backward compatibility
+      const primaryCategory = data.tags[0] || "";
+      
+      // Sanitize HTML description before submission
+      const sanitizedDescription = sanitizeRichTextHTML(data.description);
+      
       return await apiRequest('POST', '/api/content', {
-        ...data,
+        title: data.title,
+        description: sanitizedDescription,
+        priceCoins: data.priceCoins,
+        eaFileUrl: data.eaFileUrl,
+        imageUrls: data.imageUrls,
+        category: primaryCategory, // Use first tag as primary category
+        tags: data.tags, // Send all selected categories as tags
         type: 'ea',
         status: 'pending',
         isFree: false,
+        slug: data.slug,
         focusKeyword: data.primaryKeyword,
         autoMetaDescription: data.seoExcerpt,
         autoImageAltTexts: imageUrls.map((url, i) => `${title} - Screenshot ${i + 1}`)
@@ -358,29 +893,173 @@ export default function PublishEAFormClient() {
                         )}
                       />
 
-                      {/* Category */}
+                      {/* Categories (Multi-select with checkbox grid) */}
                       <FormField
                         control={form.control}
-                        name="category"
+                        name="tags"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Category *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-category">
-                                  <SelectValue placeholder="Select a category" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {EA_CATEGORIES.map((cat) => (
-                                  <SelectItem key={cat} value={cat}>
-                                    {cat}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center justify-between">
+                              <FormLabel>Categories * (Select 1-5)</FormLabel>
+                              <span className="text-sm text-muted-foreground">
+                                {tags.length}/5 selected
+                              </span>
+                            </div>
+                            <FormControl>
+                              <div className="space-y-4">
+                                {/* Predefined Categories Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {EA_CATEGORY_OPTIONS.map((category) => {
+                                    const isChecked = tags.includes(category);
+                                    const isDisabled = !isChecked && tags.length >= 5;
+                                    
+                                    return (
+                                      <div
+                                        key={category}
+                                        className={`flex items-center space-x-2 border rounded-lg p-3 transition-colors ${
+                                          isChecked 
+                                            ? 'bg-primary/10 border-primary' 
+                                            : isDisabled
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : 'hover:bg-muted cursor-pointer'
+                                        }`}
+                                        onClick={() => {
+                                          if (isDisabled) return;
+                                          const newTags = isChecked
+                                            ? tags.filter((t) => t !== category)
+                                            : [...tags, category];
+                                          field.onChange(newTags);
+                                        }}
+                                        data-testid={`checkbox-category-${category.toLowerCase().replace(/\s+/g, '-')}`}
+                                      >
+                                        <Checkbox
+                                          checked={isChecked}
+                                          disabled={isDisabled}
+                                          onCheckedChange={(checked) => {
+                                            const newTags = checked
+                                              ? [...tags, category]
+                                              : tags.filter((t) => t !== category);
+                                            field.onChange(newTags);
+                                          }}
+                                        />
+                                        <label className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1">
+                                          <span className="text-lg">{CATEGORY_EMOJIS[category]}</span>
+                                          <span>{category}</span>
+                                        </label>
+                                      </div>
+                                    );
+                                  })}
+                                  
+                                  {/* Custom Category Checkbox */}
+                                  <div
+                                    className={`flex items-center space-x-2 border rounded-lg p-3 transition-colors ${
+                                      customCategory && tags.some(t => t.startsWith('Custom:'))
+                                        ? 'bg-primary/10 border-primary' 
+                                        : tags.length >= 5 && !tags.some(t => t.startsWith('Custom:'))
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : 'hover:bg-muted cursor-pointer'
+                                    }`}
+                                    data-testid="checkbox-category-custom"
+                                  >
+                                    <Checkbox
+                                      checked={tags.some(t => t.startsWith('Custom:'))}
+                                      disabled={tags.length >= 5 && !tags.some(t => t.startsWith('Custom:'))}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          // Don't add to tags yet, wait for user to input custom name
+                                        } else {
+                                          // Remove custom category from tags
+                                          const newTags = tags.filter(t => !t.startsWith('Custom:'));
+                                          field.onChange(newTags);
+                                          form.setValue('customCategory', '');
+                                        }
+                                      }}
+                                    />
+                                    <label className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1">
+                                      <span className="text-lg">✨</span>
+                                      <span>Custom</span>
+                                    </label>
+                                  </div>
+                                </div>
+                                
+                                {/* Custom Category Input */}
+                                {tags.some(t => t.startsWith('Custom:')) && (
+                                  <div className="pt-2">
+                                    <FormField
+                                      control={form.control}
+                                      name="customCategory"
+                                      render={({ field: customField }) => (
+                                        <FormItem>
+                                          <FormLabel>Custom Category Name</FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              {...customField}
+                                              placeholder="e.g., High-Frequency Trading"
+                                              maxLength={50}
+                                              data-testid="input-custom-category"
+                                              onChange={(e) => {
+                                                const value = e.target.value;
+                                                customField.onChange(value);
+                                                
+                                                // Update tags array with custom category
+                                                if (value.length >= 3) {
+                                                  const customTag = `Custom: ${value}`;
+                                                  const newTags = tags.filter(t => !t.startsWith('Custom:'));
+                                                  form.setValue('tags', [...newTags, customTag]);
+                                                } else {
+                                                  // Remove custom tag if input is too short
+                                                  const newTags = tags.filter(t => !t.startsWith('Custom:'));
+                                                  form.setValue('tags', newTags);
+                                                }
+                                              }}
+                                            />
+                                          </FormControl>
+                                          <FormDescription>
+                                            3-50 characters, alphanumeric and spaces only
+                                          </FormDescription>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Selected Categories Badges */}
+                                {tags.length > 0 && (
+                                  <div className="pt-2">
+                                    <p className="text-sm font-medium mb-2">Selected Categories:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {tags.map((tag, index) => (
+                                        <Badge
+                                          key={index}
+                                          variant="secondary"
+                                          className="gap-1"
+                                          data-testid={`badge-selected-${index}`}
+                                        >
+                                          {tag.startsWith('Custom:') ? '✨' : CATEGORY_EMOJIS[tag] || ''}
+                                          {tag}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const newTags = tags.filter((_, i) => i !== index);
+                                              field.onChange(newTags);
+                                              if (tag.startsWith('Custom:')) {
+                                                form.setValue('customCategory', '');
+                                              }
+                                            }}
+                                            className="ml-1 hover:text-destructive"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
                             <FormDescription>
-                              Choose the trading strategy category
+                              Select 1-5 categories that best describe your EA's trading strategy
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -395,20 +1074,14 @@ export default function PublishEAFormClient() {
                           <FormItem>
                             <FormLabel>Description *</FormLabel>
                             <FormControl>
-                              <div className="relative">
-                                <Textarea
-                                  placeholder="Describe your EA's features, trading strategy, recommended settings, backtest results, etc..."
-                                  rows={10}
-                                  {...field}
-                                  data-testid="textarea-description"
-                                />
-                                <div className="absolute right-3 bottom-3 text-xs text-muted-foreground">
-                                  {field.value.length}/2000
-                                </div>
-                              </div>
+                              <RichTextEditor
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Describe your EA's features, trading strategy, recommended settings, backtest results, etc..."
+                              />
                             </FormControl>
                             <FormDescription>
-                              200-2000 characters. Include key features, strategy, and performance metrics.
+                              200-2000 characters (text only, HTML tags excluded). Include key features, strategy, and performance metrics. You can format text and add up to 5 inline images.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -425,7 +1098,7 @@ export default function PublishEAFormClient() {
                             <FormControl>
                               <Input
                                 type="number"
-                                min={1}
+                                min={20}
                                 max={1000}
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -433,7 +1106,7 @@ export default function PublishEAFormClient() {
                               />
                             </FormControl>
                             <FormDescription>
-                              1-1000 coins. Users will pay this amount to download your EA.
+                              20-1000 coins—users pay this to download your EA.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -445,113 +1118,266 @@ export default function PublishEAFormClient() {
 
                 {/* Tab 2: Files & Media */}
                 <TabsContent value="files" className="space-y-6 mt-6">
+                  {/* Enhanced EA File Upload Zone */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>EA File Upload</CardTitle>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileCode className="h-5 w-5" />
+                        EA File Upload
+                      </CardTitle>
                       <CardDescription>
-                        Upload your Expert Advisor file (.ex4, .ex5, .mq4, or .zip)
+                        Upload your Expert Advisor file (.ex4, .ex5, .mq4, or .zip) - Maximum 10MB
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div
                         {...getFileRootProps()}
-                        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                          isFileDragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/25 hover:border-primary/50'
+                        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
+                          isFileDragActive 
+                            ? 'border-primary bg-primary/10 scale-[1.02]' 
+                            : eaFileUrl && !uploadingFile
+                            ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                            : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
                         }`}
                         data-testid="dropzone-ea-file"
                       >
                         <input {...getFileInputProps()} />
+                        
                         {uploadingFile ? (
-                          <div className="space-y-2">
-                            <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto" />
-                            <p className="text-sm text-muted-foreground">Uploading...</p>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-center">
+                              <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                            </div>
+                            <div className="space-y-2">
+                              <p className="font-medium">Uploading {uploadedFileName}...</p>
+                              <Progress value={fileUploadProgress} className="h-2" />
+                              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                <span>{fileUploadProgress}% complete</span>
+                                {fileUploadSpeed > 0 && (
+                                  <span>{formatFileSize(fileUploadSpeed)}/s</span>
+                                )}
+                              </div>
+                              {uploadedFileSize > 0 && fileUploadProgress < 100 && (
+                                <p className="text-xs text-muted-foreground">
+                                  {formatFileSize(uploadedFileSize * (fileUploadProgress / 100))} of {formatFileSize(uploadedFileSize)}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         ) : eaFileUrl ? (
-                          <div className="space-y-2">
-                            <CheckCircle className="h-12 w-12 mx-auto text-green-500" />
-                            <p className="font-medium">EA File Uploaded</p>
-                            <p className="text-sm text-muted-foreground">{eaFileUrl.split('/').pop()}</p>
+                          <div className="space-y-3">
+                            <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
+                            <div>
+                              <p className="font-semibold text-lg mb-1">✓ EA File Uploaded Successfully</p>
+                              <p className="text-sm text-muted-foreground font-mono">
+                                {uploadedFileName || eaFileUrl.split('/').pop()}
+                              </p>
+                              {uploadedFileSize > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Size: {formatFileSize(uploadedFileSize)}
+                                </p>
+                              )}
+                            </div>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                form.setValue("eaFileUrl", "");
+                                if (confirm("Are you sure you want to replace the uploaded EA file?")) {
+                                  form.setValue("eaFileUrl", "");
+                                  setUploadedFileName("");
+                                  setUploadedFileSize(0);
+                                  setFileUploadProgress(0);
+                                }
                               }}
+                              className="min-w-[120px]"
+                              data-testid="button-replace-ea-file"
                             >
-                              <X className="h-4 w-4 mr-2" />
-                              Remove
+                              <Upload className="h-4 w-4 mr-2" />
+                              Replace File
                             </Button>
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-                            <p className="font-medium">Drop EA file here or click to browse</p>
-                            <p className="text-sm text-muted-foreground">
-                              Accepts: .ex4, .ex5, .mq4, .zip • Max 10MB
-                            </p>
+                          <div className="space-y-3">
+                            <Upload className="h-16 w-16 mx-auto text-muted-foreground" />
+                            <div>
+                              <p className="font-semibold text-lg mb-1">
+                                Drop .ex4, .ex5, .mq4, or .zip file here
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                or click to browse your files
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                              <span>✓ Max 10MB</span>
+                              <span>•</span>
+                              <span>✓ Single file only</span>
+                            </div>
                           </div>
                         )}
                       </div>
                       {form.formState.errors.eaFileUrl && (
-                        <p className="text-sm text-destructive mt-2">{form.formState.errors.eaFileUrl.message}</p>
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            {form.formState.errors.eaFileUrl.message}
+                          </AlertDescription>
+                        </Alert>
                       )}
                     </CardContent>
                   </Card>
 
+                  {/* 5-Slot Screenshot Manager */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Screenshots (Optional)</CardTitle>
+                      <CardTitle className="flex items-center gap-2">
+                        <ImageIcon className="h-5 w-5" />
+                        Screenshots (Optional)
+                      </CardTitle>
                       <CardDescription>
-                        Upload 0-5 screenshots of your EA in action
+                        Upload up to 5 screenshots. First image will be the cover. Drag to reorder.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {imageUrls.length > 0 && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {imageUrls.map((url, index) => (
-                            <div key={index} className="relative aspect-video rounded-lg overflow-hidden border">
-                              <img src={url} alt={`Screenshot ${index + 1}`} className="w-full h-full object-cover" />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="absolute top-2 right-2 h-6 w-6"
-                                onClick={() => removeImage(index)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {/* Helpful Tips */}
+                      <Alert>
+                        <Sparkles className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          💡 <strong>Pro tip:</strong> Include MT4/MT5 trading results, backtest reports, and strategy performance charts for better engagement!
+                        </AlertDescription>
+                      </Alert>
 
-                      {imageUrls.length < 5 && (
-                        <div
-                          {...getImageRootProps()}
-                          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                            isImageDragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/25 hover:border-primary/50'
-                          }`}
-                          data-testid="dropzone-screenshots"
-                        >
-                          <input {...getImageInputProps()} />
-                          {uploadingImages ? (
-                            <div className="space-y-2">
-                              <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto" />
-                              <p className="text-sm text-muted-foreground">Uploading...</p>
+                      {/* 5 Screenshot Slots */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {[0, 1, 2, 3, 4].map((slotIndex) => {
+                          const imageUrl = imageUrls[slotIndex];
+                          const isUploading = imageUploadProgress[slotIndex] !== undefined;
+                          const uploadProgress = imageUploadProgress[slotIndex] || 0;
+                          const isDraggedOver = dragOverIndex === slotIndex;
+                          const isDragging = draggedIndex === slotIndex;
+
+                          return (
+                            <div
+                              key={slotIndex}
+                              className={`relative aspect-[4/3] rounded-lg border-2 transition-all ${
+                                isDraggedOver
+                                  ? 'border-primary bg-primary/10 scale-105'
+                                  : imageUrl
+                                  ? 'border-muted bg-muted/20'
+                                  : 'border-dashed border-muted-foreground/25'
+                              } ${isDragging ? 'opacity-50' : 'opacity-100'}`}
+                              data-testid={`screenshot-slot-${slotIndex}`}
+                            >
+                              {isUploading ? (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-background">
+                                  <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mb-2" />
+                                  <p className="text-xs text-muted-foreground">{uploadProgress}%</p>
+                                  <Progress value={uploadProgress} className="w-full h-1 mt-2" />
+                                </div>
+                              ) : imageUrl ? (
+                                <div
+                                  className="relative h-full group cursor-move"
+                                  draggable
+                                  onDragStart={() => handleDragStart(slotIndex)}
+                                  onDragOver={(e) => handleDragOver(e, slotIndex)}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={(e) => handleDrop(e, slotIndex)}
+                                  onDragEnd={handleDragEnd}
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Screenshot ${slotIndex + 1}`}
+                                    className="w-full h-full object-cover rounded-lg"
+                                  />
+                                  
+                                  {/* Slot Number Badge */}
+                                  <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded">
+                                    #{slotIndex + 1}
+                                    {slotIndex === 0 && " COVER"}
+                                  </div>
+
+                                  {/* Delete Button - Shows on Hover */}
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Remove screenshot from slot ${slotIndex + 1}?`)) {
+                                        removeImage(slotIndex);
+                                      }
+                                    }}
+                                    data-testid={`button-delete-screenshot-${slotIndex}`}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+
+                                  {/* Drag Handle Indicator */}
+                                  <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-70 transition-opacity">
+                                    <div className="bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                      Drag to reorder
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label
+                                  htmlFor={`screenshot-upload-${slotIndex}`}
+                                  className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors p-4"
+                                  onDragOver={(e) => handleDragOver(e, slotIndex)}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    const files = e.dataTransfer.files;
+                                    if (files.length > 0) {
+                                      handleScreenshotUpload(files[0], slotIndex);
+                                    }
+                                    setDragOverIndex(null);
+                                  }}
+                                >
+                                  <input
+                                    id={`screenshot-upload-${slotIndex}`}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        handleScreenshotUpload(file, slotIndex);
+                                      }
+                                      e.target.value = '';
+                                    }}
+                                    data-testid={`input-screenshot-${slotIndex}`}
+                                  />
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className="h-12 w-12 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
+                                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-medium text-muted-foreground">
+                                        Slot {slotIndex + 1}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground/70">
+                                        Click or Drop
+                                      </p>
+                                    </div>
+                                  </div>
+                                </label>
+                              )}
                             </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground" />
-                              <p className="text-sm font-medium">Add Screenshots</p>
-                              <p className="text-xs text-muted-foreground">
-                                {imageUrls.length}/5 images • PNG, JPG, WEBP • Max 5MB each
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
+
+                      {/* Screenshot Stats & Info */}
+                      <div className="flex items-center justify-between text-sm text-muted-foreground border-t pt-4">
+                        <span>
+                          {imageUrls.length} / 5 screenshots uploaded
+                          {imageUrls.length === 5 && " (Maximum reached)"}
+                        </span>
+                        <span className="text-xs">PNG, JPG, WEBP • Max 5MB each</span>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
