@@ -6,6 +6,13 @@ YoForex is a comprehensive trading community platform designed for forex traders
 
 ## Recent Changes
 
+### November 1, 2025 - Production Build Fix & TypeScript Resolution
+- **Fixed TypeScript compilation error:** Added missing `User` type import to server/routes.ts
+- **Build status:** Successfully built both Express API (1.1mb) and Next.js (120+ pages)
+- **TypeScript check:** ✅ Passed in 50s with zero errors
+- **Files modified:** `server/routes.ts` (added `type User` to imports from shared/schema)
+- **Status:** ✅ Production build ready for deployment
+
 ### November 1, 2025 - Complete Error Resolution & Database Cleanup
 - **Fixed all 55 active errors:** Comprehensive error remediation from error tracking system
 - **Critical fixes implemented:**

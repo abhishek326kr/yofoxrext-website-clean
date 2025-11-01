@@ -25,6 +25,7 @@ import {
   insertFeedbackSchema,
   BADGE_METADATA,
   type BadgeType,
+  type User,
   coinTransactions,
   profiles,
   forumReplies,
