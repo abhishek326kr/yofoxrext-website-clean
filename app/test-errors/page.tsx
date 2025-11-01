@@ -652,7 +652,7 @@ export default function ErrorTestPage() {
                   <li>Go to Admin Dashboard → Error Monitoring</li>
                   <li>You should see the errors appear in the error groups table</li>
                   <li>Click on an error group to see details and individual events</li>
-                  <li>Try changing error statuses (resolved/ignored)</li>
+                  <li>Try changing error statuses (resolved/solved)</li>
                   <li>Check the Analytics tab for error statistics</li>
                 </ol>
               </AlertDescription>
