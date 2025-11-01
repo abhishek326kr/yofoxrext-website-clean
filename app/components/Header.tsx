@@ -183,6 +183,26 @@ export default function Header() {
                 Broker Reviews
               </Button>
             </Link>
+            <Link href="/marketplace">
+              <Button 
+                variant={pathname === "/marketplace" ? "default" : "ghost"} 
+                size="sm" 
+                data-testid="button-marketplace"
+                aria-current={pathname === "/marketplace" ? "page" : undefined}
+              >
+                Marketplace
+              </Button>
+            </Link>
+            <Link href="/publish-ea">
+              <Button 
+                variant={pathname === "/publish-ea" || pathname?.startsWith("/publish-ea/") || pathname?.startsWith("/ea/") ? "default" : "ghost"} 
+                size="sm" 
+                data-testid="button-publish-ea"
+                aria-current={pathname === "/publish-ea" || pathname?.startsWith("/publish-ea/") ? "page" : undefined}
+              >
+                Publish EA
+              </Button>
+            </Link>
             <Link href="/members">
               <Button 
                 variant={pathname === "/members" ? "default" : "ghost"} 
@@ -398,6 +418,24 @@ export default function Header() {
                       data-testid="mobile-link-brokers"
                     >
                       Broker Reviews
+                    </Button>
+                  </Link>
+                  <Link href="/marketplace" onClick={() => setMobileMenuOpen(false)}>
+                    <Button 
+                      variant={pathname === "/marketplace" ? "default" : "ghost"} 
+                      className="w-full justify-start"
+                      data-testid="mobile-link-marketplace"
+                    >
+                      Marketplace
+                    </Button>
+                  </Link>
+                  <Link href="/publish-ea" onClick={() => setMobileMenuOpen(false)}>
+                    <Button 
+                      variant={pathname === "/publish-ea" || pathname?.startsWith("/publish-ea/") || pathname?.startsWith("/ea/") ? "default" : "ghost"} 
+                      className="w-full justify-start"
+                      data-testid="mobile-link-publish-ea"
+                    >
+                      Publish EA
                     </Button>
                   </Link>
                   <Link href="/members" onClick={() => setMobileMenuOpen(false)}>
