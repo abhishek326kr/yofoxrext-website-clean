@@ -242,7 +242,12 @@ export default function WeekHighlights({
   const handleThreadClick = (thread: HighlightThread) => {
     // Use slug if available, otherwise fall back to ID
     if (thread.slug) {
-      router.push(`/thread/${thread.slug}`);
+      // Extract the simple slug (last part after the last slash)
+      // E.g., "amazon-aliexpress-ebay-strategies/let-me-test" -> "let-me-test"
+      const simpleSlug = thread.slug.includes('/') 
+        ? thread.slug.split('/').pop() 
+        : thread.slug;
+      router.push(`/thread/${simpleSlug}`);
     } else {
       // Fallback to ID-based navigation
       router.push(`/thread/${thread.id}`);
