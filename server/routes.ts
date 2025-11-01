@@ -10496,6 +10496,42 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // POST /api/admin/errors/auto-resolve-fixed - Auto-resolve fixed errors
+  app.post("/api/admin/errors/auto-resolve-fixed", isAuthenticated, adminOperationLimiter, async (req, res) => {
+    try {
+      // Check if user is admin
+      if (!req.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const user = await storage.getUser((req.user as any).id);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { minutesInactive = 30 } = req.body;
+
+      // Auto-resolve fixed errors
+      const result = await storage.autoResolveFixedErrors(minutesInactive);
+
+      // Log admin action
+      await storage.createAdminAction({
+        adminId: user.id,
+        actionType: 'error_auto_resolve',
+        targetType: 'system',
+        targetId: 'error_tracking',
+        details: {
+          resolvedCount: result.resolvedCount,
+          minutesInactive,
+        },
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Error Admin] Error auto-resolving fixed errors:", error);
+      res.status(500).json({ error: "Failed to auto-resolve fixed errors" });
+    }
+  });
+
   // ============================================
   // TODO: EMAIL NOTIFICATIONS FOR MISSING FEATURES
   // ============================================

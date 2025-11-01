@@ -2123,6 +2123,11 @@ export interface IStorage {
   autoResolveInactiveErrors(daysInactive: number): Promise<{ resolvedCount: number }>;
   
   /**
+   * Auto-resolve fixed errors that haven't occurred in the last X minutes
+   */
+  autoResolveFixedErrors(minutesInactive: number): Promise<{ resolvedCount: number }>;
+  
+  /**
    * Get error group details with all related data
    */
   getErrorGroupDetails(groupId: string): Promise<{
@@ -5712,6 +5717,10 @@ export class MemStorage implements IStorage {
   }
 
   async autoResolveInactiveErrors(daysInactive: number): Promise<{ resolvedCount: number }> {
+    return { resolvedCount: 0 };
+  }
+
+  async autoResolveFixedErrors(minutesInactive: number): Promise<{ resolvedCount: number }> {
     return { resolvedCount: 0 };
   }
 
@@ -15273,6 +15282,54 @@ export class DrizzleStorage implements IStorage {
       return { resolvedCount: resolved.length };
     } catch (error) {
       console.error('Error auto-resolving inactive errors:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Auto-resolve fixed errors that haven't occurred in the last X minutes
+   * This is used to auto-resolve errors that were fixed in code but are still marked as "active"
+   */
+  async autoResolveFixedErrors(minutesInactive: number = 30): Promise<{ resolvedCount: number }> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setMinutes(cutoffDate.getMinutes() - minutesInactive);
+
+      // Update errors that haven't occurred in the last X minutes to resolved
+      const resolved = await db
+        .update(errorGroups)
+        .set({
+          status: 'resolved',
+          resolvedAt: new Date(),
+          resolvedBy: 'auto-system',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(errorGroups.status, 'active'),
+            lte(errorGroups.lastSeen, cutoffDate),
+            gt(errorGroups.occurrenceCount, 0) // Only resolve errors that actually occurred
+          )
+        )
+        .returning({ id: errorGroups.id });
+
+      // Create status change logs for auto-resolved errors
+      if (resolved.length > 0) {
+        const statusChanges = resolved.map(group => ({
+          errorGroupId: group.id,
+          changedBy: 'auto-system',
+          oldStatus: 'active' as const,
+          newStatus: 'resolved' as const,
+          reason: `Auto-resolved: no occurrences in the last ${minutesInactive} minutes (likely fixed in code)`,
+        }));
+
+        await db.insert(errorStatusChanges).values(statusChanges);
+      }
+
+      console.log(`[AUTO-RESOLVE] Resolved ${resolved.length} fixed errors that haven't occurred in ${minutesInactive} minutes`);
+      return { resolvedCount: resolved.length };
+    } catch (error) {
+      console.error('Error auto-resolving fixed errors:', error);
       throw error;
     }
   }

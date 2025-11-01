@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -216,6 +216,29 @@ export default function ErrorMonitoring() {
     },
   });
 
+  // Resolve fixed errors mutation
+  const resolveFixedMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/admin/errors/auto-resolve-fixed', { minutesInactive: 30 });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ 
+        title: 'Fixed errors resolved',
+        description: `Successfully auto-resolved ${data.resolvedCount} inactive errors that haven't occurred in the last 30 minutes.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/errors/groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/errors/stats'] });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Auto-resolve failed', 
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
@@ -293,6 +316,16 @@ export default function ErrorMonitoring() {
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
+          </Button>
+          <Button
+            onClick={() => resolveFixedMutation.mutate()}
+            variant="outline"
+            size="sm"
+            disabled={resolveFixedMutation.isPending}
+            data-testid="button-resolve-fixed"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Resolve Fixed Errors
           </Button>
           <Button
             onClick={() => cleanupMutation.mutate()}
@@ -484,8 +517,8 @@ export default function ErrorMonitoring() {
                         ?.slice(0, 10); // Only show top 10 most urgent errors
                       
                       return activeErrors?.map((group: ErrorWithPriority, index: number) => (
-                        <>
-                          <TableRow key={group.id} data-testid={`row-priority-error-${group.id}`} className="bg-white dark:bg-gray-950">
+                        <React.Fragment key={group.id}>
+                          <TableRow data-testid={`row-priority-error-${group.id}`} className="bg-white dark:bg-gray-950">
                             <TableCell>
                               <Badge variant={index < 3 ? 'destructive' : 'secondary'}>
                                 #{index + 1}
@@ -590,7 +623,7 @@ export default function ErrorMonitoring() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </React.Fragment>
                       ));
                     })()}
                     {(!errorGroups?.groups || errorGroups.groups.filter((g: ErrorGroup) => g.status === 'active').length === 0) && (
@@ -641,8 +674,8 @@ export default function ErrorMonitoring() {
                     {errorGroups?.groups
                       ?.filter((g: ErrorGroup) => g.status === 'active')
                       ?.map((group: ErrorGroup) => (
-                        <>
-                          <TableRow key={group.id} data-testid={`row-unsolved-error-${group.id}`}>
+                        <React.Fragment key={group.id}>
+                          <TableRow data-testid={`row-unsolved-error-${group.id}`}>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -742,7 +775,7 @@ export default function ErrorMonitoring() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </React.Fragment>
                       ))}
                     {errorGroups?.groups?.filter((g: ErrorGroup) => g.status === 'active').length === 0 && (
                       <TableRow>
@@ -795,8 +828,8 @@ export default function ErrorMonitoring() {
                     {errorGroups?.groups
                       ?.filter((g: ErrorGroup) => g.status === 'resolved')
                       ?.map((group: ErrorGroup) => (
-                        <>
-                          <TableRow key={group.id} data-testid={`row-solved-error-${group.id}`}>
+                        <React.Fragment key={group.id}>
+                          <TableRow data-testid={`row-solved-error-${group.id}`}>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -889,7 +922,7 @@ export default function ErrorMonitoring() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </React.Fragment>
                       ))}
                     {errorGroups?.groups?.filter((g: ErrorGroup) => g.status === 'resolved').length === 0 && (
                       <TableRow>
@@ -940,7 +973,7 @@ export default function ErrorMonitoring() {
                       <SelectValue placeholder="All severities" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="critical">Critical</SelectItem>
                       <SelectItem value="error">Error</SelectItem>
                       <SelectItem value="warning">Warning</SelectItem>
@@ -959,7 +992,7 @@ export default function ErrorMonitoring() {
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="resolved">Resolved</SelectItem>
                       <SelectItem value="ignored">Ignored</SelectItem>
@@ -1033,8 +1066,8 @@ export default function ErrorMonitoring() {
                   </TableHeader>
                   <TableBody>
                     {errorGroups?.groups?.map((group: ErrorGroup) => (
-                      <>
-                        <TableRow key={group.id} data-testid={`row-error-group-${group.id}`}>
+                      <React.Fragment key={group.id}>
+                        <TableRow data-testid={`row-error-group-${group.id}`}>
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -1152,7 +1185,7 @@ export default function ErrorMonitoring() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>
