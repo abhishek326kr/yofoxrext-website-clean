@@ -196,17 +196,7 @@ async function getErrorRate(): Promise<number> {
   return Math.random() * 5;
 }
 
-// Configure multer for file uploads
-const uploadStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'public/uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Configure multer for file uploads - Use memory storage for cloud deployment
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Images: for screenshots and content images (max 5MB each)
   const imageTypes = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -226,7 +216,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
 };
 
 const upload = multer({
-  storage: uploadStorage,
+  storage: multer.memoryStorage(),
   fileFilter: fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB max file size (increased for EA files)
@@ -533,7 +523,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-  // FILE UPLOAD ENDPOINT with enhanced metadata and image resizing
+  // FILE UPLOAD ENDPOINT with enhanced metadata and image resizing (using object storage)
   app.post("/api/upload", isAuthenticated, upload.array('files', 10), async (req, res) => {
     try {
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
@@ -541,7 +531,8 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       const sharp = (await import('sharp')).default;
-      const fs = await import('fs/promises');
+      const objectStorageService = new ObjectStorageService();
+      const userId = getAuthenticatedUserId(req);
       
       // Process each file with metadata and image resizing
       const processedFiles = await Promise.all(
@@ -551,44 +542,57 @@ export async function registerRoutes(app: Express): Promise<Express> {
           const isEA = ['.ex4', '.ex5', '.mq4', '.zip'].includes(ext);
           
           let dimensions = null;
-          let resizedFilename = file.filename;
+          let fileBuffer = file.buffer;
+          let contentType = file.mimetype;
           
           // Auto-resize images to 640x480 for screenshots
           if (isImage) {
             try {
-              const inputPath = file.path;
-              const outputFilename = `resized-${file.filename}`;
-              const outputPath = path.join('public/uploads/', outputFilename);
-              
-              // Resize image to 640x480 maintaining aspect ratio
-              await sharp(inputPath)
+              // Resize image in-memory to 640x480 maintaining aspect ratio
+              const resizedBuffer = await sharp(file.buffer)
                 .resize(640, 480, {
                   fit: 'inside', // Maintain aspect ratio
                   withoutEnlargement: true // Don't upscale small images
                 })
-                .toFile(outputPath);
+                .toBuffer();
               
               // Get dimensions of resized image
-              const metadata = await sharp(outputPath).metadata();
+              const metadata = await sharp(resizedBuffer).metadata();
               dimensions = {
                 width: metadata.width,
                 height: metadata.height
               };
               
-              // Delete original and use resized version
-              await fs.unlink(inputPath);
-              resizedFilename = outputFilename;
+              // Use resized buffer
+              fileBuffer = resizedBuffer;
             } catch (resizeError) {
               console.error('Image resize failed, using original:', resizeError);
-              // Fall back to original if resize fails
+              // Fall back to original buffer
             }
           }
           
+          // Generate unique filename
+          const timestamp = Date.now();
+          const randomSuffix = Math.round(Math.random() * 1E9);
+          const filename = `${timestamp}-${randomSuffix}${ext}`;
+          
+          // Upload to object storage
+          const objectPath = await objectStorageService.uploadObject(
+            `uploads/${filename}`,
+            fileBuffer,
+            contentType,
+            {
+              uploadedBy: userId,
+              originalName: file.originalname,
+              uploadedAt: new Date().toISOString()
+            }
+          );
+          
           return {
-            url: `/uploads/${resizedFilename}`,
+            url: objectPath, // Returns /objects/uploads/...
             originalName: file.originalname,
-            filename: resizedFilename,
-            size: file.size,
+            filename: filename,
+            size: fileBuffer.length,
             type: ext,
             isImage,
             isEA,
@@ -6231,6 +6235,71 @@ export async function registerRoutes(app: Express): Promise<Express> {
     } catch (error) {
       console.error('Error fetching recent actions:', error);
       res.status(500).json({ message: 'Failed to fetch recent actions' });
+    }
+  });
+
+  // Additional Admin Logs Routes (for frontend compatibility)
+  app.get('/api/admin/logs/security', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
+    try {
+      // Map to security events endpoint
+      const filters = {
+        eventType: req.query.eventType as string | undefined,
+        severity: req.query.severity as string | undefined,
+        userId: req.query.userId as string | undefined,
+        startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+      };
+      const events = await storage.getSecurityEvents(filters);
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching security logs:', error);
+      res.json([]); // Return empty array on error for frontend compatibility
+    }
+  });
+
+  app.get('/api/admin/logs/system-events', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
+    try {
+      // Placeholder for system events - return empty array for now
+      res.json([]);
+    } catch (error) {
+      console.error('Error fetching system events:', error);
+      res.json([]);
+    }
+  });
+
+  app.get('/api/admin/logs/performance', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
+    try {
+      // Map to performance metrics endpoint
+      const metricType = req.query.metricType as string;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+      const metrics = await storage.getPerformanceMetrics({ metricType, startDate, endDate });
+      res.json(metrics);
+    } catch (error) {
+      console.error('Error fetching performance logs:', error);
+      res.json([]);
+    }
+  });
+
+  app.get('/api/admin/logs/admin-actions', isAuthenticated, adminOperationLimiter, async (req, res) => {
+    if (!isAdmin(req.user)) return res.status(403).json({ message: 'Admin access required' });
+    try {
+      // Map to admin action logs endpoint
+      const filters = {
+        adminId: req.query.adminId as string | undefined,
+        actionType: req.query.actionType as string | undefined,
+        startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+      };
+      const logs = await storage.getAdminActionLogs(filters);
+      res.json(logs);
+    } catch (error) {
+      console.error('Error fetching admin action logs:', error);
+      res.json([]);
     }
   });
 
