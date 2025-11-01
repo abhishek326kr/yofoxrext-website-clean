@@ -107,6 +107,9 @@ import {
   type InsertErrorEvent,
   type ErrorStatusChange,
   type InsertErrorStatusChange,
+  // SEO Performance types
+  type SeoPerformanceMetric,
+  type InsertSeoPerformanceMetric,
   users,
   userActivity,
   coinTransactions,
@@ -171,6 +174,8 @@ import {
   errorGroups,
   errorEvents,
   errorStatusChanges,
+  // SEO Performance tables
+  seoPerformanceMetrics,
   BADGE_TYPES,
   type BadgeType
 } from "@shared/schema";
@@ -2136,6 +2141,48 @@ export interface IStorage {
     affectedUsers: number;
     browsers: Array<{ name: string; count: number }>;
     timeline: Array<{ date: string; count: number }>;
+  }>;
+  
+  // ============================================================================
+  // SEO PERFORMANCE METRICS - PageSpeed Insights Integration
+  // ============================================================================
+  
+  /**
+   * Save PageSpeed metrics to database
+   */
+  savePageSpeedMetrics(metrics: InsertSeoPerformanceMetric): Promise<SeoPerformanceMetric>;
+  
+  /**
+   * Get latest PageSpeed metrics for a specific page
+   */
+  getLatestPageSpeedMetrics(pageUrl: string, strategy?: 'mobile' | 'desktop'): Promise<SeoPerformanceMetric | null>;
+  
+  /**
+   * Get PageSpeed trends over time for a specific page
+   */
+  getPageSpeedTrends(pageUrl: string, options?: {
+    strategy?: 'mobile' | 'desktop';
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<SeoPerformanceMetric[]>;
+  
+  /**
+   * Get PageSpeed summary across all scanned pages
+   */
+  getPageSpeedSummary(): Promise<{
+    totalScans: number;
+    averagePerformance: number;
+    averageSeo: number;
+    averageAccessibility: number;
+    averageBestPractices: number;
+    recentScans: Array<{
+      pageUrl: string;
+      strategy: 'mobile' | 'desktop';
+      performanceScore: number;
+      seoScore: number;
+      fetchTime: Date;
+    }>;
   }>;
 }
 
@@ -15408,6 +15455,165 @@ export class DrizzleStorage implements IStorage {
       };
     } catch (error) {
       console.error('Error getting error group details:', error);
+      throw error;
+    }
+  }
+  
+  // ============================================================================
+  // SEO PERFORMANCE METRICS - PageSpeed Insights Integration
+  // ============================================================================
+  
+  /**
+   * Save PageSpeed metrics to database
+   */
+  async savePageSpeedMetrics(metrics: InsertSeoPerformanceMetric): Promise<SeoPerformanceMetric> {
+    try {
+      const [result] = await db
+        .insert(seoPerformanceMetrics)
+        .values(metrics)
+        .returning();
+      
+      return result;
+    } catch (error) {
+      console.error('Error saving PageSpeed metrics:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get latest PageSpeed metrics for a specific page
+   */
+  async getLatestPageSpeedMetrics(
+    pageUrl: string, 
+    strategy?: 'mobile' | 'desktop'
+  ): Promise<SeoPerformanceMetric | null> {
+    try {
+      const conditions = strategy
+        ? and(
+            eq(seoPerformanceMetrics.pageUrl, pageUrl),
+            eq(seoPerformanceMetrics.strategy, strategy)
+          )
+        : eq(seoPerformanceMetrics.pageUrl, pageUrl);
+      
+      const [result] = await db
+        .select()
+        .from(seoPerformanceMetrics)
+        .where(conditions)
+        .orderBy(desc(seoPerformanceMetrics.fetchTime))
+        .limit(1);
+      
+      return result || null;
+    } catch (error) {
+      console.error('Error getting latest PageSpeed metrics:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get PageSpeed trends over time for a specific page
+   */
+  async getPageSpeedTrends(
+    pageUrl: string, 
+    options?: {
+      strategy?: 'mobile' | 'desktop';
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+    }
+  ): Promise<SeoPerformanceMetric[]> {
+    try {
+      const conditions = [];
+      
+      // Always filter by pageUrl
+      conditions.push(eq(seoPerformanceMetrics.pageUrl, pageUrl));
+      
+      // Optional strategy filter
+      if (options?.strategy) {
+        conditions.push(eq(seoPerformanceMetrics.strategy, options.strategy));
+      }
+      
+      // Optional date range filter
+      if (options?.startDate) {
+        conditions.push(gte(seoPerformanceMetrics.fetchTime, options.startDate));
+      }
+      if (options?.endDate) {
+        conditions.push(lte(seoPerformanceMetrics.fetchTime, options.endDate));
+      }
+      
+      const query = db
+        .select()
+        .from(seoPerformanceMetrics)
+        .where(and(...conditions))
+        .orderBy(desc(seoPerformanceMetrics.fetchTime));
+      
+      // Apply limit if specified
+      if (options?.limit) {
+        query.limit(options.limit);
+      }
+      
+      const results = await query;
+      return results;
+    } catch (error) {
+      console.error('Error getting PageSpeed trends:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get PageSpeed summary across all scanned pages
+   */
+  async getPageSpeedSummary(): Promise<{
+    totalScans: number;
+    averagePerformance: number;
+    averageSeo: number;
+    averageAccessibility: number;
+    averageBestPractices: number;
+    recentScans: Array<{
+      pageUrl: string;
+      strategy: 'mobile' | 'desktop';
+      performanceScore: number;
+      seoScore: number;
+      fetchTime: Date;
+    }>;
+  }> {
+    try {
+      // Get aggregate statistics
+      const [stats] = await db
+        .select({
+          totalScans: count(),
+          averagePerformance: sql<number>`COALESCE(AVG(${seoPerformanceMetrics.performanceScore}), 0)`,
+          averageSeo: sql<number>`COALESCE(AVG(${seoPerformanceMetrics.seoScore}), 0)`,
+          averageAccessibility: sql<number>`COALESCE(AVG(${seoPerformanceMetrics.accessibilityScore}), 0)`,
+          averageBestPractices: sql<number>`COALESCE(AVG(${seoPerformanceMetrics.bestPracticesScore}), 0)`,
+        })
+        .from(seoPerformanceMetrics);
+      
+      // Get recent scans
+      const recentScans = await db
+        .select({
+          pageUrl: seoPerformanceMetrics.pageUrl,
+          strategy: seoPerformanceMetrics.strategy,
+          performanceScore: seoPerformanceMetrics.performanceScore,
+          seoScore: seoPerformanceMetrics.seoScore,
+          fetchTime: seoPerformanceMetrics.fetchTime,
+        })
+        .from(seoPerformanceMetrics)
+        .orderBy(desc(seoPerformanceMetrics.fetchTime))
+        .limit(10);
+      
+      return {
+        totalScans: Number(stats.totalScans) || 0,
+        averagePerformance: Math.round(Number(stats.averagePerformance) || 0),
+        averageSeo: Math.round(Number(stats.averageSeo) || 0),
+        averageAccessibility: Math.round(Number(stats.averageAccessibility) || 0),
+        averageBestPractices: Math.round(Number(stats.averageBestPractices) || 0),
+        recentScans: recentScans.map(scan => ({
+          ...scan,
+          strategy: scan.strategy as 'mobile' | 'desktop',
+        })),
+      };
+    } catch (error) {
+      console.error('Error getting PageSpeed summary:', error);
       throw error;
     }
   }

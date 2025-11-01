@@ -3282,6 +3282,32 @@ export const seoMetrics = pgTable("seo_metrics", {
   overallScoreIdx: index("idx_seo_metrics_overall_score").on(table.overallScore),
 }));
 
+// SEO Performance Metrics - PageSpeed Insights data with time-series tracking
+export const seoPerformanceMetrics = pgTable("seo_performance_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pageUrl: varchar("page_url", { length: 1000 }).notNull(),
+  strategy: varchar("strategy", { length: 10 }).notNull().$type<"mobile" | "desktop">(),
+  performanceScore: integer("performance_score").notNull(), // 0-100
+  seoScore: integer("seo_score").notNull(), // 0-100
+  accessibilityScore: integer("accessibility_score").notNull(), // 0-100
+  bestPracticesScore: integer("best_practices_score").notNull(), // 0-100
+  pwaScore: integer("pwa_score"), // 0-100, optional
+  scanId: varchar("scan_id").references(() => seoScans.id, { onDelete: "set null" }),
+  fetchTime: timestamp("fetch_time").notNull().defaultNow(),
+  metadata: jsonb("metadata").$type<{
+    finalUrl?: string; // URL after redirects
+    lighthouseVersion?: string;
+    userAgent?: string;
+    fetchDuration?: number;
+    rawData?: any; // Full Lighthouse result
+  }>(),
+}, (table) => ({
+  pageUrlIdx: index("idx_seo_perf_page_url").on(table.pageUrl),
+  fetchTimeIdx: index("idx_seo_perf_fetch_time").on(table.fetchTime),
+  strategyIdx: index("idx_seo_perf_strategy").on(table.strategy),
+  scanIdIdx: index("idx_seo_perf_scan_id").on(table.scanId),
+}));
+
 // SEO Overrides - Database-driven SEO field overrides
 export const seoOverrides = pgTable("seo_overrides", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -3397,6 +3423,23 @@ export const insertSeoMetricSchema = createInsertSchema(seoMetrics).omit({
 });
 export type InsertSeoMetric = z.infer<typeof insertSeoMetricSchema>;
 export type SeoMetric = typeof seoMetrics.$inferSelect;
+
+// SEO Performance Metrics
+export const insertSeoPerformanceMetricSchema = createInsertSchema(seoPerformanceMetrics).omit({
+  id: true,
+  fetchTime: true,
+}).extend({
+  pageUrl: z.string().url().max(1000),
+  strategy: z.enum(["mobile", "desktop"]),
+  performanceScore: z.number().int().min(0).max(100),
+  seoScore: z.number().int().min(0).max(100),
+  accessibilityScore: z.number().int().min(0).max(100),
+  bestPracticesScore: z.number().int().min(0).max(100),
+  pwaScore: z.number().int().min(0).max(100).optional(),
+  scanId: z.string().uuid().optional(),
+});
+export type InsertSeoPerformanceMetric = z.infer<typeof insertSeoPerformanceMetricSchema>;
+export type SeoPerformanceMetric = typeof seoPerformanceMetrics.$inferSelect;
 
 // SEO Overrides
 export const insertSeoOverrideSchema = createInsertSchema(seoOverrides).omit({

@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { seoOverrides } from '@/shared/schema';
+import { seoOverrides } from '../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { Metadata } from 'next';
 

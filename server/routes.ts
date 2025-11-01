@@ -11005,6 +11005,188 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // ============================================================================
+  // PAGESPEED INSIGHTS API ENDPOINTS
+  // ============================================================================
+
+  // POST /api/admin/seo/pagespeed/scan - Trigger PageSpeed scan for a URL
+  app.post('/api/admin/seo/pagespeed/scan', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      const { url, strategy } = req.body;
+
+      // Validate URL
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: 'Valid URL is required' });
+      }
+
+      // Validate strategy if provided
+      if (strategy && strategy !== 'mobile' && strategy !== 'desktop') {
+        return res.status(400).json({ error: 'Strategy must be either "mobile" or "desktop"' });
+      }
+
+      // Import PageSpeed service
+      const { fetchPageSpeedMetrics, isPageSpeedAvailable } = await import('./services/pagespeed.js');
+
+      // Check if PageSpeed API is available
+      if (!isPageSpeedAvailable()) {
+        return res.status(503).json({ 
+          error: 'PageSpeed API is not configured',
+          message: 'PAGESPEED_API_KEY environment variable is not set',
+          available: false
+        });
+      }
+
+      // Fetch metrics from Google PageSpeed API
+      const result = await fetchPageSpeedMetrics(url, strategy || 'mobile');
+
+      if (!result) {
+        return res.status(500).json({ 
+          error: 'Failed to fetch PageSpeed metrics',
+          message: 'The PageSpeed API returned no data. Please check the URL and try again.'
+        });
+      }
+
+      // Save metrics to database
+      const savedMetrics = await storage.savePageSpeedMetrics({
+        pageUrl: result.url,
+        strategy: result.strategy,
+        performanceScore: result.scores.performance,
+        seoScore: result.scores.seo,
+        accessibilityScore: result.scores.accessibility,
+        bestPracticesScore: result.scores.bestPractices,
+        pwaScore: result.scores.pwa,
+        metadata: {
+          finalUrl: result.url,
+          lighthouseVersion: result.rawData?.lighthouseVersion,
+          userAgent: result.rawData?.userAgent,
+          rawData: result.rawData,
+        },
+      });
+
+      res.json({
+        success: true,
+        metrics: savedMetrics,
+        message: 'PageSpeed scan completed successfully'
+      });
+    } catch (error: any) {
+      console.error('Failed to scan PageSpeed:', error);
+      res.status(500).json({ 
+        error: 'Failed to scan PageSpeed',
+        message: error.message 
+      });
+    }
+  });
+
+  // GET /api/admin/seo/pagespeed/metrics/:pageUrl - Get latest metrics for a page
+  app.get('/api/admin/seo/pagespeed/metrics/:pageUrl', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      // Decode URL parameter (it might be URL-encoded)
+      const pageUrl = decodeURIComponent(req.params.pageUrl);
+      const strategy = req.query.strategy as 'mobile' | 'desktop' | undefined;
+
+      // Validate strategy if provided
+      if (strategy && strategy !== 'mobile' && strategy !== 'desktop') {
+        return res.status(400).json({ error: 'Strategy must be either "mobile" or "desktop"' });
+      }
+
+      // Get latest metrics from database
+      const metrics = await storage.getLatestPageSpeedMetrics(pageUrl, strategy);
+
+      if (!metrics) {
+        return res.status(404).json({ 
+          error: 'No metrics found',
+          message: `No PageSpeed metrics found for URL: ${pageUrl}${strategy ? ` (${strategy})` : ''}`
+        });
+      }
+
+      res.json(metrics);
+    } catch (error: any) {
+      console.error('Failed to get PageSpeed metrics:', error);
+      res.status(500).json({ 
+        error: 'Failed to get PageSpeed metrics',
+        message: error.message 
+      });
+    }
+  });
+
+  // GET /api/admin/seo/pagespeed/trends/:pageUrl - Get time-series trends
+  app.get('/api/admin/seo/pagespeed/trends/:pageUrl', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      // Decode URL parameter
+      const pageUrl = decodeURIComponent(req.params.pageUrl);
+      const strategy = req.query.strategy as 'mobile' | 'desktop' | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30;
+      
+      // Parse date range if provided
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      
+      if (req.query.startDate) {
+        startDate = new Date(req.query.startDate as string);
+        if (isNaN(startDate.getTime())) {
+          return res.status(400).json({ error: 'Invalid startDate format' });
+        }
+      }
+      
+      if (req.query.endDate) {
+        endDate = new Date(req.query.endDate as string);
+        if (isNaN(endDate.getTime())) {
+          return res.status(400).json({ error: 'Invalid endDate format' });
+        }
+      }
+
+      // Validate strategy if provided
+      if (strategy && strategy !== 'mobile' && strategy !== 'desktop') {
+        return res.status(400).json({ error: 'Strategy must be either "mobile" or "desktop"' });
+      }
+
+      // Get trends from database
+      const trends = await storage.getPageSpeedTrends(pageUrl, {
+        strategy,
+        startDate,
+        endDate,
+        limit,
+      });
+
+      res.json({
+        pageUrl,
+        strategy: strategy || 'all',
+        count: trends.length,
+        trends,
+      });
+    } catch (error: any) {
+      console.error('Failed to get PageSpeed trends:', error);
+      res.status(500).json({ 
+        error: 'Failed to get PageSpeed trends',
+        message: error.message 
+      });
+    }
+  });
+
+  // GET /api/admin/seo/pagespeed/summary - Get PageSpeed summary for all scanned pages
+  app.get('/api/admin/seo/pagespeed/summary', isAuthenticated, isAdminMiddleware, async (req, res) => {
+    try {
+      // Get summary statistics from database
+      const summary = await storage.getPageSpeedSummary();
+
+      // Check if PageSpeed API is available
+      const { isPageSpeedAvailable } = await import('./services/pagespeed.js');
+      const apiAvailable = isPageSpeedAvailable();
+
+      res.json({
+        ...summary,
+        apiAvailable,
+        apiConfigured: apiAvailable,
+      });
+    } catch (error: any) {
+      console.error('Failed to get PageSpeed summary:', error);
+      res.status(500).json({ 
+        error: 'Failed to get PageSpeed summary',
+        message: error.message 
+      });
+    }
+  });
+
   // Return the Express app with all routes registered
   // Server creation happens in index.ts
   return app;
