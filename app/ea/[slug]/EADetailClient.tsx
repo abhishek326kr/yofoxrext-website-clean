@@ -79,9 +79,8 @@ export default function EADetailClient({ ea, similarEAs }: EADetailClientProps) 
   // Purchase/Download mutation
   const downloadMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/content/purchase`, {
+      return await apiRequest(`/api/content/purchase/${ea.id}`, {
         method: 'POST',
-        body: JSON.stringify({ contentId: ea.id }),
       });
     },
     onSuccess: (data) => {

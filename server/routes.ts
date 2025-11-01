@@ -2444,10 +2444,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
   });
   
   // Purchase content (user-to-user transaction)
-  app.post("/api/content/purchase", isAuthenticated, async (req, res) => {
+  app.post("/api/content/purchase/:id", isAuthenticated, async (req, res) => {
     try {
       const buyerId = getAuthenticatedUserId(req);
-      const { contentId } = req.body;
+      const contentId = req.params.id;
 
       if (!contentId) {
         return res.status(400).json({ error: "contentId is required" });

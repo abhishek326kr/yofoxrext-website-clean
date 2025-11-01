@@ -8,10 +8,8 @@ export const revalidate = 60;
 
 // Generate SEO metadata dynamically
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const apiUrl = getInternalApiUrl();
-  
   try {
-    const res = await fetch(`${apiUrl}/api/content/slug/${params.slug}`, {
+    const res = await fetch(`${getInternalApiUrl()}/api/content/by-slug/${params.slug}`, {
       next: { revalidate: 60 },
     });
     
@@ -50,8 +48,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 // Fetch EA data
 async function getEA(slug: string) {
   try {
-    const apiUrl = getInternalApiUrl();
-    const res = await fetch(`${apiUrl}/api/content/slug/${slug}`, {
+    const res = await fetch(`${getInternalApiUrl()}/api/content/by-slug/${slug}`, {
       next: { revalidate: 60 },
     });
     
