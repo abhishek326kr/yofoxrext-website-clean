@@ -3,6 +3,7 @@ import { permanentRedirect } from 'next/navigation';
 import ContentDetailClient from './ContentDetailClient';
 import type { Content, User as UserType, ContentReview } from '@shared/schema';
 import { getContentUrl } from '../../../lib/category-path';
+import { getMetadataWithOverrides } from '../../lib/metadata-helper';
 
 // Express API base URL
 const EXPRESS_URL = process.env.NEXT_PUBLIC_EXPRESS_URL || 'http://localhost:5000';
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const tags = content.tags || [];
     const keywords = tags.length > 0 ? tags.join(', ') : 'forex, EA, indicator, MT4, MT5';
 
-    return {
+    // Default metadata
+    const defaultMetadata: Metadata = {
       title: `${content.title} | YoForex Marketplace`,
       description,
       keywords,
@@ -56,6 +58,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         images: coverImage?.url ? [coverImage.url] : [],
       },
     };
+    
+    // Try to fetch SEO overrides for this content
+    const pathname = `/content/${slug}`;
+    return await getMetadataWithOverrides(pathname, defaultMetadata);
   } catch (error) {
     return {
       title: 'Content Not Found | YoForex Marketplace',

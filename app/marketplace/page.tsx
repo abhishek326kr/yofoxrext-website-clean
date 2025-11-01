@@ -1,26 +1,29 @@
 import type { Metadata } from 'next';
 import MarketplaceClient from './MarketplaceClient';
 import { getInternalApiUrl } from '../lib/api-config';
+import { getMetadataWithOverrides } from '../lib/metadata-helper';
 
 // Enable ISR with 60-second revalidation
 export const revalidate = 60;
 
-// Generate SEO metadata
-export const metadata: Metadata = {
-  title: 'EA & Indicator Marketplace | YoForex',
-  description: 'Browse and download expert advisors (EAs) and indicators for MT4/MT5. Find free and premium trading tools from expert developers.',
-  keywords: ['forex EA', 'MT4 indicators', 'MT5 expert advisor', 'trading tools', 'forex marketplace'],
-  openGraph: {
+// Generate SEO metadata with overrides
+export async function generateMetadata(): Promise<Metadata> {
+  return await getMetadataWithOverrides('/marketplace', {
     title: 'EA & Indicator Marketplace | YoForex',
     description: 'Browse and download expert advisors (EAs) and indicators for MT4/MT5. Find free and premium trading tools from expert developers.',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'EA & Indicator Marketplace | YoForex',
-    description: 'Browse and download expert advisors (EAs) and indicators for MT4/MT5. Find free and premium trading tools from expert developers.',
-  },
-};
+    keywords: ['forex EA', 'MT4 indicators', 'MT5 expert advisor', 'trading tools', 'forex marketplace'],
+    openGraph: {
+      title: 'EA & Indicator Marketplace | YoForex',
+      description: 'Browse and download expert advisors (EAs) and indicators for MT4/MT5. Find free and premium trading tools from expert developers.',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'EA & Indicator Marketplace | YoForex',
+      description: 'Browse and download expert advisors (EAs) and indicators for MT4/MT5. Find free and premium trading tools from expert developers.',
+    },
+  });
+}
 
 // Fetch marketplace content from Express API
 async function getMarketplaceContent() {

@@ -3249,6 +3249,11 @@ export const seoFixes = pgTable("seo_fixes", {
   appliedBy: varchar("applied_by").notNull(),
   success: boolean("success").notNull().default(true),
   errorMessage: text("error_message"),
+  beforePayload: text("before_payload"),
+  afterPayload: text("after_payload"),
+  fixMethod: varchar("fix_method", { length: 50 }).default("auto").notNull(),
+  rollbackedAt: timestamp("rollbacked_at"),
+  rollbackedBy: varchar("rollbacked_by", { length: 36 }),
 }, (table) => ({
   issueIdIdx: index("idx_seo_fixes_issue_id").on(table.issueId),
   appliedAtIdx: index("idx_seo_fixes_applied_at").on(table.appliedAt),
@@ -3275,6 +3280,42 @@ export const seoMetrics = pgTable("seo_metrics", {
 }, (table) => ({
   recordedAtIdx: index("idx_seo_metrics_recorded_at").on(table.recordedAt),
   overallScoreIdx: index("idx_seo_metrics_overall_score").on(table.overallScore),
+}));
+
+// SEO Overrides - Database-driven SEO field overrides
+export const seoOverrides = pgTable("seo_overrides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pageUrl: varchar("page_url", { length: 1000 }).notNull(),
+  canonical: varchar("canonical", { length: 1000 }),
+  title: varchar("title", { length: 200 }),
+  metaDescription: text("meta_description"),
+  robotsMeta: varchar("robots_meta", { length: 100 }),
+  viewport: varchar("viewport", { length: 200 }),
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+  appliedBy: varchar("applied_by", { length: 36 }),
+  active: boolean("active").default(true).notNull(),
+}, (table) => ({
+  pageUrlIdx: index("seo_overrides_page_url_idx").on(table.pageUrl),
+  activeIdx: index("seo_overrides_active_idx").on(table.active),
+}));
+
+// SEO Fix Jobs - AI-generated fix jobs with approval workflow
+export const seoFixJobs = pgTable("seo_fix_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issueId: varchar("issue_id").references(() => seoIssues.id, { onDelete: "cascade" }),
+  fixType: varchar("fix_type", { length: 100 }).notNull(),
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  aiPrompt: text("ai_prompt"),
+  aiResponse: text("ai_response"),
+  humanApprovalStatus: varchar("human_approval_status", { length: 50 }),
+  approvedBy: varchar("approved_by", { length: 36 }),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  error: text("error"),
+}, (table) => ({
+  statusIdx: index("seo_fix_jobs_status_idx").on(table.status),
+  issueIdIdx: index("seo_fix_jobs_issue_id_idx").on(table.issueId),
 }));
 
 // ============================================================================
@@ -3345,3 +3386,39 @@ export const insertSeoMetricSchema = createInsertSchema(seoMetrics).omit({
 });
 export type InsertSeoMetric = z.infer<typeof insertSeoMetricSchema>;
 export type SeoMetric = typeof seoMetrics.$inferSelect;
+
+// SEO Overrides
+export const insertSeoOverrideSchema = createInsertSchema(seoOverrides).omit({
+  id: true,
+  appliedAt: true,
+}).extend({
+  pageUrl: z.string().min(1).max(1000),
+  canonical: z.string().max(1000).optional(),
+  title: z.string().max(200).optional(),
+  metaDescription: z.string().optional(),
+  robotsMeta: z.string().max(100).optional(),
+  viewport: z.string().max(200).optional(),
+  appliedBy: z.string().max(36).optional(),
+  active: z.boolean().default(true),
+});
+export type InsertSeoOverride = z.infer<typeof insertSeoOverrideSchema>;
+export type SeoOverride = typeof seoOverrides.$inferSelect;
+
+// SEO Fix Jobs
+export const insertSeoFixJobSchema = createInsertSchema(seoFixJobs).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+  approvedAt: true,
+}).extend({
+  issueId: z.string().uuid().optional(),
+  fixType: z.string().min(1).max(100),
+  status: z.string().max(50).default("pending"),
+  aiPrompt: z.string().optional(),
+  aiResponse: z.string().optional(),
+  humanApprovalStatus: z.string().max(50).optional(),
+  approvedBy: z.string().max(36).optional(),
+  error: z.string().optional(),
+});
+export type InsertSeoFixJob = z.infer<typeof insertSeoFixJobSchema>;
+export type SeoFixJob = typeof seoFixJobs.$inferSelect;

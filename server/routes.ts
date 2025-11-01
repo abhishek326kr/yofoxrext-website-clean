@@ -121,6 +121,7 @@ import {
   scanNewThreads,
   scanNewContent
 } from './services/botBehaviorEngine.js';
+import { seoFixOrchestrator } from './services/seo-fixer.js';
 
 // Helper function to get authenticated user ID from session
 function getAuthenticatedUserId(req: any): string {
@@ -10611,6 +10612,23 @@ export async function registerRoutes(app: Express): Promise<Express> {
   const { seoScanner } = await import('./services/seo-scanner');
   const { seoScans, seoIssues, seoFixes, seoMetrics } = await import('../shared/schema');
   const { and, inArray, sql: sqlDrizzle } = await import('drizzle-orm');
+  const { getSeoOverrides } = await import('./services/seo-override-loader');
+
+  // GET /api/seo/overrides - Get SEO overrides for a specific page URL
+  app.get('/api/seo/overrides', async (req, res) => {
+    try {
+      const { url } = req.query;
+      if (!url) {
+        return res.status(400).json({ error: 'URL required' });
+      }
+      
+      const overrides = await getSeoOverrides(url as string);
+      res.json(overrides || {});
+    } catch (error) {
+      console.error('Failed to get SEO overrides:', error);
+      res.status(500).json({ error: 'Failed to get SEO overrides' });
+    }
+  });
 
   // GET /api/admin/seo/health - Get overall SEO health score
   app.get('/api/admin/seo/health', isAuthenticated, async (req, res) => {
@@ -10693,39 +10711,49 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.patch('/api/admin/seo/issues/:id/fix', isAuthenticated, adminOperationLimiter, async (req, res) => {
     try {
       const { id } = req.params;
-      const { fixType = 'manual', action, newValue } = req.body;
-
-      const issue = await db.select()
+      
+      const [issue] = await db.select()
         .from(seoIssues)
         .where(eq(seoIssues.id, id))
         .limit(1);
 
-      if (!issue.length) {
+      if (!issue) {
         return res.status(404).json({ error: 'Issue not found' });
       }
 
-      await db.update(seoIssues)
-        .set({
-          status: 'fixed',
-          fixedAt: new Date(),
-          fixedBy: req.user?.id || 'manual',
-          updatedAt: new Date(),
-        })
-        .where(eq(seoIssues.id, id));
+      const result = await seoFixOrchestrator.fixIssue(id);
 
-      await db.insert(seoFixes).values({
-        issueId: id,
-        fixType: fixType as 'auto' | 'ai-generated' | 'manual',
-        action: action || 'manually_fixed',
-        newValue,
-        appliedBy: req.user?.id || 'system',
-        success: true,
-      });
+      if (result.success) {
+        await db.insert(seoFixes).values({
+          issueId: id,
+          fixType: 'auto',
+          action: issue.issueType,
+          beforePayload: JSON.stringify(result.before),
+          afterPayload: JSON.stringify(result.after),
+          fixMethod: 'auto',
+          appliedBy: req.user?.id || 'system',
+          success: true,
+        });
 
-      res.json({
-        success: true,
-        message: 'Issue fixed successfully',
-      });
+        await db.update(seoIssues)
+          .set({
+            status: 'fixed',
+            fixedAt: new Date(),
+            fixedBy: req.user?.id || 'system',
+            updatedAt: new Date(),
+          })
+          .where(eq(seoIssues.id, id));
+
+        res.json({
+          success: true,
+          message: 'Issue fixed successfully',
+        });
+      } else {
+        res.json({
+          success: false,
+          message: result.error || 'Failed to apply fix',
+        });
+      }
     } catch (error) {
       console.error('Failed to fix SEO issue:', error);
       res.status(500).json({ error: 'Failed to fix issue' });
@@ -10772,27 +10800,38 @@ export async function registerRoutes(app: Express): Promise<Express> {
           eq(seoIssues.autoFixable, true)
         ));
 
+      const issueIds = fixableIssues.map(i => i.id);
+      const results = await seoFixOrchestrator.fixMultiple(issueIds);
+
       let fixedCount = 0;
 
-      for (const issue of fixableIssues) {
-        await db.update(seoIssues)
-          .set({
-            status: 'fixed',
-            fixedAt: new Date(),
-            fixedBy: 'auto',
-            updatedAt: new Date(),
-          })
-          .where(eq(seoIssues.id, issue.id));
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const issue = fixableIssues[i];
 
-        await db.insert(seoFixes).values({
-          issueId: issue.id,
-          fixType: 'auto',
-          action: 'auto_fixed',
-          appliedBy: 'system',
-          success: true,
-        });
+        if (result.success) {
+          await db.insert(seoFixes).values({
+            issueId: issue.id,
+            fixType: 'auto',
+            action: issue.issueType,
+            beforePayload: JSON.stringify(result.before),
+            afterPayload: JSON.stringify(result.after),
+            fixMethod: 'auto',
+            appliedBy: 'system',
+            success: true,
+          });
 
-        fixedCount++;
+          await db.update(seoIssues)
+            .set({
+              status: 'fixed',
+              fixedAt: new Date(),
+              fixedBy: 'auto',
+              updatedAt: new Date(),
+            })
+            .where(eq(seoIssues.id, issue.id));
+
+          fixedCount++;
+        }
       }
 
       res.json({

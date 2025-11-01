@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import type { ForumThread, ForumReply } from '@shared/schema';
 import ThreadDetailClient from './ThreadDetailClient';
 import { getThreadUrl } from '../../../lib/category-path';
+import { getMetadataWithOverrides } from '../../lib/metadata-helper';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -53,8 +54,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const description = thread.metaDescription || createExcerpt(thread.body || '');
   const title = `${thread.title} - YoForex Forum`;
-
-  return {
+  
+  // Default metadata
+  const defaultMetadata: Metadata = {
     title,
     description,
     keywords: [
@@ -79,6 +81,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
     },
   };
+
+  // Try to fetch SEO overrides for this thread
+  const pathname = `/thread/${slug}`;
+  return await getMetadataWithOverrides(pathname, defaultMetadata);
 }
 
 export default async function ThreadDetailPage({ params }: PageProps) {

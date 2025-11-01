@@ -2,27 +2,30 @@ import type { Metadata } from 'next';
 import Header from '../components/Header';
 import { Footer } from '../components/Footer';
 import DiscussionsClient from './DiscussionsClient';
+import { getMetadataWithOverrides } from '../lib/metadata-helper';
 
 // Enable ISR with 60-second revalidation
 export const revalidate = 60;
 
-// SEO Metadata as specified in requirements
-export const metadata: Metadata = {
-  title: 'Forum Discussions | YoForex - Expert Advisor Community',
-  description: 'Join the YoForex community forum. Discuss trading strategies, expert advisors, and MT4/MT5 indicators with forex traders worldwide.',
-  keywords: ['forex forum', 'EA discussion', 'MT4 forum', 'trading community', 'expert advisor forum'],
-  openGraph: {
+// Generate SEO metadata with overrides
+export async function generateMetadata(): Promise<Metadata> {
+  return await getMetadataWithOverrides('/discussions', {
     title: 'Forum Discussions | YoForex - Expert Advisor Community',
     description: 'Join the YoForex community forum. Discuss trading strategies, expert advisors, and MT4/MT5 indicators with forex traders worldwide.',
-    type: 'website',
-    url: 'https://yoforex.net/discussions',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Forum Discussions | YoForex - Expert Advisor Community',
-    description: 'Join the YoForex community forum. Discuss trading strategies, expert advisors, and MT4/MT5 indicators with forex traders worldwide.',
-  },
-};
+    keywords: ['forex forum', 'EA discussion', 'MT4 forum', 'trading community', 'expert advisor forum'],
+    openGraph: {
+      title: 'Forum Discussions | YoForex - Expert Advisor Community',
+      description: 'Join the YoForex community forum. Discuss trading strategies, expert advisors, and MT4/MT5 indicators with forex traders worldwide.',
+      type: 'website',
+      url: 'https://yoforex.net/discussions',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Forum Discussions | YoForex - Expert Advisor Community',
+      description: 'Join the YoForex community forum. Discuss trading strategies, expert advisors, and MT4/MT5 indicators with forex traders worldwide.',
+    },
+  });
+}
 
 // Fetch from Express API
 async function getThreads() {

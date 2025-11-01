@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import BrokerDirectoryClient from './BrokerDirectoryClient';
+import { getMetadataWithOverrides } from '../lib/metadata-helper';
 
 // Broker type matching the React component
 type Broker = {
@@ -18,21 +19,24 @@ type Broker = {
 // Express API base URL
 const EXPRESS_API_URL = process.env.NEXT_PUBLIC_EXPRESS_URL || 'http://localhost:5000';
 
-export const metadata: Metadata = {
-  title: "Broker Directory | YoForex",
-  description: "Find trusted forex brokers for MT4/MT5 trading. Compare regulations, spreads, reviews, and community ratings.",
-  keywords: "forex brokers, MT4 brokers, MT5 brokers, broker reviews, regulated brokers",
-  openGraph: {
+// Generate SEO metadata with overrides
+export async function generateMetadata(): Promise<Metadata> {
+  return await getMetadataWithOverrides('/brokers', {
     title: "Broker Directory | YoForex",
     description: "Find trusted forex brokers for MT4/MT5 trading. Compare regulations, spreads, reviews, and community ratings.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Broker Directory | YoForex",
-    description: "Find trusted forex brokers for MT4/MT5 trading. Compare regulations, spreads, reviews, and community ratings.",
-  },
-};
+    keywords: "forex brokers, MT4 brokers, MT5 brokers, broker reviews, regulated brokers",
+    openGraph: {
+      title: "Broker Directory | YoForex",
+      description: "Find trusted forex brokers for MT4/MT5 trading. Compare regulations, spreads, reviews, and community ratings.",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Broker Directory | YoForex",
+      description: "Find trusted forex brokers for MT4/MT5 trading. Compare regulations, spreads, reviews, and community ratings.",
+    },
+  });
+}
 
 export const revalidate = 0; // Disable caching for fresh data
 
