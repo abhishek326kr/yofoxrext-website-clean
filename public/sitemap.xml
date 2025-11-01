@@ -1,467 +1,535 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://localhost:5000</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/discussions</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/discussions</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/marketplace</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/marketplace</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/brokers</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/members</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/members</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/scalping-m1-m15</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/xauusd-scalping</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/eurusd-scalping</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/crypto-scalping</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/news-scalping</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/development-it-programming-courses</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/day-trading</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/reverse-engineering-training</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/swing-trading</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/online-business-dropshipping</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/position-trading</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/amazon-aliexpress-ebay-strategies</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/grid-martingale</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/ai-neural-networks-trading</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/hedging</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/social-media-marketing-facebook-tiktok</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/multi-pair-correlation</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/online-trading-courses-books/other-trading-training-materials</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/sports-betting-strategies-arbitrage</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/scalping-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/sports-betting-strategies-arbitrage/sports-betting-financial-strategies</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/grid-trading-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/sports-betting-strategies-arbitrage/sports-betting-video-courses-webinars</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/trend-following-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/sports-betting-strategies-arbitrage/sports-betting-analysis-programs</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/breakout-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/sports-betting-strategies-arbitrage/paid-sports-forecasts-bet365-draftkings</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/news-trading-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/forex-indicators-mt4-mt5</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/mt4-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots/other-binary-options-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/mt5-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/ninjatrader-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/ctrader-robots</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/source-code-mq4-mq5</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/free-eas-0</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas/crypto-trading-systems-strategies</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/budget-eas-50-100</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas/crypto-video-courses-training</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/premium-eas-200-500</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots/nadex-thinkorswim-binary-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas/crypto-expert-advisors-robots-mt4-mt5</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates/trend-indicators</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/expert-advisors-trading-robots-mt4-mt5</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates/oscillators-momentum</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/tradingview-amibroker-thinkorswim-tradestation</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates/volume-indicators</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots/binary-options-trading-systems-strategies</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates/sr-tools</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots/binary-options-indicators-mt4-mt5</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates/template-packs</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots/binary-options-video-courses-training</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas/other-crypto-resources</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/ecn-brokers</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas/crypto-software-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/market-maker-brokers</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/forex-signals-free</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/low-spread-brokers</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/crypto-trading-strategies-eas/books-cryptocurrencies-blockchain</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/high-leverage-brokers</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/regulated-brokers</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/trading-community-chat</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/scam-watch</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/scam-alerts-broker-warnings</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/yoforex-guides-rules</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev/mql4</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/yoforex-guides-rules/how-yoforex-works</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev/mql5</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/yoforex-guides-rules/forum-rules-regulations</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev/python-bots</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/our-trusted-partners</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev/strategy-backtesting</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev/freelance-requests</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/binary-options-indicators-robots/binary-options-robots-auto-trading</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/education</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies/casino-strategies-online-slots</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/education/beginners-corner</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies/other-casino-poker-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/education/technical-analysis</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies/poker-software-tools-free</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/education/fundamental-analysis</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies/sports-betting-casino</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/education/risk-management</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies/binary-options-casino</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/education/trading-psychology</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/casino-poker-software-strategies/casino-forex-crypto-poker</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/journals-performance</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools/free-sports-betting-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/journals-performance/live-trading-journals</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools/free-forex-downloads</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/journals-performance/ea-performance-reports</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools/free-binary-downloads</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/journals-performance/backtest-results</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools/other-free-trading-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/journals-performance/forward-test-results</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools/free-crypto-downloads</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/tools-services</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/free-downloads-tools/free-trading-courses-books</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/tools-services/vps-services</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/trading-community-chat/free-trading-communication-topics</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/tools-services/trade-copiers</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/scam-alerts-broker-warnings/scam-brokers-signals</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/tools-services/signal-services</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/scam-alerts-broker-warnings/seller-scams-trading</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/tools-services/calculators-utilities</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/forex-trading-systems-strategies</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/other-forex-tools</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/trend-following-eas/trend-following-ea-70-win-rate-backtest</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/video-courses-forex-training</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/scam-watch/xm-broker-blocked-my-withdrawal-scam-alert</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//day-trading-usdjpy-best-time-of-day</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/coding-dev/mql4/mql4-vs-mql5-which-should-i-learn-first</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//trend-following-ea-70-win-rate-backtest</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/swing-trading/swing-trading-on-d1-patience-is-key</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//grid-ea-on-eurusd-is-20-pip-grid-too-tight</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/news-scalping/news-scalping-on-nfp-best-pairs-to-trade</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//news-scalping-on-nfp-best-pairs-to-trade</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/tools-services/vps-services/vps-recommendations-for-mt4-eas</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//vps-recommendations-for-mt4-eas</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/free-eas-0/free-scalping-ea-tested-on-demo-for-3-months</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//help-pls-xauusd-m5-scalping-keeps-failing</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/day-trading/day-trading-usdjpy-best-time-of-day</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//hedging-strategy-for-correlated-pairs</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/grid-martingale/martingale-on-eurusd-lost-my-account-again-</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//swing-trading-on-d1-patience-is-key</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/xauusd-scalping/help-pls-xauusd-m5-scalping-keeps-failing</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//xm-broker-blocked-my-withdrawal-scam-alert</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/hedging/hedging-strategy-for-correlated-pairs</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//martingale-on-eurusd-lost-my-account-again-</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/broker-reviews/ecn-brokers/ic-markets-vs-pepperstone-for-scalping</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//my-btcusd-scalping-strategy-500-pips-in-2-weeks</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/ea-library/grid-trading-eas/grid-ea-on-eurusd-is-20-pip-grid-too-tight</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category//free-scalping-ea-tested-on-demo-for-3-months</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/crypto-scalping/my-btcusd-scalping-strategy-500-pips-in-2-weeks</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/ninjatrader-tools/ninjatrader-tools/mkcm-jnclncl-ncoinc-nocwnindcp-nonc-nwencdodc-kncodco</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/indicators-templates/oscillators-momentum/oscillator-indicators-rsi-vs-stochastic</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/forex-indicators-mt4-mt5/forex-indicators-mt4-mt5/sdfsdfdsfdsfdsfdsf-dfdsfdf</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category/trading-strategies/trading-strategies/eurusd-scalping/esfsdfsdfsdfsdfs</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//mql4-vs-mql5-which-should-i-learn-first</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//trend-rider-pro</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//ic-markets-vs-pepperstone-for-scalping</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//dynamic-sr-zones</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category/forex-trading-robots-eas-2025/forex-indicators-mt4-mt5/forex-indicators-mt4-mt5/lets-test-startegy-works-xauusd</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//nfp-news-trader-ea</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//oscillator-indicators-rsi-vs-stochastic</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//multi-pair-grid-ea</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//eurusd-night-scalper</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//advanced-rsi-divergence</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//multi-pair-grid-ea</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//eurusd-night-scalper</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//trend-rider-pro</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//price-action-trader-setup</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//nfp-news-trader-ea</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//scalper-template-package</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//advanced-rsi-divergence</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//volume-profile-indicator</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//dynamic-sr-zones</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/category//gold-scalper-pro-ea</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//volume-profile-indicator</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/forex_newbie423</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//scalper-template-package</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/grid_hunter88</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//price-action-trader-setup</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/pip_trader2024</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/category//gold-scalper-pro-ea</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/crypto_ninja77</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/forex_newbie423</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/dev_learner99</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/grid_hunter88</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/news_trader_x</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/pip_trader2024</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/desperate_guy21</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/crypto_ninja77</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/ea_coder123</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/dev_learner99</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/angry_trader55</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/news_trader_x</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/yen_hunter2025</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/desperate_guy21</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/generous_coder</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/ea_coder123</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/hedge_master_</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/angry_trader55</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/ea_runner2024</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/yen_hunter2025</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/patient_trader</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/generous_coder</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/indicator_guy88</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/hedge_master_</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/puspalpaul8@gmail.com</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/ea_runner2024</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/user/lesbraumgerome@gmail.com</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/patient_trader</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/ic-markets</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/indicator_guy88</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/pepperstone</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/Arijit</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/xm-global</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/desaznoruyko@gmail.com</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/exness</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/Abhishek</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/fxtm</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/Ardhendu</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/tickmill</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/Sarvanu</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/fbs</loc>
-    <lastmod>2025-10-29</lastmod>
+    <loc>https://yoforex.net/user/testuser</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/scam-broker</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/YOTest</loc>
+    <lastmod>2025-11-01</lastmod>
   </url>
   <url>
-    <loc>http://localhost:5000/brokers/xm</loc>
-    <lastmod>2025-10-30</lastmod>
+    <loc>https://yoforex.net/user/newuser</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/testuser123</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/YoForexAdmin</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/progya.timd_1761930433273</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/sarvanubanerjee10_1761930518891</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/yoforexpremium_1761934906356</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/admin</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/sonofsatya93_1761936837690</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/venysgabrielius410_1761943570831</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/Epic1st</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/user/nellyrivera270903_1761955388495</loc>
+    <lastmod>2025-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/ic-markets</loc>
+    <lastmod>2025-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/pepperstone</loc>
+    <lastmod>2025-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/xm-global</loc>
+    <lastmod>2025-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/fbs</loc>
+    <lastmod>2025-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/exness</loc>
+    <lastmod>2025-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/fxtm</loc>
+    <lastmod>2025-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://yoforex.net/brokers/tickmill</loc>
+    <lastmod>2025-10-31</lastmod>
   </url>
 </urlset>
