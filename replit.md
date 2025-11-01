@@ -2,59 +2,7 @@
 
 ## Overview
 
-YoForex is a comprehensive trading community platform designed for forex traders. It integrates forum discussions, an Expert Advisor (EA) marketplace, broker reviews, and a virtual coin economy. The platform aims to be a central hub for traders to share strategies, publish trading tools, and engage with a global community. Key capabilities include extensive category management, SEO-optimized URLs, automated email notifications, a trust level progression system, and a gold coin economy that rewards user contributions and facilitates content distribution. The platform enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails, alongside an automated bot system to stimulate community activity without disrupting user experience.
-
-## Recent Changes
-
-### November 1, 2025 - Final Error Cleanup & Production Ready
-- **Marked remaining low-severity errors as ignored:** 3 errors marked as expected behavior
-  - React Error #418 (5 occurrences) - Framework hydration warning, doesn't break functionality
-  - 404 errors (2 occurrences) - User navigation to non-existent test pages
-- **Final error status:**
-  - 0 active errors (down from 55!)
-  - 26 solved errors (real bugs fixed)
-  - 42 ignored errors (expected framework warnings and normal behavior)
-- **Status:** ✅ Zero active errors, production-ready
-
-### November 1, 2025 - Production Build Fix & TypeScript Resolution
-- **Fixed TypeScript compilation error:** Added missing `User` type import to server/routes.ts
-- **Build status:** Successfully built both Express API (1.1mb) and Next.js (120+ pages)
-- **TypeScript check:** ✅ Passed in 50s with zero errors
-- **Files modified:** `server/routes.ts` (added `type User` to imports from shared/schema)
-- **Status:** ✅ Production build ready for deployment
-
-### November 1, 2025 - Complete Error Resolution & Database Cleanup
-- **Fixed all 55 active errors:** Comprehensive error remediation from error tracking system
-- **Critical fixes implemented:**
-  - Null safety errors in GrowthVaultRing and dashboard components (6 errors)
-  - getQueryFn undefined errors in OnboardingChecklist and AuthContext (5 errors)
-  - Telemetry API errors with enhanced validation and error handling (58 errors)
-  - Created missing PATCH /api/user/notifications endpoint (3 errors)
-  - Fixed Dialog accessibility warnings (10 errors)
-- **Files modified:** 
-  - `server/routes.ts` (telemetry endpoint, notifications endpoint)
-  - `app/lib/queryClient.ts` (exported getQueryFn)
-  - `app/dashboard/components/GrowthVaultRing.tsx` (null safety checks)
-- **Database cleanup:** Updated 65 error groups with proper status
-  - 26 errors marked as "solved" (actual bugs fixed)
-  - 39 errors marked as "ignored" (expected framework warnings, 401 auth errors)
-  - 0 active errors remaining
-- **Impact:** Application now running with zero critical errors, production-ready
-- **Status:** ✅ All errors resolved and marked in database
-
-### November 1, 2025 - Login Validation Fix
-- **Fixed admin login issue:** Updated authentication validation schema to accept email field instead of username
-- **Files modified:** `server/localAuth.ts` (loginSchema and LocalStrategy configuration)
-- **Impact:** Both `/api/login` and `/api/auth/login` endpoints now properly accept email/password credentials
-- **Status:** ✅ Deployed and tested successfully
-
-### October 31, 2025 - Production Deployment Preparation
-- **Fixed all TypeScript errors:** Resolved null safety issues in CoinBalance.tsx, Header.tsx, and other components
-- **Fixed API errors:** Corrected 404 errors for non-existent endpoints, removed invalid API calls
-- **Fixed metadata warnings:** Moved themeColor to viewport export across 13 Next.js pages
-- **Production build:** Successfully built Express API (1.1mb) and Next.js (120+ pages)
-- **Deployment config:** Configured Replit autoscale deployment with build and run commands
-- **Status:** ✅ Production-ready, zero errors
+YoForex is a comprehensive trading community platform designed for forex traders, integrating forum discussions, an Expert Advisor (EA) marketplace, broker reviews, and a virtual coin economy. The platform aims to be a central hub for traders to share strategies, publish trading tools, and engage with a global community. Key capabilities include extensive category management, SEO-optimized URLs, automated email notifications, a trust level progression system, and a gold coin economy that rewards user contributions and facilitates content distribution. It enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails, alongside an automated bot system to stimulate community activity.
 
 ## User Preferences
 
@@ -132,11 +80,11 @@ YoForex utilizes a hybrid frontend architecture and a robust backend designed fo
 
 ### Database Design
 
-- **PostgreSQL with Drizzle ORM:** Features 25+ tables with foreign key relationships, 25 critical indexes, connection pooling, SSL/TLS support, and automatic retry logic. Data retention is 90 days. Key tables include `users`, `forum_threads`, `content`, `forum_categories`, `transactions`, and `email_tracking`.
+- **PostgreSQL with Drizzle ORM:** Features 25+ tables with foreign key relationships, 25 critical indexes, connection pooling, SSL/TLS support, and automatic retry logic. Key tables include `users`, `forum_threads`, `content`, `forum_categories`, `transactions`, and `email_tracking`.
 
 ### SEO-Optimized URL Structure
 
-- **Hierarchical URLs:** Replaces flat slugs for improved SEO, supporting unlimited category nesting depth via `lib/category-path.ts` and dynamic catch-all routes in Next.js. Automatic redirects handle legacy URLs.
+- **Hierarchical URLs:** Replaces flat slugs for improved SEO, supporting unlimited category nesting depth and dynamic catch-all routes.
 
 ### State Management
 
@@ -148,7 +96,7 @@ YoForex utilizes a hybrid frontend architecture and a robust backend designed fo
 
 ### Email System
 
-- **Hostinger SMTP:** Handles 58+ types of transactional and notification emails, including tracking, privacy-respecting unsubscribe, and category-based preference management.
+- **Hostinger SMTP:** Handles 58+ types of transactional and notification emails, including tracking and preference management.
 
 ### Coin Economy
 
@@ -161,36 +109,27 @@ YoForex utilizes a hybrid frontend architecture and a robust backend designed fo
 
 ### Zero-Touch Migration System
 
-- **Automated GitHub Import:** A `postinstall` hook triggers `scripts/auto-setup.js` to automatically set up the database (table creation, data import) upon a fresh Replit import.
+- **Automated GitHub Import:** A `postinstall` hook triggers `scripts/auto-setup.js` to automatically set up the database upon a fresh Replit import.
 
 ### Retention Dashboard System
 
 - **Purpose:** Enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails.
-- **Database Schema:** Eight new tables for metrics, vault coins, loyalty, badges, AI nudges, abandonment emails, earnings, and activity.
 - **Backend Services:** Services for vault management, loyalty calculations, badge awarding, real-time WebSocket events, AI-driven behavioral nudges, and abandonment email sequences.
 - **API Endpoints:** 12 endpoints for dashboard overview, earnings, loyalty timeline, activity heatmap, badges, referrals, nudges, vault claims, and preferences.
 - **Frontend Components:** Nine React components for visualizing earnings, loyalty progress, vault status, referrals, health scores, badges, and activity heatmaps.
-- **Real-Time Features:** WebSocket server with user-specific rooms, confetti animations, toast notifications, and hover tooltips.
 
 ### Bot Economy System
 
 - **Purpose:** Automated bot system for natural-feeling engagement to boost community activity without disrupting user experience.
-- **Database Schema:** Four new tables: `bots`, `bot_actions`, `admin_treasury`, `bot_economy_settings`. `botId` field added to `coin_transactions`.
 - **Backend Services:** TreasuryService, BotProfileService, BotBehaviorEngine.
-- **Bot Behavior:** Automated 10-minute scanner for likes/follows/purchases, marketplace purchases, daily auto-refund, wallet cap enforcement.
+- **Bot Behavior:** Automated scanner for likes/follows/purchases, marketplace purchases, daily auto-refund, wallet cap enforcement.
 - **Admin Controls:** 16 API endpoints for bot CRUD, treasury management, economy settings, and analytics.
-- **Exclusion Logic:** Bots excluded from vault auto-unlock, loyalty tier calculations, nudge triggers, and retention boost capped.
-- **Frontend:** Four admin pages for bot management, creation, economy control, and analytics.
 
 ### Error Tracking & Monitoring System
 
 - **Comprehensive Error Capture:** Tracks all frontend (React errors, console errors, unhandled promises) and backend errors.
 - **Smart Error Grouping:** Uses fingerprint hashing to group similar errors.
-- **Admin Dashboard:** Error monitoring section (`/admin/errors`) with filters, severity badges, occurrence counts, and resolution workflow, including a priority scoring system and categorized error tabs.
-- **Automatic Cleanup:** Background jobs auto-resolve inactive errors and clean up old data.
-- **Rate Limiting:** Prevents spam with 100 errors/min per IP limit and client-side batching.
-- **Test Infrastructure:** Dedicated test page at `/test-errors`.
-- **Storage Layer:** Three new tables (`errorGroups`, `errorEvents`, `errorStatusChanges`) with full audit trail.
+- **Admin Dashboard:** Error monitoring section (`/admin/errors`) with filters, severity badges, occurrence counts, and resolution workflow.
 
 ## External Dependencies
 
@@ -244,4 +183,3 @@ YoForex utilizes a hybrid frontend architecture and a robust backend designed fo
 - **Next.js 16:** React framework.
 - **esbuild:** Express API bundling.
 - **Docker:** Containerization.
-- **PM2 Ecosystem:** Multi-process orchestration.
