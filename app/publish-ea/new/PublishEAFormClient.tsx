@@ -547,7 +547,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
         </TooltipProvider>
       </div>
 
-      <EditorContent editor={editor} immediatelyRender={false} />
+      <EditorContent editor={editor} />
 
       <div className={`px-4 py-2 bg-muted/30 border-t text-sm ${getCharCountColor()}`} data-testid="character-counter">
         {textLength} / 2000 characters (min 200)
@@ -1867,7 +1867,7 @@ export default function PublishEAFormClient() {
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <h2 className="text-2xl font-bold mb-2">{title}</h2>
-                          <Badge>{form.watch("category")}</Badge>
+                          {customCategory && <Badge>{customCategory}</Badge>}
                         </div>
                         <Badge variant="default" className="text-lg px-4 py-2">
                           {priceCoins} ₡
