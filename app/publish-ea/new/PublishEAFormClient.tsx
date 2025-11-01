@@ -217,17 +217,14 @@ export default function PublishEAFormClient() {
   // Submit mutation
   const publishMutation = useMutation({
     mutationFn: async (data: EAFormData) => {
-      return await apiRequest('/api/content', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...data,
-          type: 'ea',
-          status: 'pending',
-          isFree: false,
-          focusKeyword: data.primaryKeyword,
-          autoMetaDescription: data.seoExcerpt,
-          autoImageAltTexts: imageUrls.map((url, i) => `${title} - Screenshot ${i + 1}`)
-        }),
+      return await apiRequest('POST', '/api/content', {
+        ...data,
+        type: 'ea',
+        status: 'pending',
+        isFree: false,
+        focusKeyword: data.primaryKeyword,
+        autoMetaDescription: data.seoExcerpt,
+        autoImageAltTexts: imageUrls.map((url, i) => `${title} - Screenshot ${i + 1}`)
       });
     },
     onSuccess: () => {

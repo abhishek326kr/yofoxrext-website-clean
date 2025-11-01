@@ -144,9 +144,7 @@ export default function ContentDetailClient({
     mutationFn: async () => {
       if (!user?.id) throw new Error("You must be logged in to purchase");
       if (!content?.id) throw new Error("Content not loaded");
-      return await apiRequest(`/api/content/purchase/${content.id}`, {
-        method: 'POST',
-      });
+      return await apiRequest("POST", `/api/content/purchase/${content.id}`);
     },
     onSuccess: () => {
       if (content?.id && user?.id) {
