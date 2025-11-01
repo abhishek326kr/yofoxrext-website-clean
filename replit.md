@@ -4,6 +4,36 @@
 
 YoForex is a comprehensive trading community platform designed for forex traders, integrating forum discussions, an Expert Advisor (EA) marketplace, broker reviews, and a virtual coin economy. The platform aims to be a central hub for traders to share strategies, publish trading tools, and engage with a global community. Key capabilities include extensive category management, SEO-optimized URLs, automated email notifications, a trust level progression system, and a gold coin economy that rewards user contributions and facilitates content distribution. It enhances user retention through loyalty tiers, badges, AI nudges, and abandonment emails, alongside an automated bot system to stimulate community activity.
 
+## Recent Changes
+
+### November 1, 2025 - Production-Ready Error Fixes ✅
+
+**File Upload System Overhaul**
+- **Fixed ENOENT errors** - Migrated from disk-based multer (public/uploads/) to memory storage + object storage
+- Changed multer configuration from `diskStorage` to `memoryStorage()` in server/routes.ts (line 219)
+- Updated `/api/upload` endpoint to process files in-memory and upload directly to object storage via `objectStorageService.uploadObject()`
+- Images are now resized in-memory using Sharp (640x480) before uploading, eliminating disk I/O
+- Returns object storage paths (`/objects/uploads/...`) instead of local file paths
+- **Impact:** File uploads now work reliably in cloud environments without local disk dependencies
+
+**Admin Logs API Routes**
+- **Fixed 404 errors** - Added missing admin logs endpoints (lines 6245-6307 in server/routes.ts)
+- `/api/admin/logs/security` - maps to existing security events endpoint
+- `/api/admin/logs/system-events` - returns empty array (placeholder for future implementation)
+- `/api/admin/logs/performance` - maps to existing performance metrics endpoint
+- `/api/admin/logs/admin-actions` - maps to existing admin action logs endpoint
+- All routes secured with `isAuthenticated` + `adminOperationLimiter` + explicit admin check
+- **Impact:** Admin logs pages now load without errors
+
+**Password Authentication Fix**
+- Updated `server/localAuth.ts` to check both `password_hash` (new) and `password` (legacy) fields
+- **Impact:** Backward compatibility maintained for older user accounts with legacy password fields
+
+**Architect Review Verdict:** ✅ PASS
+- All fixes approved with minor recommendations for monitoring memory usage under peak loads
+- No security concerns identified
+- Recommended: Ensure PRIVATE_OBJECT_DIR environment variable is set for all deployments
+
 ## User Preferences
 
 ### Communication Style
