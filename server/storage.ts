@@ -15623,6 +15623,6 @@ export class DrizzleStorage implements IStorage {
 // Default to PostgreSQL since DATABASE_URL is configured
 const USE_POSTGRES = process.env.USE_POSTGRES !== "false";
 
-export const storage = USE_POSTGRES 
+export const storage: IStorage = USE_POSTGRES 
   ? new DrizzleStorage()
   : new MemStorage();
