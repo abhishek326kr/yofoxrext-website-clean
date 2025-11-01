@@ -8,26 +8,27 @@ import { z } from "zod";
  * to prevent XSS attacks, SQL injection, and invalid data.
  */
 
+import { sanitizeRichTextHTML, stripHTML } from '../shared/sanitize.js';
+
 // ============================================================================
 // XSS Protection
 // ============================================================================
 
 /**
  * Sanitize HTML content to prevent XSS attacks
- * Removes malicious scripts while preserving safe HTML
+ * Removes malicious scripts while preserving safe HTML formatting for rich text
+ * Uses centralized sanitization from shared/sanitize.ts
  */
 export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
-    ALLOWED_ATTR: ['href', 'title', 'target'],
-  });
+  return sanitizeRichTextHTML(html);
 }
 
 /**
  * Strip all HTML tags - for plain text fields
+ * Uses centralized sanitization from shared/sanitize.ts
  */
 export function stripHtml(text: string): string {
-  return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
+  return stripHTML(text);
 }
 
 // ============================================================================

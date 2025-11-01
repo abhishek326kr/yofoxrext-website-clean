@@ -1541,6 +1541,23 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({
 export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type Feedback = typeof feedback.$inferSelect;
 
+// EA Category Options for multi-select
+export const EA_CATEGORY_OPTIONS = [
+  "Expert Advisor type",
+  "Martingale type", 
+  "Grid",
+  "Arbitrage",
+  "Hedging",
+  "Scalping",
+  "News",
+  "Trend",
+  "Level trading",
+  "Neural networks",
+  "Multicurrency"
+] as const;
+
+export type EACategoryOption = typeof EA_CATEGORY_OPTIONS[number];
+
 export const insertContentSchema = createInsertSchema(content).omit({
   id: true,
   createdAt: true,
@@ -1551,11 +1568,12 @@ export const insertContentSchema = createInsertSchema(content).omit({
   status: true,
 }).extend({
   title: z.string().min(10).max(120),
-  description: z.string().min(300),
-  priceCoins: z.number().min(0).max(10000),
+  description: z.string().min(300), // Will contain HTML for rich text
+  priceCoins: z.number().min(0).max(10000), // Allow free content (0 coins), EA-specific min enforced in publishContentSchema
   platform: z.enum(["MT4", "MT5", "Both"]).optional(),
   version: z.string().optional(),
-  tags: z.array(z.string()).max(8).optional(),
+  // Tags now includes categories + custom categories (max 5 category selections + other tags)
+  tags: z.array(z.string()).max(13).optional(), // Max 5 categories + 8 other tags
   files: z.array(z.object({
     name: z.string(),
     size: z.number(),
@@ -1896,8 +1914,50 @@ export const insertDashboardPreferencesSchema = createInsertSchema(dashboardPref
 export type InsertDashboardPreferences = z.infer<typeof insertDashboardPreferencesSchema>;
 export type DashboardPreferences = typeof dashboardPreferences.$inferSelect;
 
-// Publish-specific validation schema with conditional evidence fields
+// Publish-specific validation schema with conditional evidence fields and category validation
 export const publishContentSchema = insertContentSchema.superRefine((data, ctx) => {
+  // EA-specific validations
+  if (data.type === 'ea') {
+    // Enforce minimum price of 20 coins for EA content
+    if (data.priceCoins !== undefined && data.priceCoins !== null && data.priceCoins < 20) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "EA content must have a minimum price of 20 gold coins",
+        path: ["priceCoins"],
+      });
+    }
+    
+    // Require tags array for EA content
+    if (!data.tags || data.tags.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least 1 category must be selected for EA content",
+        path: ["tags"],
+      });
+    } else {
+      // Validate category count (1-5 from EA_CATEGORY_OPTIONS)
+      const categoryTags = data.tags.filter(tag => 
+        EA_CATEGORY_OPTIONS.includes(tag as EACategoryOption) || tag.startsWith('Custom:')
+      );
+      
+      if (categoryTags.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least 1 category must be selected for EA content",
+          path: ["tags"],
+        });
+      }
+      
+      if (categoryTags.length > 5) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Maximum 5 categories allowed (currently " + categoryTags.length + " selected)",
+          path: ["tags"],
+        });
+      }
+    }
+  }
+  
   // Check if "Performance Report" tag is included
   const hasPerformanceReportTag = data.tags?.includes("Performance Report");
   

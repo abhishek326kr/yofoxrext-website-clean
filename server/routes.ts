@@ -208,13 +208,20 @@ const uploadStorage = multer.diskStorage({
 });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.set', '.csv'];
+  // Images: for screenshots and content images (max 5MB each)
+  const imageTypes = ['.jpg', '.jpeg', '.png', '.webp'];
+  // EA files: Expert Advisors and trading tools (max 10MB each)
+  const eaTypes = ['.ex4', '.ex5', '.mq4', '.zip'];
+  // Documents: PDF, SET files, CSV (max 5MB each)
+  const documentTypes = ['.pdf', '.set', '.csv'];
+  
+  const allAllowedTypes = [...imageTypes, ...eaTypes, ...documentTypes];
   const ext = path.extname(file.originalname).toLowerCase();
   
-  if (allowedTypes.includes(ext)) {
+  if (allAllowedTypes.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
+    cb(new Error(`Invalid file type. Allowed: ${allAllowedTypes.join(', ')}`));
   }
 };
 
@@ -222,7 +229,7 @@ const upload = multer({
   storage: uploadStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max file size
+    fileSize: 10 * 1024 * 1024 // 10MB max file size (increased for EA files)
   }
 });
 
@@ -526,22 +533,75 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-  // FILE UPLOAD ENDPOINT
+  // FILE UPLOAD ENDPOINT with enhanced metadata and image resizing
   app.post("/api/upload", isAuthenticated, upload.array('files', 10), async (req, res) => {
     try {
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
         return res.status(400).json({ error: "No files uploaded" });
       }
 
-      // Generate URLs for uploaded files
-      const fileUrls = req.files.map((file: Express.Multer.File) => {
-        return `/uploads/${file.filename}`;
-      });
+      const sharp = (await import('sharp')).default;
+      const fs = await import('fs/promises');
+      
+      // Process each file with metadata and image resizing
+      const processedFiles = await Promise.all(
+        req.files.map(async (file: Express.Multer.File) => {
+          const ext = path.extname(file.originalname).toLowerCase();
+          const isImage = ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
+          const isEA = ['.ex4', '.ex5', '.mq4', '.zip'].includes(ext);
+          
+          let dimensions = null;
+          let resizedFilename = file.filename;
+          
+          // Auto-resize images to 640x480 for screenshots
+          if (isImage) {
+            try {
+              const inputPath = file.path;
+              const outputFilename = `resized-${file.filename}`;
+              const outputPath = path.join('public/uploads/', outputFilename);
+              
+              // Resize image to 640x480 maintaining aspect ratio
+              await sharp(inputPath)
+                .resize(640, 480, {
+                  fit: 'inside', // Maintain aspect ratio
+                  withoutEnlargement: true // Don't upscale small images
+                })
+                .toFile(outputPath);
+              
+              // Get dimensions of resized image
+              const metadata = await sharp(outputPath).metadata();
+              dimensions = {
+                width: metadata.width,
+                height: metadata.height
+              };
+              
+              // Delete original and use resized version
+              await fs.unlink(inputPath);
+              resizedFilename = outputFilename;
+            } catch (resizeError) {
+              console.error('Image resize failed, using original:', resizeError);
+              // Fall back to original if resize fails
+            }
+          }
+          
+          return {
+            url: `/uploads/${resizedFilename}`,
+            originalName: file.originalname,
+            filename: resizedFilename,
+            size: file.size,
+            type: ext,
+            isImage,
+            isEA,
+            dimensions
+          };
+        })
+      );
 
       res.json({ 
-        urls: fileUrls,
-        message: "Thanks! This helps others.",
-        count: fileUrls.length
+        files: processedFiles,
+        urls: processedFiles.map(f => f.url), // Backward compatibility
+        message: "Upload successful!",
+        count: processedFiles.length
       });
     } catch (error: any) {
       console.error('File upload error:', error);
