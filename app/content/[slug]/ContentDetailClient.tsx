@@ -38,6 +38,13 @@ import Link from "next/link";
 import type { Content, User as UserType, ContentReview } from "@shared/schema";
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 
+// Purchase response type
+interface PurchaseResponse {
+  success: boolean;
+  downloadUrl?: string;
+  message?: string;
+}
+
 // Review form schema
 const reviewFormSchema = z.object({
   rating: z.number().min(1).max(5),
@@ -140,11 +147,12 @@ export default function ContentDetailClient({
   });
 
   // Purchase content mutation
-  const purchaseMutation = useMutation({
+  const purchaseMutation = useMutation<PurchaseResponse>({
     mutationFn: async () => {
       if (!user?.id) throw new Error("You must be logged in to purchase");
       if (!content?.id) throw new Error("Content not loaded");
-      return await apiRequest("POST", `/api/content/purchase/${content.id}`);
+      const response = await apiRequest("POST", `/api/content/purchase/${content.id}`);
+      return await response.json();
     },
     onSuccess: () => {
       if (content?.id && user?.id) {

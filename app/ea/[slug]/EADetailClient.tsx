@@ -55,6 +55,12 @@ interface EA {
   fileUrl?: string;
 }
 
+interface PurchaseResponse {
+  success: boolean;
+  downloadUrl?: string;
+  message?: string;
+}
+
 interface EADetailClientProps {
   ea: EA;
   similarEAs: EA[];
@@ -77,9 +83,10 @@ export default function EADetailClient({ ea, similarEAs }: EADetailClientProps) 
   const hasEnoughCoins = userCoins >= ea.priceCoins;
 
   // Purchase/Download mutation
-  const downloadMutation = useMutation({
+  const downloadMutation = useMutation<PurchaseResponse>({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/content/purchase/${ea.id}`);
+      const response = await apiRequest("POST", `/api/content/purchase/${ea.id}`);
+      return await response.json();
     },
     onSuccess: (data) => {
       toast({
