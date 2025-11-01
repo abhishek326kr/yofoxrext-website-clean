@@ -1,6 +1,7 @@
 import { db } from '../db';
-import { seoScans, seoIssues, seoMetrics, seoScanHistory } from '../../shared/schema';
+import { seoScans, seoIssues, seoMetrics, seoScanHistory, seoFixes } from '../../shared/schema';
 import { SEO_ISSUE_TAXONOMY, getIssueDefinition } from './seo-taxonomy';
+import { seoFixOrchestrator } from './seo-fixer';
 import * as cheerio from 'cheerio';
 import { eq, gte, and } from 'drizzle-orm';
 
@@ -164,6 +165,62 @@ class SeoScanner {
               console.log(`[SEO SCANNER] Critical alert sent for issue: ${insertedIssue.issueType}`);
             } catch (alertError) {
               console.error('[SEO SCANNER] Failed to send critical alert:', alertError);
+            }
+          }
+
+          // Auto-fix integration: Attempt to fix auto-fixable issues
+          if (definition.autoFixable && insertedIssue) {
+            try {
+              console.log(`[SEO SCANNER] Attempting auto-fix for issue: ${insertedIssue.issueType} on ${insertedIssue.pageUrl}`);
+              
+              const fixResult = await seoFixOrchestrator.fixIssue(insertedIssue.id);
+              
+              // Record the fix attempt in seoFixes table
+              await db.insert(seoFixes).values({
+                issueId: insertedIssue.id,
+                fixType: 'auto',
+                action: `Auto-fix applied for ${insertedIssue.issueType}`,
+                oldValue: fixResult.before ? JSON.stringify(fixResult.before) : null,
+                newValue: fixResult.after ? JSON.stringify(fixResult.after) : null,
+                appliedBy: 'system',
+                success: fixResult.success,
+                errorMessage: fixResult.error || null,
+                beforePayload: fixResult.before ? JSON.stringify(fixResult.before) : null,
+                afterPayload: fixResult.after ? JSON.stringify(fixResult.after) : null,
+                fixMethod: 'auto',
+              });
+
+              // Update issue status to 'fixed' if successful
+              if (fixResult.success) {
+                await db.update(seoIssues)
+                  .set({ 
+                    status: 'fixed',
+                    fixedAt: new Date(),
+                  })
+                  .where(eq(seoIssues.id, insertedIssue.id));
+                
+                console.log(`[SEO SCANNER] ✓ Auto-fix successful for ${insertedIssue.issueType} on ${insertedIssue.pageUrl}`);
+              } else {
+                console.log(`[SEO SCANNER] ✗ Auto-fix failed for ${insertedIssue.issueType}: ${fixResult.error}`);
+              }
+              
+            } catch (fixError) {
+              console.error(`[SEO SCANNER] Auto-fix error for issue ${insertedIssue.id}:`, fixError);
+              
+              // Record failed fix attempt
+              try {
+                await db.insert(seoFixes).values({
+                  issueId: insertedIssue.id,
+                  fixType: 'auto',
+                  action: `Auto-fix attempted for ${insertedIssue.issueType}`,
+                  appliedBy: 'system',
+                  success: false,
+                  errorMessage: fixError instanceof Error ? fixError.message : 'Unknown error during auto-fix',
+                  fixMethod: 'auto',
+                });
+              } catch (recordError) {
+                console.error('[SEO SCANNER] Failed to record fix error:', recordError);
+              }
             }
           }
         }
